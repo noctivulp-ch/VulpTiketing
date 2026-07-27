@@ -15,7 +15,7 @@ El esquema soporta más de dos dispositivos: una Gerente principal y posiblement
 **Diseño aceptado** (dos redes lógicas por rol, con orquestador electo por red) — ver el diseño completo en [decisión 0007](../decisiones/0007-topologia-sync.md):
 
 1. Dispositivos del mismo rol sincronizan directo entre sí (pairwise) al descubrirse por mDNS.
-2. Cada grupo de rol elige un orquestador de forma agnóstica (regla determinista, ej. UUID más bajo visible) para coordinar la sync *entre* grupos.
+2. Cada grupo de rol elige un orquestador de forma agnóstica (regla determinista, ej. UUID más bajo visible entre el `device_id` de cada dispositivo — ver [esquema-db, sección de configuración local](esquema-db.md#configuración-local-del-dispositivo-fuera-de-sqlite), aún pendiente de diseñar a detalle) para coordinar la sync *entre* grupos.
 3. Cuando ambos grupos están sin tareas de sync pendientes internamente, sus orquestadores sincronizan entre sí y propagan el resultado a su propio grupo.
 
 ## Borrados

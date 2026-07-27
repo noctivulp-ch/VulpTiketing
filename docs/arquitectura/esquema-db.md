@@ -1,8 +1,8 @@
 # Esquema de Base de Datos — Prototipo
 
-**Estado:** en discusión / iterando. No es un ADR todavía — cuando se cierre, se resume en `docs/decisiones/`.
+**Estado:** mayormente cerrado. Cada decisión de columna/tipo se formaliza como ADR apenas se cierra (no se espera a cerrar todo el documento). Solo quedan abiertos `device_id` (nota abajo) e índices (bajo riesgo).
 
-Ver también: [datos](datos.md) · [stack](stack.md) · [../decisiones/0005](../decisiones/0005-borrados-en-sync.md) · [../decisiones/0009](../decisiones/0009-cruds-independientes-por-entidad.md) · [../decisiones/0010](../decisiones/0010-motivo-reversion-como-json.md)
+Ver también: [datos](datos.md) · [stack](stack.md) · [../decisiones/0005](../decisiones/0005-borrados-en-sync.md) · [../decisiones/0009](../decisiones/0009-cruds-independientes-por-entidad.md) · [../decisiones/0010](../decisiones/0010-motivo-reversion-como-json.md) · [../decisiones/0011](../decisiones/0011-credenciales-almacenamiento-nativo.md) · [../decisiones/0012](../decisiones/0012-precios-como-real.md) · [../decisiones/0013](../decisiones/0013-nota-por-linea-no-json-en-venta.md)
 
 ## Reglas comunes (recordatorio)
 
@@ -92,6 +92,7 @@ No son tablas de negocio — viven en almacenamiento seguro nativo del dispositi
 2. **Dinero → `REAL`, no centavos enteros.** Moneda: colón costarricense (₡), que normalmente no usa céntimos en efectivo — pero se deja `REAL` "por si acaso" se necesite un decimal puntual. Aplica a `producto.precio_base` y `linea_venta.precio_aplicado`.
 3. **Credenciales → almacenamiento seguro nativo, no tabla SQLite.** Se elimina la tabla `usuario`; rol + hash de contraseña viven en `flutter_secure_storage` (Keychain/Keystore). Ver [decisión 0011](../decisiones/0011-credenciales-almacenamiento-nativo.md).
 4. **Categoría → sí, de una.** Tabla normalizada `categoria`, uso principal de interfaz/búsqueda al armar una venta, sin peso en reportes por ahora.
+5. **Nota por línea → columna `TEXT` en `linea_venta`, no JSON en `venta`.** Pensada para justificar un `precio_aplicado` distinto al base. Ver [decisión 0013](../decisiones/0013-nota-por-linea-no-json-en-venta.md).
 
 ## ⚠ Puntos aún pendientes
 

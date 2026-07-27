@@ -10,6 +10,7 @@ No se diseña contra un adversario interno (Gerente/Registradora son personal de
 
 - Login local por rol, sin backend.
 - Contraseña editable en configuración, por dispositivo (no sincronizada como credencial entre dispositivos).
+- Rol + contraseña (hasheada con Argon2id) viven en almacenamiento seguro nativo del sistema operativo (ej. `flutter_secure_storage`), **no** en una tabla SQLite. Ver [decisión 0011](../decisiones/0011-credenciales-almacenamiento-nativo.md).
 
 ## Backup encriptado
 

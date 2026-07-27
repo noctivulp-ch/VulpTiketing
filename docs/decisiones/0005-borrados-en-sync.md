@@ -27,3 +27,7 @@ Nunca se borra un Producto, solo se marca inactivo (a nivel de negocio, no de sy
 ## Recomendación
 
 A. Es la que menos superficie nueva agrega y encaja directamente con el patrón `updated_at`/LWW que ya está definido en Architecture.feature.
+
+## Nota posterior (2026-07-26)
+
+Esta decisión aplica a tablas cuyo ciclo de vida incluye descontinuación (Producto, Categoria). **No aplica a Venta**: la desventaja mencionada arriba en la opción C ("no cubre el caso de borrar una Venta por error") quedó resuelta de otra forma — [decisión 0009](0009-cruds-independientes-por-entidad.md) estableció que una Venta nunca se borra (ni hard ni soft-delete), solo se **revierte** (transición de `estado`, no un tombstone). Venta y LineaVenta no llevan columna `deleted_at`.

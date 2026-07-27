@@ -13,13 +13,14 @@ La función principal de la app **no es un punto de venta con manejo de caja** �
    - Registradora: solo lectura y edición de campos existentes (no crea ni elimina productos) — ver [Operations.feature](../../features/Operations.feature).
 2. Al registrar una venta, el usuario **agrega productos a cobrar** (una o varias líneas), cada línea con:
    - El producto seleccionado del inventario.
-   - Precio: el precio base se carga automáticamente, con opción de editarlo manualmente en el momento (ej. descuento puntual, promoción).
-3. Al guardar, la venta persiste: líneas de producto + precio aplicado + hora + fecha.
+   - Precio: el precio base se carga automáticamente (aparece como texto de fondo/placeholder en el campo), con opción de editarlo manualmente en el momento (ej. descuento puntual, promoción). Si el usuario no lo toca, se aplica el base; si escribe otro valor, se aplica ese.
+   - Nota opcional de esa línea, pensada principalmente para justificar un precio editado (ver [decisión 0013](../decisiones/0013-nota-por-linea-no-json-en-venta.md)) — distinta del "Detalle" general de toda la venta.
+3. Al guardar, la venta persiste: líneas de producto + precio aplicado + cantidad + nota (si hay) + hora + fecha.
 4. No hay confirmación de método de pago ni corte de caja — el registro es puramente para efectos contables/reportes.
 
 ## Modelo de datos
 
-Una **Venta** es multi-línea (carrito): agrupa una o más **líneas**, cada una con Producto + precio aplicado + cantidad. El término de dominio es "Producto" (no "Plato") para cubrir inventario mixto (comida, bebidas, etc.). Ver [datos](../arquitectura/datos.md) y [decisión 0008](../decisiones/0008-modelo-venta-multilinea-terminologia.md).
+Una **Venta** es multi-línea (carrito): agrupa una o más **líneas**, cada una con Producto + precio aplicado + cantidad + nota opcional. El término de dominio es "Producto" (no "Plato") para cubrir inventario mixto (comida, bebidas, etc.). Ver [datos](../arquitectura/datos.md) y [decisión 0008](../decisiones/0008-modelo-venta-multilinea-terminologia.md).
 
 ## Ciclo de vida de una Venta: crear o revertir, nunca editar
 
