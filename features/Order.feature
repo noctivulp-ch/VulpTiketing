@@ -13,6 +13,13 @@ Feature: Fast Sale Registration
     And allow the user to add an optional text note (Detalle) to the venta as a whole
     And save the venta locally with its date and time, with "estado" set to "activa"
 
+  Scenario: Adding a free-form line without a catalog Producto
+    Given the user is logged in (Any role)
+    And the user is building a "Venta"
+    When the user adds a line with a hand-typed name and price instead of selecting a "Producto"
+    Then the system must save that line as a "línea libre", not linked to any catalog "Producto"
+    And this line must never block a future purge of any "Producto" ([0016])
+
   Scenario: A saved Venta cannot be edited or deleted
     Given a "Venta" has already been saved
     When the user wants to correct it

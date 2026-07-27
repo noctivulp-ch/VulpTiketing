@@ -9,10 +9,10 @@ La función principal de la app **no es un punto de venta con manejo de caja** �
 ## Flujo
 
 1. Existe un **inventario de Productos** vendidos en el local: nombre, imagen (opcional), precio base.
-   - Gerente: CRUD completo.
-   - Registradora: solo lectura y edición de campos existentes (no crea ni elimina productos) — ver [Operations.feature](../../features/Operations.feature).
+   - Gerente: CRUD completo + descontinuar + **purgar** (borrado físico real, solo si nunca se vendió y todos los dispositivos están sincronizados — ver [decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md)).
+   - Registradora: solo lectura y edición de campos existentes (no crea, descontinúa ni purga productos) — ver [Operations.feature](../../features/Operations.feature).
 2. Al registrar una venta, el usuario **agrega productos a cobrar** (una o varias líneas), cada línea con:
-   - El producto seleccionado del inventario.
+   - El producto seleccionado del inventario, **o** un nombre escrito a mano para un caso puntual sin catálogo ("línea libre" — ver [decisión 0016](../decisiones/0016-linea-libre-en-venta.md); útil para algo de un solo uso que nunca se va a repetir, sin crear un Producto permanente solo para eso).
    - Precio: el precio base se carga automáticamente (aparece como texto de fondo/placeholder en el campo), con opción de editarlo manualmente en el momento (ej. descuento puntual, promoción). Si el usuario no lo toca, se aplica el base; si escribe otro valor, se aplica ese.
    - Nota opcional de esa línea, pensada principalmente para justificar un precio editado (ver [decisión 0013](../decisiones/0013-nota-por-linea-no-json-en-venta.md)) — distinta del "Detalle" general de toda la venta.
 3. Al guardar, la venta persiste: líneas de producto + precio aplicado + cantidad + nota (si hay) + hora + fecha.

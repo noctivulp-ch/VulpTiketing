@@ -18,3 +18,5 @@ Volver a [../index](../index.md)
 | [0012](0012-precios-como-real.md) | Precios como REAL, no INTEGER en unidad mínima | Aceptada |
 | [0013](0013-nota-por-linea-no-json-en-venta.md) | Nota descriptiva por línea en linea_venta, no JSON en venta | Aceptada |
 | [0014](0014-riverpod-como-gestion-de-estado.md) | Riverpod como gestión de estado | Aceptada |
+| [0015](0015-purgar-producto-borrado-fisico-condicional.md) | Purgar Producto: borrado físico condicional | Aceptada |
+| [0016](0016-linea-libre-en-venta.md) | Línea libre en Venta (sin Producto de catálogo) | Aceptada |

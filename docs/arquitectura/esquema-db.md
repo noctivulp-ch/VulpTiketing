@@ -39,6 +39,8 @@ CREATE TABLE producto (
 );
 ```
 
+**Ciclo de vida completo:** crear, leer, actualizar, **descontinuar** (soft-delete, arriba), y **purgar** — borrado físico real, solo Gerente, solo si ya está descontinuado, tiene cero `linea_venta` que lo referencien, y todos los dispositivos conocidos están sincronizados. Ver [decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md).
+
 ## Venta
 
 ```sql
@@ -63,14 +65,21 @@ CREATE TABLE venta (
 CREATE TABLE linea_venta (
   id               TEXT PRIMARY KEY,    -- UUID v4
   venta_id         TEXT NOT NULL REFERENCES venta(id),
-  producto_id      TEXT NOT NULL REFERENCES producto(id),
+  producto_id      TEXT REFERENCES producto(id),  -- nullable: NULL si es línea libre (0016)
+  nombre_libre     TEXT,                -- solo si producto_id IS NULL: nombre escrito a mano
   precio_aplicado  REAL NOT NULL,       -- "foto" del precio al momento de vender, nunca vacío
   cantidad         INTEGER NOT NULL DEFAULT 1,
   nota             TEXT,                -- descriptivo opcional, típicamente para justificar precio_aplicado distinto al base; NULL si no se escribió
-  updated_at       TEXT NOT NULL
+  updated_at       TEXT NOT NULL,
+  CHECK (
+    (producto_id IS NOT NULL AND nombre_libre IS NULL) OR
+    (producto_id IS NULL AND nombre_libre IS NOT NULL)
+  )
   -- sin deleted_at: inmutable, vive y muere con su Venta (0009)
 );
 ```
+
+**Sobre `nombre_libre`:** permite agregar una línea de venta sin que exista un Producto de catálogo — casos custom de un solo uso (ej. un descuento puntual para un cliente específico) que nunca se van a repetir, sin ensuciar el inventario. Ver [decisión 0016](../decisiones/0016-linea-libre-en-venta.md). Una línea libre nunca bloquea una purga de Producto (0015) porque, por definición, no referencia ninguno.
 
 **Sobre `precio_aplicado`:** nunca queda vacío. Al agregar un producto a una venta, el campo se llena automáticamente con el `precio_base` del producto *en ese momento* (una copia, no una referencia viva; el placeholder de "precio base" en el input es puro comportamiento de UI, no requiere nada adicional en la base), y el usuario puede sobreescribirlo antes de guardar. Es intencional que sea una copia y no un lookup a `producto.precio_base`: si el precio base cambia después, las ventas ya registradas deben conservar el precio real que se cobró ese día — de lo contrario los reportes históricos cambiarían solos cada vez que se actualiza el catálogo.
 
@@ -93,6 +102,8 @@ No son tablas de negocio — viven en almacenamiento seguro nativo del dispositi
 3. **Credenciales → almacenamiento seguro nativo, no tabla SQLite.** Se elimina la tabla `usuario`; rol + hash de contraseña viven en `flutter_secure_storage` (Keychain/Keystore). Ver [decisión 0011](../decisiones/0011-credenciales-almacenamiento-nativo.md).
 4. **Categoría → sí, de una.** Tabla normalizada `categoria`, uso principal de interfaz/búsqueda al armar una venta, sin peso en reportes por ahora.
 5. **Nota por línea → columna `TEXT` en `linea_venta`, no JSON en `venta`.** Pensada para justificar un `precio_aplicado` distinto al base. Ver [decisión 0013](../decisiones/0013-nota-por-linea-no-json-en-venta.md).
+6. **Purgar Producto → sí, condicional.** Borrado físico real (Gerente-only), solo si ya está descontinuado, tiene cero ventas asociadas, y todos los dispositivos están sincronizados. Ver [decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md).
+7. **Línea libre en Venta → sí.** `linea_venta.producto_id` nullable + `nombre_libre`, para casos custom de un solo uso sin ensuciar el catálogo. Ver [decisión 0016](../decisiones/0016-linea-libre-en-venta.md).
 
 ## ⚠ Puntos aún pendientes
 
@@ -100,9 +111,9 @@ No son tablas de negocio — viven en almacenamiento seguro nativo del dispositi
 
 Confirmado que una ID única generada localmente es la mejor opción, pero se deja pendiente de diseñar a detalle cuando se implemente sync (decisión 0007) — no bloquea el resto del esquema. Pista para esa sesión: generar un UUID v4 una sola vez en el primer arranque de la app y guardarlo junto al rol y la contraseña en el mismo almacenamiento seguro nativo (ver sección de configuración local arriba) — no necesita su propia tabla ni mecanismo de storage distinto.
 
-### ⚠ Eliminar duro de Producto con propagación desde Gerente (planteado en diseño de pantallas)
+### Estado consultable de "todos los dispositivos sincronizados" (para Purgar, 0015)
 
-Al describir la Ventana 3 (CRUD de Producto — ver [pantallas/flujo-descripcion.md](../pantallas/flujo-descripcion.md)) surgió la idea de agregar un borrado físico real además de "descontinuar", con un sistema de propagación desde Gerente. Esto contradice directamente la [decisión 0005](../decisiones/0005-borrados-en-sync.md) (tombstone, nunca borrado físico mientras la sync esté activa). No resuelto — requiere discusión explícita antes de decidir, no se resolvió unilateralmente porque revierte una decisión ya aceptada.
+La acción "Purgar" depende de que el servicio de sync pueda confirmar que no hay dispositivos conocidos con tareas pendientes. Se apoya en la misma señal ya prevista en la topología de sync (0007), pero falta definir la API exacta (`SyncNotifier` expone esto como un booleano/estado consultable) — se diseña junto con el resto de sync, no bloquea el resto del esquema.
 
 ### Índices (bajo riesgo, se resuelve al implementar)
 

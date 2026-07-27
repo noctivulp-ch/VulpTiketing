@@ -22,3 +22,16 @@ Feature: Inventory CRUD Operations
     When the user discontinues a "Producto"
     Then the system must mark it with a "deleted_at" timestamp instead of removing the row
     And the "Producto" must no longer appear in the catalog or in new sales
+
+  Scenario: Purging a Producto is a real physical delete, but only when safe
+    Given the user is logged in as "Gerente"
+    And the "Producto" is already discontinued
+    And no "LineaVenta" references this "Producto"
+    And all known devices are confirmed synchronized
+    When the user purges the "Producto"
+    Then the system permanently removes the row from the database
+
+  Scenario: Purging is blocked when it is not safe
+    Given the user is logged in as "Gerente"
+    When the "Producto" has at least one "LineaVenta" referencing it, or is not discontinued, or not all known devices are confirmed synchronized
+    Then the purge action must be disabled, with a message explaining why

@@ -70,12 +70,13 @@ Para ventas de varios productos. Layout:
   - Botón de **agregar producto nuevo al vuelo** (lápiz) — crea un Producto nuevo sin salir del flujo de venta. **Debe estar restringido a Gerente**, igual que el resto de Create en `Operations.feature` (Registradora no puede crear productos) — punto a confirmar al implementar, no estaba explícito en el mensaje original pero se sigue directamente de la feature existente.
   - Tocar un producto (toque simple) lo agrega a la venta como una línea nueva.
   - Mantener presionado entra en modo selección múltiple; aparece un botón **"+"** junto a los otros dos, para agregar todos los productos seleccionados de una vez.
+  - **Línea libre** ([decisión 0016](../decisiones/0016-linea-libre-en-venta.md)): además de elegir un producto del catálogo, debe haber una forma de agregar una línea sin catálogo — nombre y precio escritos a mano, para casos de un solo uso (ej. un descuento puntual para un cliente específico) que nunca deberían ensuciar el inventario de Producto. Falta decidir el ícono/ubicación exacta de este botón dentro de la barra existente (buscar / agregar nuevo / línea libre) — se resuelve en la Fase 2 (prototipos visuales).
 
 ## Ventana 3 — CRUD de Producto
 
-Listado de productos con las acciones: **agregar**, **editar**, **descontinuar** — esto ya corresponde 1:1 con `Operations.feature` y el ciclo de vida de `ProductoNotifier` en [gestion-estado.md](../arquitectura/gestion-estado.md).
+Listado de productos con las acciones: **agregar**, **editar**, **descontinuar**, y **purgar** (borrado físico real) — esto corresponde 1:1 con `Operations.feature` y el ciclo de vida de `ProductoNotifier` en [gestion-estado.md](../arquitectura/gestion-estado.md).
 
-> ⚠ **Punto abierto planteado por el usuario, sin resolver todavía:** ¿agregar además un "eliminar" duro (borrado físico real, no soft-delete) con un sistema de propagación iniciado desde el lado Gerente, "por si acaso"? Esto contradice directamente la [decisión 0005](../decisiones/0005-borrados-en-sync.md) (tombstone, nunca borrado físico mientras la sync esté activa) y el principio de [0009](../decisiones/0009-cruds-independientes-por-entidad.md). No lo resolví unilateralmente porque cambia decisiones ya aceptadas — queda pendiente de discutir explícitamente antes de decidir. Ver también la nota en `docs/arquitectura/esquema-db.md`.
+**Purgar** ([decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md)) resuelve el punto que planteó el usuario sobre acumulación de productos duplicados/creados por error que nunca se van a usar: solo está disponible para Gerente, y solo habilitado cuando el producto ya está descontinuado, tiene cero ventas asociadas, y se confirma que todos los dispositivos conocidos están sincronizados (la UI debe deshabilitar el botón mientras esa condición no se cumpla, con un mensaje indicando por qué). Para casos custom de un solo uso (ej. un descuento puntual para un cliente específico) que nunca deberían haber sido un Producto de catálogo en primer lugar, ver la **línea libre** en la Ventana 2 — evita el problema desde la raíz en vez de crear y purgar después.
 
 ## Ventana 4 — Reportes
 
@@ -89,7 +90,7 @@ Sin describir en detalle — sigue la estética general ya estipulada. Debe incl
 
 ## Pendientes / a confirmar
 
-- El "eliminar duro con propagación" de la Ventana 3 (ver arriba) — requiere discusión explícita, afecta decisiones ya aceptadas.
+- Ícono/ubicación exacta del botón de "línea libre" en la barra de agregar producto (Ventana 2) — se resuelve en Fase 2.
 - Si el control de "cambio" en la barra inferior es puramente un campo de texto reactivo (asumido aquí) o combina también un botón — confirmar.
 - Si "agregar producto nuevo al vuelo" desde el panel de venta debe restringirse a Gerente (asumido aquí, por consistencia con `Operations.feature`) — confirmar.
 - Si al mantener presionado y seleccionar varios productos, cada uno se agrega con cantidad 1 por defecto (asumido) o pide cantidad antes de agregar.

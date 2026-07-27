@@ -20,3 +20,7 @@ No hay corte de caja estricto — el turno es solo una agrupación temporal para
 - **Registradora**: solo semana actual, día actual, y desglose de turno del día actual.
 
 Igual que en [Operations](../../features/Operations.feature), la restricción a la Registradora es de alcance de datos (no necesita ver histórico completo para su función), no una medida de seguridad estricta — ver [roles-y-auth](roles-y-auth.md).
+
+## Pendiente
+
+Cómo tratar las **líneas libres** (sin Producto de catálogo — [decisión 0016](../decisiones/0016-linea-libre-en-venta.md)) en el ranking de "más/menos vendido": ¿se agrupan bajo un "Personalizado", se listan individualmente por `nombre_libre`, o se excluyen del ranking? No bloquea el resto de reportes, se resuelve al implementar esta pantalla.
