@@ -17,3 +17,4 @@ Volver a [../index](../index.md)
 | [0011](0011-credenciales-almacenamiento-nativo.md) | Credenciales de dispositivo en almacenamiento seguro nativo, no SQLite | Aceptada |
 | [0012](0012-precios-como-real.md) | Precios como REAL, no INTEGER en unidad mínima | Aceptada |
 | [0013](0013-nota-por-linea-no-json-en-venta.md) | Nota descriptiva por línea en linea_venta, no JSON en venta | Aceptada |
+| [0014](0014-riverpod-como-gestion-de-estado.md) | Riverpod como gestión de estado | Aceptada |

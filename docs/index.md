@@ -9,6 +9,7 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 - [Stack técnico](arquitectura/stack.md)
 - [Datos](arquitectura/datos.md)
 - [Esquema de base de datos](arquitectura/esquema-db.md) (mayormente cerrado — quedan `device_id` e índices)
+- [Gestión de estado](arquitectura/gestion-estado.md) (Riverpod — regla dura contra abstracciones genéricas de CRUD)
 - [Sincronización](arquitectura/sincronizacion.md)
 - [Seguridad](arquitectura/seguridad.md)
 
@@ -25,4 +26,4 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 
 ## Estado general (2026-07-26)
 
-Fase de diseño — features base y esquema de datos cerrados (13 ADRs aceptados). Queda pendiente elegir gestión de estado (Riverpod vs BLoC) antes del scaffold de código. Ver [decisiones](decisiones/index.md).
+Fase de diseño — features base, esquema de datos y gestión de estado cerrados (14 ADRs aceptados). Siguiente paso: scaffold de Flutter (`flutter create`) y versión mínima de Dart/Flutter. Ver [decisiones](decisiones/index.md).

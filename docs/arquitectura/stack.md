@@ -10,7 +10,7 @@ Ver también: [datos](datos.md) · [sincronización](sincronizacion.md) · [segu
 | Base de datos | SQLite |
 | Primary keys | UUID v4 en todas las tablas |
 | Auditoría de fila | columna `updated_at` en ISO-8601 en todas las tablas |
-| Gestión de estado | desacoplada de la UI (Riverpod o BLoC — por confirmar cuál) |
+| Gestión de estado | Riverpod, desacoplada de la UI — ver [gestión de estado](gestion-estado.md) y [decisión 0014](../decisiones/0014-riverpod-como-gestion-de-estado.md) |
 | Resolución de conflictos | Last Write Wins (LWW), basada en `updated_at` |
 | Targets de compilación | Android (APK/AAB) + Windows/Linux (ejecutable nativo desktop) |
 
@@ -22,5 +22,4 @@ Con sync entre múltiples dispositivos sin servidor central, un `id` autoincreme
 
 ## Pendiente
 
-- [ ] Elegir Riverpod vs BLoC (ninguno bloquea el diseño funcional, se puede decidir al iniciar el scaffold)
 - [ ] Versión mínima de Flutter/Dart
