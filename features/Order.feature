@@ -9,7 +9,8 @@ Feature: Fast Sale Registration
     And adds one or more "Productos" from the inventory to the venta, each with a quantity
     Then the system must load each product's base price automatically
     And allow the user to override the price manually per product if needed
-    And allow the user to add an optional text note (Detalle) to the venta
+    And allow the user to add an optional descriptive note per product line (e.g. to justify a manual price override)
+    And allow the user to add an optional text note (Detalle) to the venta as a whole
     And save the venta locally with its date and time, with "estado" set to "activa"
 
   Scenario: A saved Venta cannot be edited or deleted

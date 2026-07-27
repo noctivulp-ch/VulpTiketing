@@ -66,12 +66,15 @@ CREATE TABLE linea_venta (
   producto_id      TEXT NOT NULL REFERENCES producto(id),
   precio_aplicado  REAL NOT NULL,       -- "foto" del precio al momento de vender, nunca vacío
   cantidad         INTEGER NOT NULL DEFAULT 1,
+  nota             TEXT,                -- descriptivo opcional, típicamente para justificar precio_aplicado distinto al base; NULL si no se escribió
   updated_at       TEXT NOT NULL
   -- sin deleted_at: inmutable, vive y muere con su Venta (0009)
 );
 ```
 
-**Sobre `precio_aplicado`:** nunca queda vacío. Al agregar un producto a una venta, el campo se llena automáticamente con el `precio_base` del producto *en ese momento* (una copia, no una referencia viva), y el usuario puede sobreescribirlo antes de guardar. Es intencional que sea una copia y no un lookup a `producto.precio_base`: si el precio base cambia después, las ventas ya registradas deben conservar el precio real que se cobró ese día — de lo contrario los reportes históricos cambiarían solos cada vez que se actualiza el catálogo.
+**Sobre `precio_aplicado`:** nunca queda vacío. Al agregar un producto a una venta, el campo se llena automáticamente con el `precio_base` del producto *en ese momento* (una copia, no una referencia viva; el placeholder de "precio base" en el input es puro comportamiento de UI, no requiere nada adicional en la base), y el usuario puede sobreescribirlo antes de guardar. Es intencional que sea una copia y no un lookup a `producto.precio_base`: si el precio base cambia después, las ventas ya registradas deben conservar el precio real que se cobró ese día — de lo contrario los reportes históricos cambiarían solos cada vez que se actualiza el catálogo.
+
+**Sobre `nota`:** descriptivo opcional por línea, pensado principalmente para justificar un `precio_aplicado` distinto al `precio_base` (ej. "promoción", "cliente frecuente", "producto en mal estado"), aunque nada impide usarlo para cualquier otra anotación puntual de esa línea. Es distinta de `venta.detalle` (nota general de toda la venta). Va como columna `TEXT` simple en la propia fila — no como JSON — porque cada línea ya es su propia fila; un JSON en `venta` keyed por nombre de producto colisionaría si el mismo producto aparece dos veces en la misma venta con notas distintas (ver [decisión 0013](../decisiones/0013-nota-por-linea-no-json-en-venta.md)).
 
 ## Configuración local del dispositivo (fuera de SQLite)
 
