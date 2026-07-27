@@ -40,7 +40,7 @@ Pensada para el caso común: vender uno o pocos productos sin construir un carri
   - **Cantidad** — cuántas unidades de ese producto.
   - **Cantidad** — por defecto 1, editable (consistente con el `DEFAULT 1` de `linea_venta.cantidad` en el esquema).
   - **Precio** — precargado con el precio base (placeholder), editable — mismo comportamiento ya definido en [ventas.md](../funciones/ventas.md) y `linea_venta.precio_aplicado`.
-  - **Cambio** — mismo control que el de la Ventana 2 (ver abajo): campo de texto donde se escribe el monto recibido; tras un par de segundos sin escribir, se calcula el cambio a devolver automáticamente.
+  - **Cambio** — mismo control que el de la Ventana 2 (ver abajo): campo de texto donde se escribe el monto recibido; tras 400ms sin escribir, se calcula el cambio a devolver automáticamente. Sin botón adicional.
   - **Completado** — botón para finalizar esta venta de un solo producto.
 - Al finalizar: se muestra una **notificación no intrusiva en una esquina** (éxito o error) y el overlay se cierra.
 
@@ -62,7 +62,7 @@ Para ventas de varios productos. Layout:
   [ Text | {cambio} |                    | {total} | BTN ]
   ```
   - `Text` — campo de texto donde el cajero escribe el monto recibido del cliente.
-  - `{cambio}` — resultado calculado automáticamente tras ~2-3 segundos sin escribir (no es un botón de "calcular", es un campo reactivo — nota: el mensaje original lo mencionaba como "botón cuadrado" y luego como campo de texto con debounce; asumí el campo de texto con debounce como la versión correcta porque es la que se describió con más detalle — **confirmar**).
+  - `{cambio}` — resultado calculado automáticamente tras **400ms** sin escribir (debounce corto a propósito, buscando agilidad). No hay ningún botón asociado — el único botón real de esta barra es **finalizar venta** (confirmado por el usuario).
   - `{total}` — total de la venta en curso (suma de líneas).
   - `BTN` — **finalizar venta**: al presionar, muestra una notificación no intrusiva de éxito o error.
 - **Botón "agregar producto"**: estilo pestaña, el botón mismo se comporta como un toggle flotante, pero el panel que abre **no es un overlay** — es un panel persistente que ocupa parte del lado derecho de la pantalla, con:
@@ -92,6 +92,11 @@ Sin describir en detalle — sigue la estética general ya estipulada. Debe incl
 ## Pendientes / a confirmar
 
 - Ícono/ubicación exacta del botón de "línea libre" en la barra de agregar producto (Ventana 2) — se resuelve en Fase 2.
-- **Control de "cambio"**: ¿es exclusivamente el campo de texto reactivo (sin ningún botón asociado, tal como está descrito aquí), o hay además un botón junto al campo — por ejemplo para forzar el cálculo al instante sin esperar el debounce de 2-3 segundos? El mensaje original lo describió primero como "botón cuadrado" y después como campo de texto con debounce; se asumió el campo de texto puro, pendiente de confirmar si falta el botón adicional.
 - Layout específico para pantalla pequeña (teléfono) — no descrito todavía.
 - Diferencias visuales (si las hay) entre Gerente y Registradora más allá de qué botones están habilitados — no descrito todavía.
+
+## Resueltos en esta ronda
+
+- **Cantidad por defecto**: 1 en todos los casos (venta rápida, agregar producto individual, selección múltiple).
+- **Agregar producto nuevo al vuelo**: restringido a Gerente.
+- **Control de "cambio"**: exclusivamente un campo de texto reactivo, debounce de 400ms (agilidad ante todo), sin botón adicional. El único botón real de la barra inferior es "finalizar venta".
