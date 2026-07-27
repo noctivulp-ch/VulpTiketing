@@ -100,6 +100,10 @@ No son tablas de negocio — viven en almacenamiento seguro nativo del dispositi
 
 Confirmado que una ID única generada localmente es la mejor opción, pero se deja pendiente de diseñar a detalle cuando se implemente sync (decisión 0007) — no bloquea el resto del esquema. Pista para esa sesión: generar un UUID v4 una sola vez en el primer arranque de la app y guardarlo junto al rol y la contraseña en el mismo almacenamiento seguro nativo (ver sección de configuración local arriba) — no necesita su propia tabla ni mecanismo de storage distinto.
 
+### ⚠ Eliminar duro de Producto con propagación desde Gerente (planteado en diseño de pantallas)
+
+Al describir la Ventana 3 (CRUD de Producto — ver [pantallas/flujo-descripcion.md](../pantallas/flujo-descripcion.md)) surgió la idea de agregar un borrado físico real además de "descontinuar", con un sistema de propagación desde Gerente. Esto contradice directamente la [decisión 0005](../decisiones/0005-borrados-en-sync.md) (tombstone, nunca borrado físico mientras la sync esté activa). No resuelto — requiere discusión explícita antes de decidir, no se resolvió unilateralmente porque revierte una decisión ya aceptada.
+
 ### Índices (bajo riesgo, se resuelve al implementar)
 
 Cuando se cierre el resto del esquema: índices sobre `linea_venta.venta_id`, `linea_venta.producto_id`, `venta.fecha_hora` (se consulta en cada reporte), `producto.deleted_at` y `producto.categoria_id`.

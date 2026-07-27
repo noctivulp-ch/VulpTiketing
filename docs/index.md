@@ -13,6 +13,11 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 - [Sincronización](arquitectura/sincronizacion.md)
 - [Seguridad](arquitectura/seguridad.md)
 
+## Pantallas
+
+- [Flujo de pantallas — descripción (Fase 1)](pantallas/flujo-descripcion.md)
+- [Prototipos ASCII (Fase 2, vacío — requiere skill de diseño bento)](pantallas/prototipos-ascii.md)
+
 ## Funciones
 
 - [Ventas y cobro](funciones/ventas.md)
