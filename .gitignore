@@ -1,0 +1,6 @@
+lib_raw/
+build/
+.dart_tool/
+.packages
+*.iml
+.idea/
