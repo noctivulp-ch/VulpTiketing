@@ -14,3 +14,5 @@ Volver a [../index](../index.md)
 | [0008](0008-modelo-venta-multilinea-terminologia.md) | Modelo de venta multi-línea y terminología Producto vs Plato | Aceptada |
 | [0009](0009-cruds-independientes-por-entidad.md) | CRUDs independientes por entidad, ninguno se recicla | Aceptada |
 | [0010](0010-motivo-reversion-como-json.md) | Motivo de reversión de Venta como JSON en columna TEXT | Aceptada |
+| [0011](0011-credenciales-almacenamiento-nativo.md) | Credenciales de dispositivo en almacenamiento seguro nativo, no SQLite | Aceptada |
+| [0012](0012-precios-como-real.md) | Precios como REAL, no INTEGER en unidad mínima | Aceptada |

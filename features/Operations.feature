@@ -4,7 +4,7 @@ Feature: Inventory CRUD Operations
   So that the catalog is always up to date
 
   Background:
-    Given a "Producto" has a name, an optional image, and a base price
+    Given a "Producto" has a name, an optional image, an optional category, and a base price
 
   Scenario: Gerente full access
     Given the user is logged in as "Gerente"

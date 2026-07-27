@@ -11,8 +11,8 @@ Esto significa: el diseño de permisos por rol prioriza que cada quien vea la UI
 ## Credenciales
 
 - No hay backend de autenticación — no aplica registro remoto de usuarios.
-- Las credenciales están pensadas originalmente como hardcodeadas a compilación, pero eso impediría cambiar una contraseña sin recompilar.
-- **Decisión pendiente de confirmar en código**: agregar una opción en configuración para cambiar la contraseña de la app **en el dispositivo específico** (almacenada localmente, no sincronizada como credencial — ver [seguridad](../arquitectura/seguridad.md)).
+- Cada dispositivo se configura con un rol y una contraseña local de app, cambiable después desde configuración — no hardcodeada a compilación.
+- La contraseña (hasheada con Argon2id) y el rol viven en almacenamiento seguro nativo del sistema operativo (ej. `flutter_secure_storage`), **no** en una tabla SQLite ni sincronizada entre dispositivos. Ver [decisión 0011](../decisiones/0011-credenciales-almacenamiento-nativo.md) y [esquema-db](../arquitectura/esquema-db.md).
 
 ## Multi-dispositivo
 

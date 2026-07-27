@@ -16,12 +16,14 @@ Cada entidad tiene su propio ciclo de vida — **ningún CRUD se recicla entre e
   Ciclo de vida: crear, leer, actualizar, **descontinuar** (soft-delete vía `deleted_at` — ver arriba). Un producto descontinuado no se borra, solo deja de aparecer en catálogo/ventas nuevas.
 - **Venta**: fecha y hora de registro, nota opcional (Detalle), `estado` (`activa` | `revertida`), `motivo` (TEXT con JSON, solo si `estado = revertida` — ver [decisión 0010](../decisiones/0010-motivo-reversion-como-json.md)), una o más **líneas**.
   Ciclo de vida: **crear** o **revertir** — nunca se edita ni se borra (ni hard ni soft-delete). Revertir es la única transición posible tras crear, para casos de devolución o pedido erróneo; la venta revertida permanece visible para trazabilidad contable pero se excluye de los totales de reportes.
-- **LineaVenta**: referencia a Producto, precio aplicado (base o editado en el momento), cantidad. Inmutable una vez creada la Venta (no se edita por separado).
-- **Usuario**: rol (Gerente/Registradora), contraseña local del dispositivo (ver [roles-y-auth](../funciones/roles-y-auth.md)) — no sincronizada entre dispositivos.
+- **LineaVenta**: referencia a Producto, precio aplicado (base o editado en el momento, siempre una copia del precio en ese instante — nunca un lookup en vivo), cantidad. Inmutable una vez creada la Venta (no se edita por separado).
+- **Categoria**: agrupa Productos para interfaz/búsqueda al armar una venta; mismo patrón de descontinuación que Producto. Sin peso en reportes por ahora.
 - **(Futuro) Insumo/MateriaPrima**: ciclo de vida propio, aún no definido — no reusará el CRUD de Producto ni el de Venta.
+
+**Rol y contraseña del dispositivo NO son una tabla SQL** — viven en almacenamiento seguro nativo del sistema operativo, no sincronizado entre dispositivos. Ver [decisión 0011](../decisiones/0011-credenciales-almacenamiento-nativo.md) y [roles-y-auth](../funciones/roles-y-auth.md).
 
 Ver [decisión 0008](../decisiones/0008-modelo-venta-multilinea-terminologia.md) para el razonamiento detrás del modelo multi-línea y el renombre Plato → Producto.
 
-## Pendiente
+## Esquema exacto de columnas
 
-- [ ] Definir columnas exactas y tipos por tabla al iniciar el scaffold de código (esto es diseño de esquema, no de arquitectura — bajo riesgo, no bloquea el resto del diseño).
+En desarrollo en [esquema-db.md](esquema-db.md) — documento de prototipo con las tablas SQL propuestas y los puntos abiertos a decidir.

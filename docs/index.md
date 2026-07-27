@@ -8,6 +8,7 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 
 - [Stack técnico](arquitectura/stack.md)
 - [Datos](arquitectura/datos.md)
+- [Esquema de base de datos (prototipo, en discusión)](arquitectura/esquema-db.md)
 - [Sincronización](arquitectura/sincronizacion.md)
 - [Seguridad](arquitectura/seguridad.md)
 

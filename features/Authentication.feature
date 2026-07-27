@@ -5,7 +5,9 @@ Feature: Simple Authentication and Roles
 
   Background:
     Given the system has two predefined roles: "Gerente" and "Registradora"
-    And user credentials are hardcoded at compile time
+    And each device is configured with a role and a local app password
+    And the local app password can be changed later from device settings
+    And the password is stored using the device's native secure storage, not in the SQLite database
 
   Scenario: Login routing based on role
     When a user logs in successfully

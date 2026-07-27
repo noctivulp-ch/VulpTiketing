@@ -8,7 +8,8 @@ Feature: Core Architecture Setup
     And the database engine is "SQLite"
     And all primary keys across all tables use "UUID v4"
     And all database tables include an "updated_at" column in ISO-8601 format
-    And all syncable database tables include a nullable "deleted_at" column (soft-delete / tombstone)
+    And syncable tables whose business lifecycle allows discontinuation (e.g. "Producto") include a nullable "deleted_at" column (soft-delete / tombstone)
+    And tables whose business lifecycle never allows deletion (e.g. "Venta" and its line items, which can only be created or reverted) do not have a "deleted_at" column
     And the state management solution is strictly decoupled from the UI (e.g., Riverpod or BLoC)
     And the conflict resolution strategy for synchronization is "Last Write Wins" (LWW)
 
