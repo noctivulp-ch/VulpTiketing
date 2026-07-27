@@ -38,6 +38,7 @@ Pensada para el caso común: vender uno o pocos productos sin construir un carri
 - Grid grande con **todos los productos**: foto, nombre, precio.
 - Tocar un producto abre un **overlay** (modal flotante) con:
   - **Cantidad** — cuántas unidades de ese producto.
+  - **Cantidad** — por defecto 1, editable (consistente con el `DEFAULT 1` de `linea_venta.cantidad` en el esquema).
   - **Precio** — precargado con el precio base (placeholder), editable — mismo comportamiento ya definido en [ventas.md](../funciones/ventas.md) y `linea_venta.precio_aplicado`.
   - **Cambio** — mismo control que el de la Ventana 2 (ver abajo): campo de texto donde se escribe el monto recibido; tras un par de segundos sin escribir, se calcula el cambio a devolver automáticamente.
   - **Completado** — botón para finalizar esta venta de un solo producto.
@@ -67,9 +68,9 @@ Para ventas de varios productos. Layout:
 - **Botón "agregar producto"**: estilo pestaña, el botón mismo se comporta como un toggle flotante, pero el panel que abre **no es un overlay** — es un panel persistente que ocupa parte del lado derecho de la pantalla, con:
   - Listado de productos disponibles.
   - Botón de **buscar** (lupa).
-  - Botón de **agregar producto nuevo al vuelo** (lápiz) — crea un Producto nuevo sin salir del flujo de venta. **Debe estar restringido a Gerente**, igual que el resto de Create en `Operations.feature` (Registradora no puede crear productos) — punto a confirmar al implementar, no estaba explícito en el mensaje original pero se sigue directamente de la feature existente.
-  - Tocar un producto (toque simple) lo agrega a la venta como una línea nueva.
-  - Mantener presionado entra en modo selección múltiple; aparece un botón **"+"** junto a los otros dos, para agregar todos los productos seleccionados de una vez.
+  - Botón de **agregar producto nuevo al vuelo** (lápiz) — crea un Producto nuevo sin salir del flujo de venta. **Restringido a Gerente** (confirmado), igual que el resto de Create en `Operations.feature` — en la UI de Registradora este botón no debe aparecer (o debe verse deshabilitado).
+  - Tocar un producto (toque simple) lo agrega a la venta como una línea nueva, con **cantidad 1 por defecto** (editable después desde el carrito).
+  - Mantener presionado entra en modo selección múltiple; aparece un botón **"+"** junto a los otros dos, para agregar todos los productos seleccionados de una vez — **cada uno con cantidad 1 por defecto** (confirmado; editable después desde el carrito igual que cualquier línea).
   - **Línea libre** ([decisión 0016](../decisiones/0016-linea-libre-en-venta.md)): además de elegir un producto del catálogo, debe haber una forma de agregar una línea sin catálogo — nombre y precio escritos a mano, para casos de un solo uso (ej. un descuento puntual para un cliente específico) que nunca deberían ensuciar el inventario de Producto. Falta decidir el ícono/ubicación exacta de este botón dentro de la barra existente (buscar / agregar nuevo / línea libre) — se resuelve en la Fase 2 (prototipos visuales).
 
 ## Ventana 3 — CRUD de Producto
@@ -91,8 +92,6 @@ Sin describir en detalle — sigue la estética general ya estipulada. Debe incl
 ## Pendientes / a confirmar
 
 - Ícono/ubicación exacta del botón de "línea libre" en la barra de agregar producto (Ventana 2) — se resuelve en Fase 2.
-- Si el control de "cambio" en la barra inferior es puramente un campo de texto reactivo (asumido aquí) o combina también un botón — confirmar.
-- Si "agregar producto nuevo al vuelo" desde el panel de venta debe restringirse a Gerente (asumido aquí, por consistencia con `Operations.feature`) — confirmar.
-- Si al mantener presionado y seleccionar varios productos, cada uno se agrega con cantidad 1 por defecto (asumido) o pide cantidad antes de agregar.
+- **Control de "cambio"**: ¿es exclusivamente el campo de texto reactivo (sin ningún botón asociado, tal como está descrito aquí), o hay además un botón junto al campo — por ejemplo para forzar el cálculo al instante sin esperar el debounce de 2-3 segundos? El mensaje original lo describió primero como "botón cuadrado" y después como campo de texto con debounce; se asumió el campo de texto puro, pendiente de confirmar si falta el botón adicional.
 - Layout específico para pantalla pequeña (teléfono) — no descrito todavía.
 - Diferencias visuales (si las hay) entre Gerente y Registradora más allá de qué botones están habilitados — no descrito todavía.
