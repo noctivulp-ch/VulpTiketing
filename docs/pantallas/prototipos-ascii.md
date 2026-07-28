@@ -266,13 +266,14 @@ Pantalla de uso raro — tolera ícono + etiqueta corta (no compite con el crite
 │ │    Cambiar     │ │   Exportar     │ │     Restaurar     │ │
 │ │   contraseña   │ │    backup      │ │      backup       │ │
 │ └───────────────┘ └───────────────┘ └───────────────────┘ │
-│ ┌───────────────┐ ┌───────────────┐                        │
-│ │      📶        │ │      ℹ️        │                        │
-│ │   Estado de    │ │   Acerca de    │                        │
-│ │ sincronización │ │                │                        │
-│ └───────────────┘ └───────────────┘                        │
+│ ┌───────────────┐ ┌───────────────┐ ┌───────────────────┐ │
+│ │      📶        │ │      ℹ️        │ │        🚪        │ │
+│ │   Estado de    │ │   Acerca de    │ │   Cerrar sesión   │ │
+│ │ sincronización │ │                │ │                    │ │
+│ └───────────────┘ └───────────────┘ └───────────────────┘ │
 └───────────────────────────────────────────────────────────┘
 ```
+`🚪 Cerrar sesión` — encontrado como hueco al trazar el flujo completo (ver [mapa-de-flujo.md](mapa-de-flujo.md)), ningún boceto anterior tenía dónde cerrar sesión.
 
 ---
 

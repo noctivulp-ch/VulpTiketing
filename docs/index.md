@@ -17,6 +17,7 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 
 - [Flujo de pantallas — descripción (Fase 1)](pantallas/flujo-descripcion.md)
 - [Prototipos ASCII (Fase 2, bento)](pantallas/prototipos-ascii.md)
+- [Mapa de flujo general](pantallas/mapa-de-flujo.md) (auditoría de navegación — hallazgo abierto sobre rol por dispositivo vs. por sesión)
 
 ## Funciones
 
