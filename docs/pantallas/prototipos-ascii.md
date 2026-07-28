@@ -24,6 +24,16 @@ Además de los principios estándar de bento (una celda = una responsabilidad, j
 | Acento | un solo color, reservado para la acción primaria de cada pantalla (Entrar, Finalizar venta, Completado, Guardar) |
 | Acciones destructivas/irreversibles | nunca a un solo tap en la vista principal — siempre piden confirmación (Purgar, Revertir) |
 
+### Feedback táctil (universal — todo elemento tocable de la app)
+
+- **Al presionar**: onda circular blanca semitransparente con textura granulada (símil papel rugoso, no un ripple liso), que nace en el punto exacto de la presión y crece hasta cubrir todo el elemento, luego desaparece. Duración corta — un poco más lenta que un parpadeo (≈200ms).
+- Aplica a cualquier botón, celda de producto, ícono de navegación — mismo lenguaje de interacción en toda la app, no solo en ventas.
+- *Nota de implementación:* el ripple estándar de Flutter (`InkWell`) es liso; esta textura granulada requiere un `splashFactory`/`CustomPainter` propio (una textura de grano/ruido enmascarada por el círculo animado) — detalle de implementación, no bloquea el diseño.
+
+### Feedback de finalización (universal, no solo Venta)
+
+Notificación no intrusiva en una esquina, visible 1–2 segundos, para cualquier acción de completitud: venta finalizada, producto creado/editado/descontinuado/purgado, backup exportado/restaurado, catálogo `.tiketdata` importado, etc. — mismo patrón siempre, cierra el hallazgo #4 del [mapa de flujo](mapa-de-flujo.md).
+
 ---
 
 ## Login / Setup
@@ -224,20 +234,31 @@ Al completar, overlay se cierra y aparece (esquina, no intrusivo, se auto-oculta
 ```
 `[✎]` edita precio/cantidad/nota de esa línea. `[🗑]` la quita del carrito (no es "descontinuar" — eso es en la Ventana 3, sobre el catálogo).
 
-**Al tocar la pestaña "agregar producto"** — panel persistente al lado (no overlay), reduce el ancho del carrito:
+**Al tocar la pestaña "agregar producto"** — panel persistente al lado (no overlay), reduce el ancho del carrito. El botón mismo que abrió el panel **se arrastra con él**: queda anclado al borde de contacto entre los dos paneles, y tocarlo ahí lo vuelve a cerrar (es el mismo control, no uno de abrir y otro de cerrar).
+
+Antes (cerrado):
+```
+┌─────────────────────────────────────────────────────┐
+│  VENTA EN CURSO (ancho completo)                     │
+│  ...líneas...                                        │
+│                                              [ 🧺+ ] │ ← pestaña en el borde derecho
+└─────────────────────────────────────────────────────┘
+```
+
+Después (abierto) — el mismo botón ahora vive en la costura entre los dos paneles:
 
 ```
-┌───────────────────────────┬───────────────────────────────┐
-│  VENTA EN CURSO            │  AGREGAR PRODUCTO             │
-│  (carrito, más angosto)    │ ┌───────┐┌───────┐┌───────┐   │
-│  ...líneas...               │ │ Café  ││ Jugo  ││ Gallo │   │
-│                              │ └───────┘└───────┘└───────┘   │
-│                              │ ┌───────┐┌───────┐┌───────┐   │
-│                              │ │  ...  ││  ...  ││  ...  │   │
-│                              │ └───────┘└───────┘└───────┘   │
-│                              │                               │
-│ [ recibí|cambio|total|Fin ] │   🔍      ✎*       📝†        │
-└──────────────────────────────┴───────────────────────────────┘
+┌───────────────────────────┬──┬───────────────────────────┐
+│  VENTA EN CURSO            │🧺│  AGREGAR PRODUCTO          │
+│  (carrito, más angosto)    │− │ ┌───────┐┌───────┐┌───────┐│
+│  ...líneas...               │  │ │ Café  ││ Jugo  ││ Gallo ││
+│                              │  │ └───────┘└───────┘└───────┘│
+│                              │  │ ┌───────┐┌───────┐┌───────┐│
+│                              │  │ │  ...  ││  ...  ││  ...  ││
+│                              │  │ └───────┘└───────┘└───────┘│
+│                              │  │                            │
+│ [ recibí|cambio|total|Fin ] │  │   🔍      ✎*       📝†     │
+└──────────────────────────────┴──┴───────────────────────────┘
   * ✎ "producto nuevo al vuelo" — solo Gerente (oculto/deshabilitado para Registradora)
   † 📝 "línea libre" — propuesta de ícono, a confirmar (ver Pendientes)
   🔍 sigue el mismo ranking nombre > categoría de la Ventana 1 ([0018](../decisiones/0018-orden-y-busqueda-de-producto.md));

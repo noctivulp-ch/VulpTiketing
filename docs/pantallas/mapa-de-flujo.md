@@ -75,12 +75,12 @@ Dashboard → ⚙ → tap "Cerrar sesión" → vuelve a Login → *(ver hallazgo
 
 **3. ~~Roles y sync pueden estar en conflicto~~ — Resuelto.** "Cerrar sesión" no es una acción rutinaria (no se dispara al cerrar la app), es específicamente para cuando un dispositivo compartido necesita cambiar de rol — evento infrecuente pero real. Esto no entra en conflicto con la topología de sync ([decisión 0007](../decisiones/0007-topologia-sync.md)): la pertenencia a "red Gerente"/"red Registradora" ya era una propiedad derivada en vivo del rol activo (no una lista fija), así que un cambio de rol es, para el algoritmo de elección de orquestador ya diseñado, el mismo tipo de evento que un dispositivo que aparece/desaparece de un grupo — se resuelve solo, sin rediseñar nada. Ver el addendum agregado a 0007.
 
-**4. Feedback de acciones sobre Producto no está definido.** Venta tiene su notificación no intrusiva en esquina; crear/editar/descontinuar/purgar un Producto no tienen un patrón de feedback explícito todavía — asumo que debería ser el mismo lenguaje (notificación de esquina) para mantener consistencia, pero no estaba dicho.
+**4. ~~Feedback de acciones sobre Producto no está definido~~ — Resuelto.** La notificación no intrusiva en esquina (1-2 segundos) es ahora un patrón universal para cualquier acción de completitud, no solo Venta. Además se definió un feedback táctil universal: onda circular blanca semitransparente con textura granulada al presionar cualquier elemento tocable (~200ms). Ver "Sistema visual" en `prototipos-ascii.md`.
 
-**5. Cierre del panel "agregar producto" (Ventana 2) sin definir.** ¿Se cierra solo tocando la misma pestaña de nuevo, o también al tocar fuera del panel? Detalle menor, no bloquea nada.
+**5. ~~Cierre del panel "agregar producto" sin definir~~ — Resuelto.** El mismo botón que abre el panel lo cierra: se "arrastra" con el panel, quedando anclado en la costura entre el carrito y el panel de agregar producto. Ver boceto actualizado de la Ventana 2 en `prototipos-ascii.md`.
 
 ---
 
-## Prioridad sugerida para lo que queda
+## Estado
 
-1. Hallazgos #4 y #5 — de bajo riesgo, se pueden resolver sobre la marcha al implementar.
+Los 5 hallazgos de esta auditoría quedaron resueltos. Pendientes generales del flujo de pantallas: ícono exacto de "línea libre", y el layout de teléfono para el contenido interno de cada ventana (ver `prototipos-ascii.md`).
