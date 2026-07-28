@@ -16,7 +16,7 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 ## Pantallas
 
 - [Flujo de pantallas — descripción (Fase 1)](pantallas/flujo-descripcion.md)
-- [Prototipos ASCII (Fase 2, vacío — requiere skill de diseño bento)](pantallas/prototipos-ascii.md)
+- [Prototipos ASCII (Fase 2, bento)](pantallas/prototipos-ascii.md)
 
 ## Funciones
 

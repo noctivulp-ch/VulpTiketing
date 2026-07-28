@@ -1,8 +1,8 @@
 # Flujo de Pantallas — Descripción (Fase 1)
 
-Ver también: [prototipos-ascii](prototipos-ascii.md) (Fase 2, aún vacía) · [../funciones/ventas](../funciones/ventas.md) · [../arquitectura/gestion-estado](../arquitectura/gestion-estado.md)
+Ver también: [prototipos-ascii](prototipos-ascii.md) (Fase 2, en curso) · [../funciones/ventas](../funciones/ventas.md) · [../arquitectura/gestion-estado](../arquitectura/gestion-estado.md)
 
-**Fase 1 de 2.** Este documento describe el flujo en texto — qué pantallas existen, qué se ve, qué acciones hay y a dónde navega cada una — para validar que las features estén completas antes de comprometer diseño visual. La Fase 2 (composición visual concreta) se hace con la skill de diseño bento del usuario y vive en [prototipos-ascii.md](prototipos-ascii.md); no se invoca esa skill todavía.
+**Fase 1 de 2.** Este documento describe el flujo en texto — qué pantallas existen, qué se ve, qué acciones hay y a dónde navega cada una — para validar que las features estén completas antes de comprometer diseño visual. La Fase 2 (composición visual concreta, bento) vive en [prototipos-ascii.md](prototipos-ascii.md).
 
 ## Alcance de esta descripción
 
@@ -37,8 +37,7 @@ Pensada para el caso común: vender uno o pocos productos sin construir un carri
 
 - Grid grande con **todos los productos**: foto, nombre, precio.
 - Tocar un producto abre un **overlay** (modal flotante) con:
-  - **Cantidad** — cuántas unidades de ese producto.
-  - **Cantidad** — por defecto 1, editable (consistente con el `DEFAULT 1` de `linea_venta.cantidad` en el esquema).
+  - **Cantidad** — cuántas unidades de ese producto, por defecto 1, editable (consistente con el `DEFAULT 1` de `linea_venta.cantidad` en el esquema).
   - **Precio** — precargado con el precio base (placeholder), editable — mismo comportamiento ya definido en [ventas.md](../funciones/ventas.md) y `linea_venta.precio_aplicado`.
   - **Cambio** — mismo control que el de la Ventana 2 (ver abajo): campo de texto donde se escribe el monto recibido; tras 400ms sin escribir, se calcula el cambio a devolver automáticamente. Sin botón adicional.
   - **Completado** — botón para finalizar esta venta de un solo producto.
