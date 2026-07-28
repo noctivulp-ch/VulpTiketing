@@ -312,32 +312,72 @@ Tocar un producto (toque simple) → se agrega al carrito, cantidad 1. Mantener 
 
 ---
 
-## Ventana 4 — Reportes *(primera propuesta — no había descripción explícita, sigue la estética general; iterar si no calza)*
+## Ventana 4 — Reportes *(revisada — confirmada como reporte unificado, interactivo y exportable)*
 
 Jerarquía por tamaño: el total del período consultado es el bloque más grande (hero), el desglose por turno son celdas pares más chicas, el ranking va debajo.
+
+**Nivel 1 (vista por defecto para el rango seleccionado, ej. Día = hoy):**
 
 ```
 ┌───────────────────────────────────────────────────────────┐
 │ ┌───────────────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │
-│ │                    │ │ Mañana  │ │ Tarde   │ │ Noche   │ │
-│ │   HOY: ₡45,000     │ │ ₡12,000 │ │ ₡20,000 │ │ ₡13,000 │ │
-│ │      (hero)        │ │         │ │         │ │         │ │
+│ │                    │ │ Mañana  │ │ Tarde   │ │ Noche   │ │  ← tocar cualquiera
+│ │   HOY: ₡45,000     │ │ ₡12,000 │ │ ₡20,000 │ │ ₡13,000 │ │     hace drill-down
+│ │      (hero)        │ │         │ │         │ │         │ │     (nivel 2, abajo)
 │ └───────────────────┘ └─────────┘ └─────────┘ └─────────┘ │
 │ ┌─────────────────────────────┬─────────────────────────┐ │
-│ │  Más vendidos                │  Menos vendidos          │ │
-│ │  1. Café          (42)       │  1. Té frío        (2)   │ │
-│ │  2. Gallo pinto   (30)       │  2. Jugo naranja   (5)   │ │
+│ │  Más vendidos    ◄ desliza ►│  Menos vendidos ◄desliza► │ │  ← listas deslizantes,
+│ │  1. Café          (42)      │  1. Té frío        (2)    │ │     sin exportar por ahora
+│ │  2. Gallo pinto   (30)      │  2. Jugo naranja   (5)    │ │
 │ └─────────────────────────────┴─────────────────────────┘ │
-│  [ Día ]  [ Semana ]  [ Mes ]  [ Año ]   ← selector, íconos+label (uso raro, tolera texto)
+│  [ Día ] [ Semana ] [ Mes ] [ Año ]           [ 📤 Exportar ]│
 └───────────────────────────────────────────────────────────┘
 ```
-Registradora: mismo layout, selector reducido a `[ Día actual ] [ Semana actual ]` (sin Mes/Año — `Reports.feature`).
+
+**Nivel 2 (tras tocar "Tarde", por ejemplo) — desglose de ese turno:**
+
+```
+┌───────────────────────────────────────────────────────────┐
+│ ← Volver a Hoy                                             │
+│ ┌─────────────────────────────────────────────────────┐   │
+│ │        TARDE (12:00–17:59): ₡20,000      (hero)      │   │
+│ └─────────────────────────────────────────────────────┘   │
+│ ┌─────────────────────────────────────────────────────┐   │
+│ │ 14:03   Café + Gallo pinto              ₡2,300       │   │ ← mantener presionado
+│ ├─────────────────────────────────────────────────────┤   │    = exportar esta
+│ │ 15:47   Jugo natural                    ₡900         │   │    fila a PDF, directo
+│ ├─────────────────────────────────────────────────────┤   │
+│ │            ...                                        │   │
+│ └─────────────────────────────────────────────────────┘   │
+│                                               [ 📤 Exportar ]│
+└───────────────────────────────────────────────────────────┘
+```
+
+**Exportar (botón `📤`, no oculto tras long-press)** — abre una elección corta de formato, sin más pasos:
+
+```
+      ┌───────────────────┐
+      │   📄  PDF         │
+      │   📊  CSV         │
+      └───────────────────┘
+```
+
+Dos mecanismos de exportación, deliberadamente distintos:
+
+- **Mantener presionado un ítem específico** (una fila del desglose, un turno, un día en una lista) → exporta **directo a PDF**, sin preguntar formato — es la acción rápida de "esto puntual, ya".
+- **Botón `📤 Exportar`** (visible siempre, no escondido) → exporta el **período completo actualmente visible** (el día/semana/mes/año seleccionado en el selector), preguntando el formato (PDF o CSV) porque es una acción más deliberada.
+
+Los "tops" (más/menos vendidos) son solo deslizantes por ahora — exportarlos queda fuera de alcance hasta que se pida explícitamente.
+
+Registradora: mismo layout e interactividad, selector reducido a `[ Día actual ] [ Semana actual ]` (sin Mes/Año — `Reports.feature`).
+
+*Nota de implementación (no bloquea el diseño):* generar PDF necesita un paquete como `pdf` + `printing`; CSV es texto plano, no necesita librería especial. Ninguno se agregó todavía a `pubspec.yaml` — Reportes sigue siendo un placeholder en el scaffold.
 
 ---
 
-## Ventana 5 — Configuración *(primera propuesta — no había descripción explícita, sigue la estética general)*
+## Ventana 5 — Configuración *(confirmada: grid de tiles, deslizante para crecer a futuro)*
 
-Pantalla de uso raro — tolera ícono + etiqueta corta (no compite con el criterio "sin leer" de las pantallas de venta).
+Pantalla de uso raro — tolera ícono + etiqueta corta (no compite con el criterio "sin leer" de las pantallas de venta). **Confirmado por el usuario**: la cuadrícula de tiles es un buen formato porque agregar una opción nueva a futuro es trivial (una celda más) — con la condición de que el grid sea **deslizante** (scroll vertical), no de tamaño fijo, mismo principio que "si hay más funciones que espacio, se navega deslizando" ya usado en el rail del Dashboard. Así la pantalla nunca se satura por más que se agreguen opciones con el tiempo.
 
 ```
 ┌───────────────────────────────────────────────────────────┐
@@ -355,10 +395,16 @@ Pantalla de uso raro — tolera ícono + etiqueta corta (no compite con el crite
 │ │  Orden de productos                                  │   │
 │ │  ( ) Alfabético    ( ) Precio    (●) Categoría        │   │
 │ └─────────────────────────────────────────────────────┘   │
+│ ┌─────────────────────────────────────────────────────┐   │
+│ │  Venta unificada (Ventana 1 + 2 en una sola)         │   │
+│ │  ( ) Desactivada (por defecto)   ( ) Activada        │   │
+│ └─────────────────────────────────────────────────────┘   │
+│                    ▼ desliza para más opciones ▼           │
 └───────────────────────────────────────────────────────────┘
 ```
 `🚪 Cerrar sesión` — encontrado como hueco al trazar el flujo completo (ver [mapa-de-flujo.md](mapa-de-flujo.md)), ningún boceto anterior tenía dónde cerrar sesión.
 `Orden de productos` — [decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md), afecta Ventana 1, el panel de agregar producto de la Ventana 2, y Ventana 3.
+`Venta unificada` — toggle opcional, desactivado por defecto. Ver discusión completa más abajo en "Observación" — fusionar Ventana 1 y 2 podría ser útil para quien quiera menos pantallas, pero por defecto se deja el flujo separado (más simple de entender para alguien sin experiencia en tecnología). Como ambas ya comparten `VentaEnCursoNotifier`, implementar este toggle más adelante no requiere cambios de arquitectura — es una decisión de navegación, no de datos.
 
 ---
 
@@ -368,9 +414,13 @@ Pantalla de uso raro — tolera ícono + etiqueta corta (no compite con el crite
 - **Layout de teléfono para las Ventanas 1–5**: pospuesto a propósito hasta que la base de escritorio/tablet esté completa e implementada — no es una omisión, es orden de trabajo decidido.
 - **Reportes y Configuración** son primera propuesta libre, no vienen de una descripción tuya explícita como las Ventanas 1–3 — son las que más probablemente necesiten ajuste en la siguiente ronda.
 
-## Observación (no es una pregunta bloqueante, es para que la evalúes)
+## Ventana 1 + 2 — resuelto: separadas por defecto, unificación como toggle opcional
 
-Ventana 1 (Venta Rápida) y Ventana 2 (Panel de Venta) son, en el fondo, dos entradas al mismo trabajo ("registrar una venta"), una para un producto y otra para varios. Quedaron como dos tabs separadas en el Dashboard porque así se describieron en la Fase 1. Funciona tal cual está, pero si en algún momento querés simplificar aún más la navegación (menos íconos en el rail), se podría fusionar en una sola pantalla donde tocar un producto en el grid abre el overlay rápido, y agregar un segundo producto antes de completar transiciona automáticamente al modo carrito. No lo cambié porque no me lo pediste — lo dejo anotado por si te interesa explorarlo más adelante.
+Tu razonamiento es acertado y coincido con él: fusionar de entrada obligaría a todos a lidiar con una pantalla más "inteligente" (y potencialmente más verbosa, ej. si por categorías) para ahorrar un paso — un costo real de carga cognitiva para alguien sin experiencia en tecnología, a cambio de un beneficio que solo algunos usuarios van a valorar. Dejarlo como **toggle opcional en Configuración, desactivado por defecto** (agregado arriba en el boceto de Ventana 5) resuelve esto sin cerrar la puerta: quien quiera menos pantallas lo activa, quien no, ni se entera de que la opción existe.
+
+Ventaja técnica adicional que confirma que esto es seguro de posponer: Ventana 1 y Ventana 2 **ya comparten `VentaEnCursoNotifier`** en el scaffold — el toggle es una decisión de navegación/presentación, no de datos. Implementarlo más adelante no requiere tocar el modelo de Venta ni sus DAOs.
+
+Un matiz honesto para cuando se implemente: el flujo unificado en sí (tocar un producto abre el overlay rápido; agregar un segundo producto antes de completar escala a modo carrito) todavía no tiene un diseño detallado — es una idea, no una especificación. Esa pantalla necesitará su propia pasada de diseño cuando llegue el momento, el toggle no resuelve eso por sí solo.
 
 ## Checklist
 

@@ -80,11 +80,16 @@ Listado de productos con las acciones: **agregar**, **editar**, **descontinuar**
 
 ## Ventana 4 — Reportes
 
-Sin describir en detalle — sigue la estética general ya estipulada para el resto de la app. Contenido funcional ya definido en `Reports.feature` y [reportes.md](../funciones/reportes.md).
+Reporte unificado (una sola pantalla, no una por rango), con dos propiedades confirmadas — ver bocetos en [prototipos-ascii.md](prototipos-ascii.md):
+
+- **Interactivo**: tocar un bloque de turno (ej. "Tarde") hace drill-down al desglose de ese turno (ventas individuales); hay un "← Volver" para subir de nivel. Los "tops" (más/menos vendidos) son solo deslizantes, sin exportar por ahora.
+- **Imprimible/exportable**: mantener presionado un ítem específico exporta directo a PDF (sin preguntar formato — acción rápida). Un botón `📤 Exportar` siempre visible exporta el período completo actualmente visible (día/semana/mes/año), preguntando PDF o CSV.
+
+Contenido funcional (qué datos, permisos por rol) ya definido en `Reports.feature` y [reportes.md](../funciones/reportes.md).
 
 ## Ventana 5 — Configuración
 
-Sin describir en detalle — sigue la estética general ya estipulada. Debe incluir al menos: cambio de contraseña local del dispositivo (ver [roles-y-auth.md](../funciones/roles-y-auth.md)), exportar/restaurar `.tiketback` e importar/exportar `.tiketdata` (ver [backup.md](../funciones/backup.md)), cerrar sesión, y el **orden de productos** (Alfabético/Precio/Categoría — [decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)).
+Grid de tiles (una celda = una opción), confirmado como buen formato porque agregar una opción nueva a futuro es trivial — con la condición de que el grid sea **deslizante** (scroll vertical), no de tamaño fijo, para que nunca se sature. Debe incluir al menos: cambio de contraseña local del dispositivo (ver [roles-y-auth.md](../funciones/roles-y-auth.md)), exportar/restaurar `.tiketback` e importar/exportar `.tiketdata` (ver [backup.md](../funciones/backup.md)), cerrar sesión, el **orden de productos** (Alfabético/Precio/Categoría — [decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)), y el toggle opcional de **Venta unificada** (Ventana 1+2 en una sola pantalla — desactivado por defecto, ver [prototipos-ascii.md](prototipos-ascii.md) para la discusión completa).
 
 ---
 
