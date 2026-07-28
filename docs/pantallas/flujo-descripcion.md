@@ -8,7 +8,7 @@ Ver también: [prototipos-ascii](prototipos-ascii.md) (Fase 2, en curso) · [../
 
 - Describe principalmente el rol **Registradora** en un dispositivo de pantalla grande (tablet/PC) — es el caso de uso más intensivo de UI (venta rápida repetida durante el día).
 - **Gerente** reutiliza las mismas pantallas con permisos elevados, ya definidos en `Operations.feature`/`Reports.feature` (CRUD completo de Producto, reportes sin restricción de rango). No se describen diferencias visuales específicas de Gerente todavía — probablemente ninguna, más allá de qué botones/opciones aparecen habilitados.
-- No se detalla aún el layout específico para pantallas pequeñas (teléfono), más allá del comportamiento adaptativo general del Dashboard (abajo).
+- El layout específico para pantallas pequeñas (teléfono) queda **pospuesto a propósito** — se diseña recién cuando la base de escritorio/tablet esté completamente implementada y funcionando, no antes. El Dashboard ya contempla su variante adaptativa (pestañas inferiores) para ese momento.
 
 ## Login / Setup
 

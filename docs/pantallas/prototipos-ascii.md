@@ -355,7 +355,7 @@ Pantalla de uso raro — tolera ícono + etiqueta corta (no compite con el crite
 ## Pendientes / a confirmar (no resueltos en esta pasada)
 
 - **Ícono de "línea libre"** (Ventana 2): propuse 📝, distinto de ✎ ("producto nuevo al vuelo"). Es una elección subjetiva — confirmar o cambiar.
-- **Layout de teléfono para las Ventanas 1–5**: solo se diseñó el shell del Dashboard adaptativo; el contenido interno de cada ventana en pantalla angosta (¿grid de menos columnas?, ¿el panel de "agregar producto" pasa a pantalla completa en vez de side-by-side?) no está resuelto — requiere una pasada aparte.
+- **Layout de teléfono para las Ventanas 1–5**: pospuesto a propósito hasta que la base de escritorio/tablet esté completa e implementada — no es una omisión, es orden de trabajo decidido.
 - **Reportes y Configuración** son primera propuesta libre, no vienen de una descripción tuya explícita como las Ventanas 1–3 — son las que más probablemente necesiten ajuste en la siguiente ronda.
 
 ## Observación (no es una pregunta bloqueante, es para que la evalúes)

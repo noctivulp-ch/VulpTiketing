@@ -22,3 +22,4 @@ Volver a [../index](../index.md)
 | [0016](0016-linea-libre-en-venta.md) | Línea libre en Venta (sin Producto de catálogo) | Aceptada |
 | [0017](0017-importar-datos-tiketdata-vs-tiketback.md) | Importar datos: `.tiketdata` (catálogo) vs `.tiketback` (backup completo) | Aceptada |
 | [0018](0018-orden-y-busqueda-de-producto.md) | Orden y búsqueda de Producto: agrupación por categoría + ranking nombre > categoría | Aceptada |
+| [0019](0019-descomponer-servicios-responsabilidad-unica.md) | Descomponer servicios grandes en clases de responsabilidad única | Aceptada |

@@ -39,5 +39,5 @@ Dos tipos de archivo, con propósitos y formatos deliberadamente distintos:
 
 - `Data.feature` gana escenarios de exportar/importar `.tiketdata` con ambos modos, y de restaurar `.tiketback` (siempre reemplazo).
 - `docs/funciones/backup.md` se reescribe para cubrir ambos tipos de archivo.
-- Nuevo servicio en la gestión de estado (`ImportExportNotifier` o similar) que **reutiliza** las operaciones ya existentes de `ProductoNotifier`/`CategoriaNotifier` (upsert, descontinuar) en vez de duplicar su lógica — consistente con [0009](0009-cruds-independientes-por-entidad.md).
+- Dos servicios separados en la gestión de estado — `TiketbackNotifier` y `TiketdataNotifier` ([decisión 0019](0019-descomponer-servicios-responsabilidad-unica.md)) — en vez de uno solo, porque tienen mecanismos internos distintos (bundle cifrado vs. JSON + merge LWW). `TiketdataNotifier` **reutiliza** `RowSyncEngine` (el mismo motor de LWW que usa la sync entre dispositivos) en vez de duplicar esa lógica — consistente con [0009](0009-cruds-independientes-por-entidad.md).
 - Todas las referencias previas a `.sodabak` (features, docs, 0006) se actualizan a `.tiketback`.
