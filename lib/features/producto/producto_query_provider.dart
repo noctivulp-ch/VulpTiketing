@@ -21,7 +21,7 @@ final productoQueryProvider = Provider<AsyncValue<List<Producto>>>((ref) {
   final termino = ref.watch(productoBusquedaProvider).trim().toLowerCase();
 
   return productosAsync.whenData((productos) {
-    final orden = ordenAsync.valueOrNull ?? OrdenProducto.alfabetico;
+    final orden = ordenAsync.valueOrNull?.ordenProducto ?? OrdenProducto.alfabetico;
 
     var lista = List<Producto>.from(productos);
     if (termino.isNotEmpty) {

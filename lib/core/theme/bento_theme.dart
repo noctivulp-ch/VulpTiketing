@@ -25,10 +25,35 @@ class BentoRadius {
 /// que un parpadeo, buscando agilidad.
 const Duration bentoFeedbackTactilDuracion = Duration(milliseconds: 200);
 
-ThemeData buildBentoTheme() {
+/// Tintes de acento disponibles (decision de iconografia — ver
+/// docs/pantallas/iconografia.md). Deliberadamente pocos y todos de baja
+/// saturacion: la jerarquia visual la da la escala de grises, el acento es
+/// solo un matiz, nunca color vivo protagonico.
+enum AcentoTinte { grisAzulado, grisVerdoso, grisCafe }
+
+Color _semillaDe(AcentoTinte acento) {
+  switch (acento) {
+    case AcentoTinte.grisAzulado:
+      return const Color(0xFF64748B);
+    case AcentoTinte.grisVerdoso:
+      return const Color(0xFF6B7A6E);
+    case AcentoTinte.grisCafe:
+      return const Color(0xFF7A6F63);
+  }
+}
+
+ThemeData buildBentoTheme(AcentoTinte acento) {
+  final scheme = ColorScheme.fromSeed(
+    seedColor: _semillaDe(acento),
+    // Neutral: esquema de color que se mantiene cerca del gris con solo un
+    // matiz del color semilla, en vez del esquema vivo/saturado por
+    // defecto de Material 3 — es la pieza que produce "escala de grises
+    // por jerarquia con un matiz desaturado" pedido por el usuario.
+    dynamicSchemeVariant: DynamicSchemeVariant.neutral,
+  );
   return ThemeData(
     useMaterial3: true,
-    colorSchemeSeed: Colors.teal,
+    colorScheme: scheme,
     cardTheme: CardThemeData(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(BentoRadius.celda),

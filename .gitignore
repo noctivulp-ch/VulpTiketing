@@ -9,3 +9,7 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 android/local.properties
+
+# Herramientas en scripts/ (venvs y previews, no el codigo de la herramienta)
+scripts/**/.venv/
+scripts/**/preview/

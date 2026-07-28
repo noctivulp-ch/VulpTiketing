@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/bento_icon.dart';
 import '../configuracion/ui/configuracion_screen.dart';
 import '../producto/ui/producto_crud_screen.dart';
 import '../reportes/ui/reportes_screen.dart';
@@ -10,6 +11,7 @@ import '../venta/ui/venta_rapida_screen.dart';
 /// #dashboard-shell-de-navegacion). Rail lateral en pantalla ancha, pestanas
 /// inferiores en angosta — SOLO iconos, sin texto (lenguaje no-textual,
 /// docs/pantallas/prototipos-ascii.md#principios-aplicados-en-esta-pasada).
+/// Iconos propios (docs/pantallas/iconografia.md), no Material Icons.
 class DashboardShell extends StatefulWidget {
   const DashboardShell({super.key});
 
@@ -21,11 +23,11 @@ class _DashboardShellState extends State<DashboardShell> {
   int _indice = 0;
 
   static const _iconos = [
-    Icons.point_of_sale, // Ventana 1 — Venta Rapida
-    Icons.shopping_basket, // Ventana 2 — Panel de Venta
-    Icons.inventory_2, // Ventana 3 — CRUD de Producto
-    Icons.bar_chart, // Ventana 4 — Reportes
-    Icons.settings, // Ventana 5 — Configuracion
+    'venta_rapida', // Ventana 1
+    'panel_venta', // Ventana 2
+    'producto', // Ventana 3
+    'reportes', // Ventana 4
+    'configuracion', // Ventana 5
   ];
 
   static const _pantallas = [
@@ -49,8 +51,12 @@ class _DashboardShellState extends State<DashboardShell> {
               onDestinationSelected: (i) => setState(() => _indice = i),
               labelType: NavigationRailLabelType.none,
               destinations: [
-                for (final icono in _iconos)
-                  NavigationRailDestination(icon: Icon(icono), label: const Text('')),
+                for (final nombre in _iconos)
+                  NavigationRailDestination(
+                    icon: BentoIcon(nombre),
+                    selectedIcon: BentoIcon(nombre, activo: true),
+                    label: const Text(''),
+                  ),
               ],
             ),
             const VerticalDivider(width: 1),
@@ -67,8 +73,12 @@ class _DashboardShellState extends State<DashboardShell> {
         onDestinationSelected: (i) => setState(() => _indice = i),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
         destinations: [
-          for (final icono in _iconos)
-            NavigationDestination(icon: Icon(icono), label: ''),
+          for (final nombre in _iconos)
+            NavigationDestination(
+              icon: BentoIcon(nombre),
+              selectedIcon: BentoIcon(nombre, activo: true),
+              label: '',
+            ),
         ],
       ),
     );

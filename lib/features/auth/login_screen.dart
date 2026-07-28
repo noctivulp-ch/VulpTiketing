@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/bento_icon.dart';
 import 'sesion_notifier.dart';
 
 /// Ver docs/pantallas/flujo-descripcion.md#login--setup y
@@ -54,13 +55,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       Expanded(child: _TarjetaRol(
                         rol: Rol.gerente,
-                        icono: Icons.badge_outlined,
+                        icono: 'rol_gerente',
                         onTap: () => setState(() => _rolSeleccionado = Rol.gerente),
                       )),
                       const SizedBox(width: 16),
                       Expanded(child: _TarjetaRol(
                         rol: Rol.registradora,
-                        icono: Icons.point_of_sale_outlined,
+                        icono: 'rol_registradora',
                         onTap: () => setState(() => _rolSeleccionado = Rol.registradora),
                       )),
                     ],
@@ -69,8 +70,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   _TarjetaRol(
                     rol: _rolSeleccionado!,
                     icono: _rolSeleccionado == Rol.gerente
-                        ? Icons.badge_outlined
-                        : Icons.point_of_sale_outlined,
+                        ? 'rol_gerente'
+                        : 'rol_registradora',
                     seleccionada: true,
                     onTap: () => setState(() => _rolSeleccionado = null),
                   ),
@@ -105,7 +106,7 @@ class _TarjetaRol extends StatelessWidget {
   });
 
   final Rol rol;
-  final IconData icono;
+  final String icono;
   final VoidCallback onTap;
   final bool seleccionada;
 
@@ -120,7 +121,7 @@ class _TarjetaRol extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              Icon(icono, size: 48),
+              BentoIcon(icono, size: 48, activo: seleccionada),
               const SizedBox(height: 8),
               Text(rol == Rol.gerente ? 'Gerente' : 'Registradora'),
             ],

@@ -44,7 +44,7 @@ Esta lista es la referencia concreta contra la que comparar antes de escribir c�
 | `SesionNotifier` | Rol activo, login/logout — lo que la UI consulta para renderizar condicionalmente | cómo se verifica una contraseña, ni el `device_id` |
 | `CredencialesService` | Hashear/verificar la contraseña local (Argon2id — [0011](../decisiones/0011-credenciales-almacenamiento-nativo.md)) | sesión, UI, `device_id` |
 | `DeviceIdentityService` | Generar/leer el `device_id` persistente para sync (detalle pendiente, [0007](../decisiones/0007-topologia-sync.md)) | contraseñas, rol, UI |
-| `PreferenciasNotifier` | Preferencias de UI locales no sensibles (ej. orden de productos — 0018), almacenamiento local simple (ej. `shared_preferences`) | nada de esto vive en el almacenamiento seguro — no es sensible, no se mezcla con lo de arriba |
+| `PreferenciasNotifier` | Preferencias de UI locales no sensibles: orden de productos (0018) y acento visual (0020), almacenamiento local simple (`shared_preferences`) | nada de esto vive en el almacenamiento seguro — no es sensible, no se mezcla con lo de arriba |
 
 Nunca existe una noción de "cuenta" o CRUD de usuarios — no aplica (0002).
 

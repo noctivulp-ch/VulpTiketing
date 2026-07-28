@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../preferencias_notifier.dart';
 
 /// Ventana 5 — ver docs/pantallas/flujo-descripcion.md#ventana-5--configuración.
-/// Orden de productos (decision 0018) y cerrar sesion ya conectados de
-/// verdad; el resto (cambiar contraseña, backup/.tiketback,
-/// catálogo/.tiketdata, estado de sync) queda pendiente de esos servicios.
+/// Orden de productos y acento (decision 0018 / iconografia.md) y cerrar
+/// sesion ya conectados de verdad; el resto (cambiar contraseña,
+/// backup/.tiketback, catálogo/.tiketdata, estado de sync) queda pendiente
+/// de esos servicios. TODO: convertir a grid deslizante de tiles (boceto en
+/// prototipos-ascii.md) — hoy es una ListView simple mientras se completan
+/// los servicios reales.
 class ConfiguracionScreen extends ConsumerWidget {
   const ConfiguracionScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ordenAsync = ref.watch(preferenciasNotifierProvider);
+    final preferenciasAsync = ref.watch(preferenciasNotifierProvider);
 
     return Scaffold(
       body: ListView(
@@ -49,19 +53,39 @@ class ConfiguracionScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text('Orden de productos', style: Theme.of(context).textTheme.titleMedium),
           ),
-          ordenAsync.when(
-            data: (orden) => SegmentedButton<OrdenProducto>(
+          preferenciasAsync.when(
+            data: (prefs) => SegmentedButton<OrdenProducto>(
               segments: const [
                 ButtonSegment(value: OrdenProducto.alfabetico, label: Text('Alfabético')),
                 ButtonSegment(value: OrdenProducto.precio, label: Text('Precio')),
                 ButtonSegment(value: OrdenProducto.categoria, label: Text('Categoría')),
               ],
-              selected: {orden},
+              selected: {prefs.ordenProducto},
               onSelectionChanged: (seleccion) => ref
                   .read(preferenciasNotifierProvider.notifier)
                   .cambiarOrden(seleccion.first),
             ),
             loading: () => const CircularProgressIndicator(),
+            error: (e, st) => Text('Error: $e'),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('Acento', style: Theme.of(context).textTheme.titleMedium),
+          ),
+          preferenciasAsync.when(
+            data: (prefs) => SegmentedButton<AcentoTinte>(
+              segments: const [
+                ButtonSegment(value: AcentoTinte.grisAzulado, label: Text('Azulado')),
+                ButtonSegment(value: AcentoTinte.grisVerdoso, label: Text('Verdoso')),
+                ButtonSegment(value: AcentoTinte.grisCafe, label: Text('Café')),
+              ],
+              selected: {prefs.acento},
+              onSelectionChanged: (seleccion) => ref
+                  .read(preferenciasNotifierProvider.notifier)
+                  .cambiarAcento(seleccion.first),
+            ),
+            loading: () => const SizedBox.shrink(),
             error: (e, st) => Text('Error: $e'),
           ),
         ],

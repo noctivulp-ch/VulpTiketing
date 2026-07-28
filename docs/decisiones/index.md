@@ -23,3 +23,4 @@ Volver a [../index](../index.md)
 | [0017](0017-importar-datos-tiketdata-vs-tiketback.md) | Importar datos: `.tiketdata` (catálogo) vs `.tiketback` (backup completo) | Aceptada |
 | [0018](0018-orden-y-busqueda-de-producto.md) | Orden y búsqueda de Producto: agrupación por categoría + ranking nombre > categoría | Aceptada |
 | [0019](0019-descomponer-servicios-responsabilidad-unica.md) | Descomponer servicios grandes en clases de responsabilidad única | Aceptada |
+| [0020](0020-iconografia-vectorial-propia.md) | Iconografía vectorial propia: Python + SVG + tinte en runtime | Aceptada |
