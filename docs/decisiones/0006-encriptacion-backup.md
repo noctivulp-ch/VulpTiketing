@@ -1,11 +1,11 @@
-# 0006 — Esquema de encriptación del backup `.sodabak`
+# 0006 — Esquema de encriptación del backup `.tiketback`
 
 **Fecha:** 2026-07-26
 **Estado:** Aceptada — opción A (contraseña de exportación + AES-256-GCM)
 
 ## Contexto
 
-Data.feature pide que el bundle de SQLite + configuración se encripte antes de exportarse como `.sodabak`, sin especificar algoritmo ni de dónde sale la clave.
+Data.feature pide que el bundle de SQLite + configuración se encripte antes de exportarse como `.tiketback`, sin especificar algoritmo ni de dónde sale la clave.
 
 ## Opciones
 
@@ -24,4 +24,8 @@ Igual que A pero sin pedir una contraseña nueva — deriva la clave de la contr
 
 ## Recomendación
 
-A. Es el único que da protección real si el archivo `.sodabak` se pierde o se comparte por error, que es justamente el escenario que esta feature busca cubrir.
+A. Es el único que da protección real si el archivo `.tiketback` se pierde o se comparte por error, que es justamente el escenario que esta feature busca cubrir.
+
+## Nota posterior (2026-07-27)
+
+Archivo renombrado de `.sodabak` a `.tiketback` — ver [decisión 0017](0017-importar-datos-tiketdata-vs-tiketback.md), que además introduce `.tiketdata` (paquete de catálogo, sin cifrar, con propósito distinto) y define cómo se importa cada uno.

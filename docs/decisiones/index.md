@@ -20,3 +20,4 @@ Volver a [../index](../index.md)
 | [0014](0014-riverpod-como-gestion-de-estado.md) | Riverpod como gestión de estado | Aceptada |
 | [0015](0015-purgar-producto-borrado-fisico-condicional.md) | Purgar Producto: borrado físico condicional | Aceptada |
 | [0016](0016-linea-libre-en-venta.md) | Línea libre en Venta (sin Producto de catálogo) | Aceptada |
+| [0017](0017-importar-datos-tiketdata-vs-tiketback.md) | Importar datos: `.tiketdata` (catálogo) vs `.tiketback` (backup completo) | Aceptada |

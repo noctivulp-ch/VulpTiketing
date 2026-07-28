@@ -12,7 +12,7 @@ Ver también: [prototipos-ascii](prototipos-ascii.md) (Fase 2, en curso) · [../
 
 ## Login / Setup
 
-Pantalla de configuración inicial — se ve **solo la primera vez o después de desloguear**, no en cada apertura de la app:
+Pantalla de configuración inicial — se ve **solo la primera vez o después de cerrar sesión explícitamente**, no en cada apertura de la app. Cerrar sesión no es una acción rutinaria: es específicamente para cuando un dispositivo compartido necesita cambiar de rol (ej. la misma tablet la usa a veces el Gerente, a veces la Registradora) — infrecuente, pero posible. Ver [decisión 0007, addendum](../decisiones/0007-topologia-sync.md) sobre por qué esto no entra en conflicto con la topología de sync.
 
 1. Dos íconos para elegir el tipo de dispositivo/rol: Gerente o Registradora (selección única).
 2. Pide contraseña (la contraseña local del dispositivo — ver [decisión 0011](../decisiones/0011-credenciales-almacenamiento-nativo.md)).

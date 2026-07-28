@@ -14,4 +14,4 @@ No se diseña contra un adversario interno (Gerente/Registradora son personal de
 
 ## Backup encriptado
 
-Al exportar un `.sodabak`, el usuario define una contraseña de exportación (independiente de la de login). La clave se deriva con Argon2id (o PBKDF2 si Argon2id no es práctico en el stack Flutter elegido) y el bundle se encripta con AES-256-GCM. La clave nunca se persiste — solo existe en memoria durante la operación de exportar/restaurar. Si se olvida la contraseña, el backup es irrecuperable por diseño. Ver [decisión 0006](../decisiones/0006-encriptacion-backup.md).
+Al exportar un `.tiketback`, el usuario define una contraseña de exportación (independiente de la de login). La clave se deriva con Argon2id (o PBKDF2 si Argon2id no es práctico en el stack Flutter elegido) y el bundle se encripta con AES-256-GCM. La clave nunca se persiste — solo existe en memoria durante la operación de exportar/restaurar. Si se olvida la contraseña, el backup es irrecuperable por diseño. Ver [decisión 0006](../decisiones/0006-encriptacion-backup.md).
