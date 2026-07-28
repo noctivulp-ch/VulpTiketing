@@ -115,8 +115,11 @@ La tab activa se resalta con el color de acento (fondo o borde) — no hace falt
 
 Grid uniforme (los productos son ítems pares entre sí, no hay jerarquía entre ellos — la jerarquía bento aquí es "foto grande, precio y nombre secundarios", no diferencias de tamaño entre celdas).
 
+**Modo Alfabético o Precio** ([decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)) — lista plana:
+
 ```
 ┌─────────────────────────────────────────────────────┐
+│  🔍 [ buscar producto o categoría... ]               │
 │  ┌───────────┐  ┌───────────┐  ┌───────────┐         │
 │  │  [foto]   │  │  [foto]   │  │  [foto]   │         │
 │  │   Café    │  │  Gallo    │  │   Jugo    │         │
@@ -126,6 +129,49 @@ Grid uniforme (los productos son ítems pares entre sí, no hay jerarquía entre
 │  │  [foto]   │  │  [foto]   │  │  [foto]   │         │
 │  │    ...    │  │    ...    │  │    ...    │         │
 │  └───────────┘  └───────────┘  └───────────┘         │
+└─────────────────────────────────────────────────────┘
+```
+
+**Modo Categoría** — mismo grid, agrupado con separador por categoría (0018):
+
+```
+┌─────────────────────────────────────────────────────┐
+│  🔍 [ buscar producto o categoría... ]               │
+│  ───────────────── Bebidas ─────────────────         │
+│  ┌───────────┐  ┌───────────┐  ┌───────────┐         │
+│  │  [foto]   │  │  [foto]   │  │  [foto]   │         │
+│  │   Café    │  │   Jugo    │  │  Té frío  │         │
+│  │   ₡800    │  │   ₡900    │  │   ₡700    │         │
+│  └───────────┘  └───────────┘  └───────────┘         │
+│  ───────────────── Comida ──────────────────         │
+│  ┌───────────┐  ┌───────────┐                         │
+│  │  [foto]   │  │  [foto]   │                         │
+│  │  Gallo    │  │  Tostada  │                         │
+│  │  ₡1500    │  │   ₡600    │                         │
+│  └───────────┘  └───────────┘                         │
+│  ─────────────── Sin categoría ─────────────          │
+│  ┌───────────┐                                        │
+│  │  [foto]   │                                        │
+│  │  Prueba   │                                        │
+│  │   ₡100    │                                        │
+│  └───────────┘                                        │
+└─────────────────────────────────────────────────────┘
+```
+
+**Búsqueda con ranking nombre > categoría** (0018) — ejemplo escribiendo "jug":
+
+```
+┌─────────────────────────────────────────────────────┐
+│  🔍 [ jug ]                                          │
+│  ── Coincidencia por nombre ──                       │
+│  ┌───────────┐                                        │
+│  │   Jugo    │                                        │
+│  │   ₡900    │                                        │
+│  └───────────┘                                        │
+│  ── Categoría "Bebidas" ──  (sin repetir Jugo)        │
+│  ┌───────────┐  ┌───────────┐                         │
+│  │   Café    │  │  Té frío  │                         │
+│  └───────────┘  └───────────┘                         │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -194,6 +240,8 @@ Al completar, overlay se cierra y aparece (esquina, no intrusivo, se auto-oculta
 └──────────────────────────────┴───────────────────────────────┘
   * ✎ "producto nuevo al vuelo" — solo Gerente (oculto/deshabilitado para Registradora)
   † 📝 "línea libre" — propuesta de ícono, a confirmar (ver Pendientes)
+  🔍 sigue el mismo ranking nombre > categoría de la Ventana 1 ([0018](../decisiones/0018-orden-y-busqueda-de-producto.md));
+     el listado respeta el orden Alfabético/Precio/Categoría configurado en Configuración.
 ```
 
 Tocar un producto (toque simple) → se agrega al carrito, cantidad 1. Mantener presionado → selección múltiple:
@@ -211,7 +259,8 @@ Tocar un producto (toque simple) → se agrega al carrito, cantidad 1. Mantener 
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│  PRODUCTOS                                     [ + Nuevo ]*│
+│  🔍 [ buscar producto o categoría... ]         [ + Nuevo ]*│
+│  PRODUCTOS  (agrupados por categoría si ese es el orden activo — 0018)
 │ ┌─────────────────────────────────────────────────────┐   │
 │ │ [foto]  Café                ₡800      [✎]  [⛔]      │   │
 │ ├─────────────────────────────────────────────────────┤   │
@@ -271,9 +320,14 @@ Pantalla de uso raro — tolera ícono + etiqueta corta (no compite con el crite
 │ │   Estado de    │ │   Acerca de    │ │   Cerrar sesión   │ │
 │ │ sincronización │ │                │ │                    │ │
 │ └───────────────┘ └───────────────┘ └───────────────────┘ │
+│ ┌─────────────────────────────────────────────────────┐   │
+│ │  Orden de productos                                  │   │
+│ │  ( ) Alfabético    ( ) Precio    (●) Categoría        │   │
+│ └─────────────────────────────────────────────────────┘   │
 └───────────────────────────────────────────────────────────┘
 ```
 `🚪 Cerrar sesión` — encontrado como hueco al trazar el flujo completo (ver [mapa-de-flujo.md](mapa-de-flujo.md)), ningún boceto anterior tenía dónde cerrar sesión.
+`Orden de productos` — [decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md), afecta Ventana 1, el panel de agregar producto de la Ventana 2, y Ventana 3.
 
 ---
 

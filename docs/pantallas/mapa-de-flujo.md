@@ -71,7 +71,7 @@ Dashboard → ⚙ → tap "Cerrar sesión" → vuelve a Login → *(ver hallazgo
 
 **1. Faltaba dónde cerrar sesión.** Ningún boceto lo incluía. Lo agrego ahora como tile en Configuración (`🚪 Cerrar sesión`) — es el lugar más natural y no rompe nada del resto del diseño.
 
-**2. Ventana 1 y Ventana 3 no tienen buscador/filtro cuando el catálogo crece.** `categoria` se diseñó explícitamente "para navegación/búsqueda al armar una venta" (ver `docs/arquitectura/datos.md`), pero el grid de Venta Rápida y la lista de CRUD Producto son planos, sin usar esa categoría para nada visual todavía. Con pocos productos no se nota; si el catálogo crece, escanear un grid plano deja de ser instantáneo. Candidato natural: chips de categoría (íconos, no texto) arriba del grid, coherente con el lenguaje no-textual ya establecido — no lo agregué al boceto porque es una decisión de diseño nueva, no una corrección de algo ya descrito.
+**2. ~~Ventana 1 y Ventana 3 no tienen buscador/filtro~~ — Resuelto ([decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)).** Agregado un setting de orden en Configuración (Alfabético/Precio/Categoría, con agrupación visual y separadores en modo Categoría) aplicado consistentemente a Ventana 1, 2 y 3, más un buscador en cada una con ranking nombre de producto > nombre de categoría (tolerante a errores ortográficos). Ver bocetos actualizados en `prototipos-ascii.md`.
 
 **3. ~~Roles y sync pueden estar en conflicto~~ — Resuelto.** "Cerrar sesión" no es una acción rutinaria (no se dispara al cerrar la app), es específicamente para cuando un dispositivo compartido necesita cambiar de rol — evento infrecuente pero real. Esto no entra en conflicto con la topología de sync ([decisión 0007](../decisiones/0007-topologia-sync.md)): la pertenencia a "red Gerente"/"red Registradora" ya era una propiedad derivada en vivo del rol activo (no una lista fija), así que un cambio de rol es, para el algoritmo de elección de orquestador ya diseñado, el mismo tipo de evento que un dispositivo que aparece/desaparece de un grupo — se resuelve solo, sin rediseñar nada. Ver el addendum agregado a 0007.
 
@@ -83,5 +83,4 @@ Dashboard → ⚙ → tap "Cerrar sesión" → vuelve a Login → *(ver hallazgo
 
 ## Prioridad sugerida para lo que queda
 
-1. Hallazgo #2 (buscador/categoría) — afecta la usabilidad real si el catálogo crece, vale la pena decidir antes del scaffold aunque no sea urgente para un catálogo chico inicial.
-2. Hallazgos #4 y #5 — de bajo riesgo, se pueden resolver sobre la marcha al implementar.
+1. Hallazgos #4 y #5 — de bajo riesgo, se pueden resolver sobre la marcha al implementar.

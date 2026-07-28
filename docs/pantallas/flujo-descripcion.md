@@ -35,7 +35,7 @@ Las "Ventanas" 1–5 de abajo son el contenido que se muestra en este panel dere
 
 Pensada para el caso común: vender uno o pocos productos sin construir un carrito completo.
 
-- Grid grande con **todos los productos**: foto, nombre, precio.
+- Grid grande con **todos los productos**: foto, nombre, precio. Orden y búsqueda: ver [decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md) — respeta el modo Alfabético/Precio/Categoría configurado en Configuración (en modo Categoría, el grid se agrupa con separadores por categoría), y tiene su propia barra de búsqueda con ranking nombre > categoría.
 - Tocar un producto abre un **overlay** (modal flotante) con:
   - **Cantidad** — cuántas unidades de ese producto, por defecto 1, editable (consistente con el `DEFAULT 1` de `linea_venta.cantidad` en el esquema).
   - **Precio** — precargado con el precio base (placeholder), editable — mismo comportamiento ya definido en [ventas.md](../funciones/ventas.md) y `linea_venta.precio_aplicado`.
@@ -65,8 +65,8 @@ Para ventas de varios productos. Layout:
   - `{total}` — total de la venta en curso (suma de líneas).
   - `BTN` — **finalizar venta**: al presionar, muestra una notificación no intrusiva de éxito o error.
 - **Botón "agregar producto"**: estilo pestaña, el botón mismo se comporta como un toggle flotante, pero el panel que abre **no es un overlay** — es un panel persistente que ocupa parte del lado derecho de la pantalla, con:
-  - Listado de productos disponibles.
-  - Botón de **buscar** (lupa).
+  - Listado de productos disponibles, mismo orden/agrupación que el resto de la app ([decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)).
+  - Botón de **buscar** (lupa) — ranking nombre > categoría, tolerante a errores ortográficos (0018).
   - Botón de **agregar producto nuevo al vuelo** (lápiz) — crea un Producto nuevo sin salir del flujo de venta. **Restringido a Gerente** (confirmado), igual que el resto de Create en `Operations.feature` — en la UI de Registradora este botón no debe aparecer (o debe verse deshabilitado).
   - Tocar un producto (toque simple) lo agrega a la venta como una línea nueva, con **cantidad 1 por defecto** (editable después desde el carrito).
   - Mantener presionado entra en modo selección múltiple; aparece un botón **"+"** junto a los otros dos, para agregar todos los productos seleccionados de una vez — **cada uno con cantidad 1 por defecto** (confirmado; editable después desde el carrito igual que cualquier línea).
@@ -74,7 +74,7 @@ Para ventas de varios productos. Layout:
 
 ## Ventana 3 — CRUD de Producto
 
-Listado de productos con las acciones: **agregar**, **editar**, **descontinuar**, y **purgar** (borrado físico real) — esto corresponde 1:1 con `Operations.feature` y el ciclo de vida de `ProductoNotifier` en [gestion-estado.md](../arquitectura/gestion-estado.md).
+Listado de productos con las acciones: **agregar**, **editar**, **descontinuar**, y **purgar** (borrado físico real) — esto corresponde 1:1 con `Operations.feature` y el ciclo de vida de `ProductoNotifier` en [gestion-estado.md](../arquitectura/gestion-estado.md). Mismo orden/agrupación y búsqueda que el resto de la app ([decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)).
 
 **Purgar** ([decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md)) resuelve el punto que planteó el usuario sobre acumulación de productos duplicados/creados por error que nunca se van a usar: solo está disponible para Gerente, y solo habilitado cuando el producto ya está descontinuado, tiene cero ventas asociadas, y se confirma que todos los dispositivos conocidos están sincronizados (la UI debe deshabilitar el botón mientras esa condición no se cumpla, con un mensaje indicando por qué). Para casos custom de un solo uso (ej. un descuento puntual para un cliente específico) que nunca deberían haber sido un Producto de catálogo en primer lugar, ver la **línea libre** en la Ventana 2 — evita el problema desde la raíz en vez de crear y purgar después.
 
@@ -84,7 +84,7 @@ Sin describir en detalle — sigue la estética general ya estipulada para el re
 
 ## Ventana 5 — Configuración
 
-Sin describir en detalle — sigue la estética general ya estipulada. Debe incluir al menos: cambio de contraseña local del dispositivo (ver [roles-y-auth.md](../funciones/roles-y-auth.md)) y, a futuro, exportar/restaurar backup (ver [backup.md](../funciones/backup.md)).
+Sin describir en detalle — sigue la estética general ya estipulada. Debe incluir al menos: cambio de contraseña local del dispositivo (ver [roles-y-auth.md](../funciones/roles-y-auth.md)), exportar/restaurar `.tiketback` e importar/exportar `.tiketdata` (ver [backup.md](../funciones/backup.md)), cerrar sesión, y el **orden de productos** (Alfabético/Precio/Categoría — [decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)).
 
 ---
 

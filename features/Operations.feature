@@ -5,6 +5,14 @@ Feature: Inventory CRUD Operations
 
   Background:
     Given a "Producto" has a name, an optional image, an optional category, and a base price
+    And "Producto" listings can be ordered "Alfabético", "Precio", or "Categoría" (grouped), configurable in Configuración
+
+  Scenario: Searching products ranks name matches before category matches
+    Given the user types a search term in a product search bar
+    When the term matches one or more "Producto" names, tolerating typos
+    And the term also matches a "Categoria" name, tolerating typos
+    Then products with a direct name match are shown first
+    And products belonging to the matched "Categoria" are shown after, excluding any already shown above
 
   Scenario: Gerente full access
     Given the user is logged in as "Gerente"
