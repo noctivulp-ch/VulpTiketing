@@ -250,28 +250,38 @@ Después (abierto) — el mismo botón ahora vive en la costura entre los dos pa
 ```
 ┌───────────────────────────┬──┬───────────────────────────┐
 │  VENTA EN CURSO            │🧺│  AGREGAR PRODUCTO          │
-│  (carrito, más angosto)    │− │ ┌───────┐┌───────┐┌───────┐│
-│  ...líneas...               │  │ │ Café  ││ Jugo  ││ Gallo ││
-│                              │  │ └───────┘└───────┘└───────┘│
-│                              │  │ ┌───────┐┌───────┐┌───────┐│
-│                              │  │ │  ...  ││  ...  ││  ...  ││
-│                              │  │ └───────┘└───────┘└───────┘│
+│  (carrito, más angosto)    │− │ 🔍 [ buscar... ]           │
+│  ...líneas...               │  │ ─────────────────────────  │
+│                              │  │ [foto] Café       ₡800    │
+│                              │  │ ─────────────────────────  │
+│                              │  │ [foto] Jugo       ₡900    │
+│                              │  │ ─────────────────────────  │
+│                              │  │ [foto] Gallo pinto ₡1500  │
+│                              │  │ ─────────────────────────  │
+│                              │  │           ...              │
 │                              │  │                            │
-│ [ recibí|cambio|total|Fin ] │  │   🔍      ✎*       📝†     │
+│ [ recibí|cambio|total|Fin ] │  │        ✎*       📝†        │
 └──────────────────────────────┴──┴───────────────────────────┘
+  Lista vertical, NO cuadrícula — a diferencia de la Ventana 1, aquí el
+  contexto ya es "estoy agregando al carrito que veo al lado", una lista
+  angosta escanea más rápido que una cuadrícula comprimida en ese ancho.
   * ✎ "producto nuevo al vuelo" — solo Gerente (oculto/deshabilitado para Registradora)
   † 📝 "línea libre" — propuesta de ícono, a confirmar (ver Pendientes)
   🔍 sigue el mismo ranking nombre > categoría de la Ventana 1 ([0018](../decisiones/0018-orden-y-busqueda-de-producto.md));
-     el listado respeta el orden Alfabético/Precio/Categoría configurado en Configuración.
+     la lista respeta el orden Alfabético/Precio/Categoría configurado en Configuración.
 ```
 
 Tocar un producto (toque simple) → se agrega al carrito, cantidad 1. Mantener presionado → selección múltiple:
 
 ```
-│ ┌───────┐┌───────┐┌───────┐   │
-│ │✓ Café ││ Jugo  ││✓Gallo │   │  ← seleccionados, resaltados con acento
-│ └───────┘└───────┘└───────┘   │
-│   🔍      ✎*      📝†   [ + Agregar (2) ]  │  ← aparece solo en modo selección
+│ ─────────────────────────  │
+│ ✓ [foto] Café       ₡800   │  ← seleccionado, resaltado con acento
+│ ─────────────────────────  │
+│   [foto] Jugo       ₡900   │
+│ ─────────────────────────  │
+│ ✓ [foto] Gallo pinto ₡1500 │  ← seleccionado
+│ ─────────────────────────  │
+│   🔍   ✎*   📝†  [ + Agregar (2) ]  │  ← aparece solo en modo selección
 ```
 
 ---

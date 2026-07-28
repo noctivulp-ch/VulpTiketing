@@ -65,7 +65,7 @@ Para ventas de varios productos. Layout:
   - `{total}` — total de la venta en curso (suma de líneas).
   - `BTN` — **finalizar venta**: al presionar, muestra una notificación no intrusiva de éxito o error.
 - **Botón "agregar producto"**: estilo pestaña, el botón mismo se comporta como un toggle flotante, pero el panel que abre **no es un overlay** — es un panel persistente que ocupa parte del lado derecho de la pantalla, con:
-  - Listado de productos disponibles, mismo orden/agrupación que el resto de la app ([decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)).
+  - **Lista vertical** de productos disponibles (no cuadrícula como la Ventana 1 — el panel es más angosto y el contexto ya es "agregar al carrito", una lista escanea más rápido ahí), mismo orden/agrupación que el resto de la app ([decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)).
   - Botón de **buscar** (lupa) — ranking nombre > categoría, tolerante a errores ortográficos (0018).
   - Botón de **agregar producto nuevo al vuelo** (lápiz) — crea un Producto nuevo sin salir del flujo de venta. **Restringido a Gerente** (confirmado), igual que el resto de Create en `Operations.feature` — en la UI de Registradora este botón no debe aparecer (o debe verse deshabilitado).
   - Tocar un producto (toque simple) lo agrega a la venta como una línea nueva, con **cantidad 1 por defecto** (editable después desde el carrito).
