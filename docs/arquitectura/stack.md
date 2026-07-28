@@ -20,6 +20,28 @@ Offline-first: la app nunca depende de un backend en la nube. Todo el estado viv
 
 Con sync entre múltiples dispositivos sin servidor central, un `id` autoincremental generaría colisiones (dos dispositivos offline creando el registro "3" cada uno). UUID v4 garantiza unicidad sin coordinación. `updated_at` es la base de la resolución de conflictos LWW.
 
-## Pendiente
+## Versión y toolchain (scaffold, 2026-07-28)
 
-- [ ] Versión mínima de Flutter/Dart
+- Flutter 3.44.8 (stable) / Dart 3.12.2, gestionado con `fvm` (no Flutter global del sistema — correr `fvm use stable` o anteponer `~/fvm/default/bin` al PATH).
+- Toolchain Linux desktop verificado end-to-end: `flutter build linux --debug` compila y linkea.
+- Android: SDK incompleto en este entorno (falta `cmdline-tools`, `platforms`, `build-tools`) — no bloquea el desarrollo desktop, pendiente completar antes de compilar un APK.
+- Windows: no se puede cross-compilar desde Linux — se usa una VM Windows disponible cuando llegue el momento de ese target.
+
+### Gotcha encontrado: `flutter_secure_storage` y clang reciente
+
+La versión `^9.x` de `flutter_secure_storage` trae una copia vieja de `json.hpp` (nlohmann-json) que no compila con clang ≥ 22 en Linux desktop (`-Wdeprecated-literal-operator` como error). Se resolvió subiendo a `^10.3.1` — si en el futuro este error reaparece con otra dependencia nativa C++, el mismo patrón de diagnóstico aplica: revisar si hay una versión más nueva del paquete antes de tocar flags de compilador.
+
+## Dependencias del scaffold (`pubspec.yaml`)
+
+| Paquete | Para qué |
+|---------|----------|
+| `flutter_riverpod` | Gestión de estado (0014) |
+| `sqflite` + `sqflite_common_ffi` | SQLite — Android y Linux/Windows desktop respectivamente |
+| `flutter_secure_storage` | Rol, contraseña, `device_id` (0011) |
+| `shared_preferences` | Preferencias de UI no sensibles (0018 — `PreferenciasNotifier`) |
+| `cryptography` | Argon2id + AES-256-GCM, aún sin implementar (0006/0011) |
+| `uuid` | UUID v4 en todas las PK |
+| `path_provider` / `path` | Ubicación del archivo SQLite en cada plataforma |
+| `intl` | Formato de fechas/moneda |
+
+**A propósito no agregado todavía:** ningún paquete de mDNS (candidatos `multicast_dns`/`nsd`) — falta validar cuál soporta anunciar y descubrir en Android + Linux + Windows a la vez antes de comprometerse (ver `lib/features/sync/device_discovery_service.dart`).

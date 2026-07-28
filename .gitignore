@@ -4,3 +4,8 @@ build/
 .packages
 *.iml
 .idea/
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+android/local.properties
