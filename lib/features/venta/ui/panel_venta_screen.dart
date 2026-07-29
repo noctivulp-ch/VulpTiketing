@@ -1,14 +1,454 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-/// Ventana 2 — carrito + panel de agregar producto. Ver
-/// docs/pantallas/flujo-descripcion.md#ventana-2--panel-de-venta-carrito-completo
-/// y docs/pantallas/prototipos-ascii.md. UI completa pendiente de implementar
-/// — la logica de datos ya existe en VentaEnCursoNotifier.
-class PanelVentaScreen extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../auth/sesion_notifier.dart';
+import '../../producto/producto_model.dart';
+import '../../producto/producto_query_provider.dart';
+import '../../producto/ui/producto_form_dialog.dart';
+import '../linea_venta_model.dart';
+import '../venta_en_curso_notifier.dart';
+
+/// Ventana 2 — ver docs/pantallas/flujo-descripcion.md#ventana-2--panel-de-venta-carrito-completo
+/// y docs/pantallas/prototipos-ascii.md. Carrito multi-línea + panel de
+/// agregar producto (lista vertical, no cuadrícula — corregido tras
+/// revisión del usuario).
+class PanelVentaScreen extends ConsumerStatefulWidget {
   const PanelVentaScreen({super.key});
 
   @override
+  ConsumerState<PanelVentaScreen> createState() => _PanelVentaScreenState();
+}
+
+class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
+  bool _panelAbierto = false;
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Panel de Venta — por implementar'));
+    return Scaffold(
+      body: Row(
+        children: [
+          Expanded(
+            flex: _panelAbierto ? 3 : 5,
+            child: _Carrito(onFinalizar: () => setState(() => _panelAbierto = false)),
+          ),
+          _BotonTogglePanel(
+            abierto: _panelAbierto,
+            onTap: () => setState(() => _panelAbierto = !_panelAbierto),
+          ),
+          if (_panelAbierto)
+            Expanded(flex: 4, child: _PanelAgregarProducto()),
+        ],
+      ),
+    );
   }
+}
+
+/// El mismo botón que abre el panel lo cierra — se "arrastra" con el panel
+/// porque vive estructuralmente en la costura entre los dos, no en una
+/// posición fija (ver boceto en prototipos-ascii.md).
+class _BotonTogglePanel extends StatelessWidget {
+  const _BotonTogglePanel({required this.abierto, required this.onTap});
+
+  final bool abierto;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 40,
+          child: Icon(abierto ? Icons.chevron_right : Icons.add_shopping_cart),
+        ),
+      ),
+    );
+  }
+}
+
+class _Carrito extends ConsumerStatefulWidget {
+  const _Carrito({required this.onFinalizar});
+
+  final VoidCallback onFinalizar;
+
+  @override
+  ConsumerState<_Carrito> createState() => _CarritoState();
+}
+
+class _CarritoState extends ConsumerState<_Carrito> {
+  final _recibidoController = TextEditingController();
+  double? _cambio;
+  Timer? _debounce;
+  bool _finalizando = false;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _recibidoController.dispose();
+    super.dispose();
+  }
+
+  void _onRecibidoChanged(String valor, double total) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      final recibido = double.tryParse(valor);
+      setState(() => _cambio = recibido == null ? null : recibido - total);
+    });
+  }
+
+  Future<void> _finalizar() async {
+    setState(() => _finalizando = true);
+    await ref.read(ventaEnCursoNotifierProvider.notifier).guardar();
+    _recibidoController.clear();
+    _cambio = null;
+    if (mounted) {
+      setState(() => _finalizando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✓ Venta OK'), duration: Duration(seconds: 2)),
+      );
+      widget.onFinalizar();
+    }
+  }
+
+  Future<void> _editarLinea(LineaVenta linea) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _DialogoEditarLinea(linea: linea),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ventaEnCurso = ref.watch(ventaEnCursoNotifierProvider);
+    final productosAsync = ref.watch(productoQueryProvider);
+    final productos = productosAsync.valueOrNull ?? const <Producto>[];
+    final total = ventaEnCurso.total;
+
+    return Column(
+      children: [
+        Expanded(
+          child: ventaEnCurso.lineas.isEmpty
+              ? const Center(child: Text('Agregá productos con el botón de la derecha'))
+              : ListView.separated(
+                  itemCount: ventaEnCurso.lineas.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, i) {
+                    final linea = ventaEnCurso.lineas[i];
+                    final nombre = linea.nombreLibre ?? _buscarNombre(linea.productoId, productos);
+                    return ListTile(
+                      title: Text(nombre),
+                      subtitle: Text(
+                        'x${linea.cantidad}'
+                        '${linea.nota != null && linea.nota!.isNotEmpty ? ' · ${linea.nota}' : ''}',
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('₡${(linea.precioAplicado * linea.cantidad).toStringAsFixed(2)}'),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            onPressed: () => _editarLinea(linea),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => ref
+                                .read(ventaEnCursoNotifierProvider.notifier)
+                                .quitarLinea(linea.id),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        Material(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _recibidoController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Recibí', isDense: true),
+                    onChanged: (v) => _onRecibidoChanged(v, total),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(_cambio == null ? 'Cambio: —' : 'Cambio: ₡${_cambio!.toStringAsFixed(2)}'),
+                const Spacer(),
+                Text(
+                  '₡${total.toStringAsFixed(2)}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: (ventaEnCurso.lineas.isEmpty || _finalizando) ? null : _finalizar,
+                  child: const Text('Finalizar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _buscarNombre(String? productoId, List<Producto> productos) {
+    if (productoId == null) return 'Producto';
+    for (final p in productos) {
+      if (p.id == productoId) return p.nombre;
+    }
+    return 'Producto eliminado';
+  }
+}
+
+class _DialogoEditarLinea extends ConsumerStatefulWidget {
+  const _DialogoEditarLinea({required this.linea});
+
+  final LineaVenta linea;
+
+  @override
+  ConsumerState<_DialogoEditarLinea> createState() => _DialogoEditarLineaState();
+}
+
+class _DialogoEditarLineaState extends ConsumerState<_DialogoEditarLinea> {
+  late final TextEditingController _precioController;
+  late final TextEditingController _notaController;
+  late int _cantidad;
+
+  @override
+  void initState() {
+    super.initState();
+    _precioController =
+        TextEditingController(text: widget.linea.precioAplicado.toStringAsFixed(2));
+    _notaController = TextEditingController(text: widget.linea.nota ?? '');
+    _cantidad = widget.linea.cantidad;
+  }
+
+  @override
+  void dispose() {
+    _precioController.dispose();
+    _notaController.dispose();
+    super.dispose();
+  }
+
+  void _guardar() {
+    ref.read(ventaEnCursoNotifierProvider.notifier).editarLinea(
+          widget.linea.id,
+          precioAplicado: double.tryParse(_precioController.text),
+          cantidad: _cantidad,
+          nota: _notaController.text.trim().isEmpty ? null : _notaController.text.trim(),
+        );
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Editar línea'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Cantidad'),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.remove),
+                    onPressed: _cantidad > 1 ? () => setState(() => _cantidad--) : null,
+                  ),
+                  Text('$_cantidad'),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () => setState(() => _cantidad++),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          TextField(
+            controller: _precioController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Precio'),
+          ),
+          TextField(
+            controller: _notaController,
+            decoration: const InputDecoration(labelText: 'Nota (opcional)'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        FilledButton(onPressed: _guardar, child: const Text('Guardar')),
+      ],
+    );
+  }
+}
+
+/// Lista vertical (no cuadrícula, ver decisión del usuario) de productos
+/// disponibles. Toque simple agrega; mantener presionado entra en
+/// selección múltiple.
+class _PanelAgregarProducto extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_PanelAgregarProducto> createState() => _PanelAgregarProductoState();
+}
+
+class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
+  final Set<String> _seleccionados = {};
+  bool get _modoSeleccion => _seleccionados.isNotEmpty;
+
+  void _agregarUno(Producto producto) {
+    ref.read(ventaEnCursoNotifierProvider.notifier).agregarLineaDeCatalogo(
+          productoId: producto.id,
+          precioAplicado: producto.precioBase,
+        );
+  }
+
+  void _agregarSeleccionados(List<Producto> productos) {
+    for (final id in _seleccionados) {
+      final producto = productos.where((p) => p.id == id).firstOrNull;
+      if (producto != null) _agregarUno(producto);
+    }
+    setState(() => _seleccionados.clear());
+  }
+
+  Future<void> _lineaLibre() async {
+    final nombreController = TextEditingController();
+    final precioController = TextEditingController();
+    final resultado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Línea libre'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nombreController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Nombre'),
+            ),
+            TextField(
+              controller: precioController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Precio'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Agregar'),
+          ),
+        ],
+      ),
+    );
+    if (resultado != true) return;
+    final nombre = nombreController.text.trim();
+    final precio = double.tryParse(precioController.text);
+    if (nombre.isEmpty || precio == null) return;
+    ref.read(ventaEnCursoNotifierProvider.notifier).agregarLineaLibre(
+          nombreLibre: nombre,
+          precio: precio,
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final productosAsync = ref.watch(productoQueryProvider);
+    final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: TextField(
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              hintText: 'Buscar producto o categoría…',
+              isDense: true,
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
+          ),
+        ),
+        Expanded(
+          child: productosAsync.when(
+            data: (productos) => ListView.separated(
+              itemCount: productos.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, i) {
+                final producto = productos[i];
+                final seleccionado = _seleccionados.contains(producto.id);
+                return ListTile(
+                  leading: seleccionado ? const Icon(Icons.check_circle) : null,
+                  title: Text(producto.nombre),
+                  trailing: Text('₡${producto.precioBase.toStringAsFixed(2)}'),
+                  selected: seleccionado,
+                  onTap: () {
+                    if (_modoSeleccion) {
+                      setState(() {
+                        seleccionado
+                            ? _seleccionados.remove(producto.id)
+                            : _seleccionados.add(producto.id);
+                      });
+                    } else {
+                      _agregarUno(producto);
+                    }
+                  },
+                  onLongPress: () => setState(() => _seleccionados.add(producto.id)),
+                );
+              },
+            ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, st) => Center(child: Text('Error: $e')),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.note_add_outlined),
+                tooltip: 'Línea libre',
+                onPressed: _lineaLibre,
+              ),
+              if (esGerente)
+                IconButton(
+                  icon: const Icon(Icons.add_box_outlined),
+                  tooltip: 'Producto nuevo al vuelo',
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => const ProductoFormDialog(),
+                  ),
+                ),
+              const Spacer(),
+              if (_modoSeleccion)
+                FilledButton.icon(
+                  icon: const Icon(Icons.add),
+                  label: Text('Agregar (${_seleccionados.length})'),
+                  onPressed: () => _agregarSeleccionados(
+                    productosAsync.valueOrNull ?? const [],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
 }
