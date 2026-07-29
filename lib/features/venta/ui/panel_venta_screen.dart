@@ -35,7 +35,7 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
             flex: _panelAbierto ? 3 : 5,
             child: _Carrito(onFinalizar: () => setState(() => _panelAbierto = false)),
           ),
-          _BotonTogglePanel(
+          _SeparadorConToggle(
             abierto: _panelAbierto,
             onTap: () => setState(() => _panelAbierto = !_panelAbierto),
           ),
@@ -47,25 +47,53 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
   }
 }
 
-/// El mismo botón que abre el panel lo cierra — se "arrastra" con el panel
-/// porque vive estructuralmente en la costura entre los dos, no en una
-/// posición fija (ver boceto en prototipos-ascii.md).
-class _BotonTogglePanel extends StatelessWidget {
-  const _BotonTogglePanel({required this.abierto, required this.onTap});
+/// Costura entre el carrito y el panel de agregar producto — antes era solo
+/// un ícono flotando sin fondo propio (no se leía como una separación real
+/// entre los dos paneles, rompía la jerarquía). Ahora es una franja con tono
+/// de fondo distinto a ambos paneles (separador real, no una línea) y el
+/// botón que abre/cierra el panel vive anclado cerca del fondo de esa
+/// franja — no centrado en toda la altura, y por encima de la barra inferior
+/// del carrito (Recibí/Cambio/Total/Finalizar) para no estorbarla. El mismo
+/// botón abre y cierra: se "arrastra" con el panel porque vive
+/// estructuralmente en la costura, no en una posición fija.
+class _SeparadorConToggle extends StatelessWidget {
+  const _SeparadorConToggle({required this.abierto, required this.onTap});
 
   final bool abierto;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHigh,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          width: 40,
-          child: Icon(abierto ? Icons.chevron_right : Icons.add_shopping_cart),
-        ),
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: BentoSpacing.gapGrupo,
+      child: Stack(
+        children: [
+          Positioned.fill(child: ColoredBox(color: scheme.surfaceContainerHigh)),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: BentoSpacing.gapGrupo * 3,
+            child: Center(
+              child: Material(
+                color: scheme.primaryContainer,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  onTap: onTap,
+                  customBorder: const CircleBorder(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(BentoSpacing.unidad),
+                    child: Icon(
+                      abierto ? Icons.chevron_right : Icons.add_shopping_cart,
+                      size: 20,
+                      color: scheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -421,20 +449,15 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(BentoSpacing.unidad),
-          child: TextField(
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Buscar producto o categoría…',
-              isDense: true,
-            ),
-            onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
-          ),
-        ),
+        // Cascada invertida: el buscador vive abajo (ver barra inferior), asi
+        // que la lista crece hacia arriba desde ahi — con `reverse: true` el
+        // primer resultado (mejor match, mismo orden que ya calculaba
+        // productoQueryProvider) queda pegado al buscador, y el resto se aleja
+        // hacia arriba en vez de leerse de arriba hacia abajo.
         Expanded(
           child: productosAsync.when(
             data: (productos) => ListView.separated(
+              reverse: true,
               padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.unidad),
               itemCount: productos.length,
               separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad / 2),
@@ -465,34 +488,57 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
             error: (e, st) => Center(child: Text('Error: $e')),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(BentoSpacing.unidad),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.note_add_outlined),
-                tooltip: 'Línea libre',
-                onPressed: _lineaLibre,
+        if (_modoSeleccion)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: BentoSpacing.unidad,
+              vertical: BentoSpacing.unidad / 2,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.add),
+                label: Text('Agregar (${_seleccionados.length})'),
+                onPressed: () => _agregarSeleccionados(
+                  productosAsync.valueOrNull ?? const [],
+                ),
               ),
-              if (esGerente)
+            ),
+          ),
+        // Barra inferior unificada: buscador + acciones en el mismo panel
+        // (antes el buscador vivia arriba, separado de estos botones).
+        ColoredBox(
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          child: Padding(
+            padding: const EdgeInsets.all(BentoSpacing.unidad),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Buscar producto o categoría…',
+                      isDense: true,
+                    ),
+                    onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
+                  ),
+                ),
                 IconButton(
-                  icon: const Icon(Icons.add_box_outlined),
-                  tooltip: 'Producto nuevo al vuelo',
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) => const ProductoFormDialog(),
-                  ),
+                  icon: const Icon(Icons.note_add_outlined),
+                  tooltip: 'Línea libre',
+                  onPressed: _lineaLibre,
                 ),
-              const Spacer(),
-              if (_modoSeleccion)
-                FilledButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: Text('Agregar (${_seleccionados.length})'),
-                  onPressed: () => _agregarSeleccionados(
-                    productosAsync.valueOrNull ?? const [],
+                if (esGerente)
+                  IconButton(
+                    icon: const Icon(Icons.add_box_outlined),
+                    tooltip: 'Producto nuevo al vuelo',
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => const ProductoFormDialog(),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
