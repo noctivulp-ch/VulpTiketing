@@ -12,6 +12,14 @@ import '../venta/ui/venta_rapida_screen.dart';
 /// inferiores en angosta — SOLO iconos, sin texto (lenguaje no-textual,
 /// docs/pantallas/prototipos-ascii.md#principios-aplicados-en-esta-pasada).
 /// Iconos propios (docs/pantallas/iconografia.md), no Material Icons.
+///
+/// Las 5 pantallas se mantienen montadas via `IndexedStack` — cambiar de
+/// pestana solo cambia que subarbol es visible, no destruye/reconstruye la
+/// pantalla saliente. Reemplazar el hijo directamente (`_pantallas[_indice]`)
+/// causaba un parpadeo real al cambiar de tab: cada pantalla perdia su
+/// estado y volvia a pedir datos a sus providers desde cero, y como no todas
+/// tienen la misma barra superior, el salto de layout se veia como un
+/// parpadeo.
 class DashboardShell extends StatefulWidget {
   const DashboardShell({super.key});
 
@@ -60,14 +68,14 @@ class _DashboardShellState extends State<DashboardShell> {
               ],
             ),
             const VerticalDivider(width: 1),
-            Expanded(child: _pantallas[_indice]),
+            Expanded(child: IndexedStack(index: _indice, children: _pantallas)),
           ],
         ),
       );
     }
 
     return Scaffold(
-      body: _pantallas[_indice],
+      body: IndexedStack(index: _indice, children: _pantallas),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _indice,
         onDestinationSelected: (i) => setState(() => _indice = i),
