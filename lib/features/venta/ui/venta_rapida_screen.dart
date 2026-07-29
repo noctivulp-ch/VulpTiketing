@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/theme/bento_theme.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_query_provider.dart';
 import '../venta_en_curso_notifier.dart';
@@ -33,11 +35,11 @@ class VentaRapidaScreen extends ConsumerWidget {
         data: (productos) => productos.isEmpty
             ? const Center(child: Text('Sin productos'))
             : GridView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(BentoSpacing.gapCelda),
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: 160,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
+                  mainAxisSpacing: BentoSpacing.gapCelda,
+                  crossAxisSpacing: BentoSpacing.gapCelda,
                   childAspectRatio: 0.85,
                 ),
                 itemCount: productos.length,
@@ -60,10 +62,13 @@ class VentaRapidaScreen extends ConsumerWidget {
     WidgetRef ref,
     Producto producto,
   ) async {
-    await showDialog<void>(
+    final completado = await showDialog<bool>(
       context: context,
       builder: (_) => _OverlayCobroRapido(producto: producto),
     );
+    if (completado == true && context.mounted) {
+      mostrarNotificacionEsquina(context, '✓ Venta OK');
+    }
   }
 }
 
@@ -78,9 +83,9 @@ class _TarjetaProducto extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(BentoRadius.celda),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(BentoSpacing.unidad * 1.5),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -88,12 +93,12 @@ class _TarjetaProducto extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(BentoRadius.celda - BentoSpacing.unidad / 2),
                   ),
                   child: const Center(child: Icon(Icons.image_outlined, size: 32)),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: BentoSpacing.unidad),
               Text(
                 producto.nombre,
                 maxLines: 1,
@@ -166,10 +171,7 @@ class _OverlayCobroRapidoState extends ConsumerState<_OverlayCobroRapido> {
         );
     await ref.read(ventaEnCursoNotifierProvider.notifier).guardar();
     if (mounted) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✓ Venta OK'), duration: Duration(seconds: 2)),
-      );
+      Navigator.of(context).pop(true);
     }
   }
 
@@ -212,7 +214,7 @@ class _OverlayCobroRapidoState extends ConsumerState<_OverlayCobroRapido> {
             decoration: const InputDecoration(labelText: 'Recibí'),
             onChanged: _onRecibidoChanged,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: BentoSpacing.unidad),
           Align(
             alignment: Alignment.centerLeft,
             child: Text(_cambio == null ? 'Cambio: —' : 'Cambio: ₡${_cambio!.toStringAsFixed(2)}'),
