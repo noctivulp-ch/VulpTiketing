@@ -7,7 +7,9 @@ import 'sesion_notifier.dart';
 /// Ver docs/pantallas/flujo-descripcion.md#login--setup y
 /// docs/pantallas/prototipos-ascii.md#login--setup.
 /// Solo se ve la primera vez o tras cerrar sesion (cambio de rol en un
-/// dispositivo compartido, no rutinario).
+/// dispositivo compartido, no rutinario). La contrasena siempre existe
+/// (de fabrica o ya cambiada desde Configuracion) — este flujo nunca
+/// "crea" una contrasena, solo la pide.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -24,6 +26,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _contrasenaController.dispose();
     super.dispose();
+  }
+
+  void _elegirRol(Rol rol) {
+    setState(() {
+      _rolSeleccionado = rol;
+      _error = null;
+    });
+  }
+
+  void _volver() {
+    setState(() {
+      _rolSeleccionado = null;
+      _error = null;
+      _contrasenaController.clear();
+    });
   }
 
   Future<void> _entrar() async {
@@ -56,30 +73,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Expanded(child: _TarjetaRol(
                         rol: Rol.gerente,
                         icono: 'rol_gerente',
-                        onTap: () => setState(() => _rolSeleccionado = Rol.gerente),
+                        onTap: () => _elegirRol(Rol.gerente),
                       )),
                       const SizedBox(width: 16),
                       Expanded(child: _TarjetaRol(
                         rol: Rol.registradora,
                         icono: 'rol_registradora',
-                        onTap: () => setState(() => _rolSeleccionado = Rol.registradora),
+                        onTap: () => _elegirRol(Rol.registradora),
                       )),
                     ],
                   ),
                 ] else ...[
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: _volver,
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Volver'),
+                    ),
+                  ),
                   _TarjetaRol(
                     rol: _rolSeleccionado!,
                     icono: _rolSeleccionado == Rol.gerente
                         ? 'rol_gerente'
                         : 'rol_registradora',
                     seleccionada: true,
-                    onTap: () => setState(() => _rolSeleccionado = null),
+                    onTap: _volver,
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _contrasenaController,
                     obscureText: true,
+                    autofocus: true,
                     decoration: InputDecoration(
+                      labelText: 'Contraseña',
                       border: const OutlineInputBorder(),
                       errorText: _error,
                     ),

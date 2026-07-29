@@ -39,7 +39,7 @@ La versión `^9.x` de `flutter_secure_storage` trae una copia vieja de `json.hpp
 | `sqflite` + `sqflite_common_ffi` | SQLite — Android y Linux/Windows desktop respectivamente |
 | `flutter_secure_storage` | Rol, contraseña, `device_id` (0011) |
 | `shared_preferences` | Preferencias de UI no sensibles (0018 — `PreferenciasNotifier`) |
-| `cryptography` | Argon2id + AES-256-GCM, aún sin implementar (0006/0011) |
+| `cryptography` | Argon2id implementado en `CredencialesService` (0011); AES-256-GCM para `.tiketback` aún sin implementar (0006) |
 | `uuid` | UUID v4 en todas las PK |
 | `path_provider` / `path` | Ubicación del archivo SQLite en cada plataforma |
 | `intl` | Formato de fechas/moneda |

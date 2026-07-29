@@ -11,15 +11,24 @@ enum Rol { gerente, registradora }
 /// (DeviceIdentityService).
 class SesionNotifier extends Notifier<Rol?> {
   final _storage = const FlutterSecureStorage();
+  late final _credenciales = CredencialesService(storage: _storage);
 
   @override
   Rol? build() => null; // null = sin sesion activa, la UI muestra Login
 
   Future<bool> iniciarSesion(Rol rol, String contrasena) async {
-    final credenciales = CredencialesService(storage: _storage);
-    final valida = await credenciales.verificar(contrasena);
+    final valida = await _credenciales.verificar(rol, contrasena);
     if (!valida) return false;
     state = rol;
+    return true;
+  }
+
+  /// Solo desde Configuracion, ya logueado — nunca desde el Login (0002:
+  /// la contrasena es de fabrica por defecto, no se "crea" al ingresar).
+  Future<bool> cambiarContrasena(Rol rol, String actual, String nueva) async {
+    final valida = await _credenciales.verificar(rol, actual);
+    if (!valida) return false;
+    await _credenciales.cambiarContrasena(rol, nueva);
     return true;
   }
 

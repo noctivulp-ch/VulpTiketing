@@ -14,8 +14,8 @@ Ver también: [prototipos-ascii](prototipos-ascii.md) (Fase 2, en curso) · [../
 
 Pantalla de configuración inicial — se ve **solo la primera vez o después de cerrar sesión explícitamente**, no en cada apertura de la app. Cerrar sesión no es una acción rutinaria: es específicamente para cuando un dispositivo compartido necesita cambiar de rol (ej. la misma tablet la usa a veces el Gerente, a veces la Registradora) — infrecuente, pero posible. Ver [decisión 0007, addendum](../decisiones/0007-topologia-sync.md) sobre por qué esto no entra en conflicto con la topología de sync.
 
-1. Dos íconos para elegir el tipo de dispositivo/rol: Gerente o Registradora (selección única).
-2. Pide contraseña (la contraseña local del dispositivo — ver [decisión 0011](../decisiones/0011-credenciales-almacenamiento-nativo.md)).
+1. Dos íconos para elegir el tipo de dispositivo/rol: Gerente o Registradora (selección única). Un botón explícito "← Volver" permite deshacer la selección y regresar a elegir rol — no basta con que la tarjeta ya elegida sea tocable de nuevo, tiene que ser una acción visible y reconocible.
+2. Pide contraseña (**siempre existe una**: de fábrica por defecto, o la que se haya configurado después desde Configuración — nunca se "crea" una contraseña en este flujo, ver [decisión 0011, addendum](../decisiones/0011-credenciales-almacenamiento-nativo.md)).
 3. Al autenticar, mantiene la sesión — no vuelve a pedir credenciales hasta que alguien cierre sesión explícitamente.
 
 ## Dashboard (shell de navegación)

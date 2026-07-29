@@ -19,3 +19,11 @@ Eliminar la tabla `usuario`. El rol del dispositivo (`gerente`/`registradora`) y
 
 - El `device_id` para el esquema de sync (0007) también vivirá en este mismo almacenamiento, junto al rol y la contraseña — ver `docs/arquitectura/esquema-db.md`.
 - El esquema SQLite queda compuesto únicamente por entidades de negocio (Producto, Categoria, Venta, LineaVenta, y a futuro Insumo).
+
+## Addendum (2026-07-28) — contraseña de fábrica, nunca se "crea" en el Login
+
+Al implementar `CredencialesService` surgió una ambigüedad real: ¿qué contraseña se pide en el Login la primerísima vez que se usa un dispositivo, si todavía no se cambió ninguna? El usuario aclaró que esto ya estaba estipulado y no es un caso especial: **cada rol tiene una contraseña de fábrica hardcodeada en la app**, sin ningún flujo de "crear contraseña" en el Login — ese flujo no existe. La contraseña solo se cambia después, ya logueado, desde Configuración.
+
+- `CredencialesService.verificar(rol, contrasena)`: si el rol nunca cambió su contraseña en este dispositivo (no hay hash guardado), compara directo contra la contraseña de fábrica (constante en código, sin hashear — no tiene sentido hashear un valor hardcodeado idéntico en toda instalación). Si ya se cambió, compara contra el hash Argon2id guardado.
+- **Placeholder temporal**: `1359`, compartida por Gerente y Registradora por ahora. **Pendiente antes de cualquier release real**: reemplazarla por una contraseña de fábrica distinta y más segura por rol — marcado explícitamente con TODO en el código (`credenciales_service.dart`), no es un olvido.
+- `SesionNotifier.cambiarContrasena(rol, actual, nueva)` exige la contraseña actual antes de cambiarla — se invocará desde el tile "Cambiar contraseña" de Configuración (todavía sin UI conectada, el servicio ya existe).
