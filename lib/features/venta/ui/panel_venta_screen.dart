@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_query_provider.dart';
@@ -106,9 +108,7 @@ class _CarritoState extends ConsumerState<_Carrito> {
     _cambio = null;
     if (mounted) {
       setState(() => _finalizando = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✓ Venta OK'), duration: Duration(seconds: 2)),
-      );
+      mostrarNotificacionEsquina(context, '✓ Venta OK');
       widget.onFinalizar();
     }
   }
@@ -133,33 +133,21 @@ class _CarritoState extends ConsumerState<_Carrito> {
           child: ventaEnCurso.lineas.isEmpty
               ? const Center(child: Text('Agregá productos con el botón de la derecha'))
               : ListView.separated(
+                  padding: const EdgeInsets.all(BentoSpacing.gapCelda),
                   itemCount: ventaEnCurso.lineas.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad),
                   itemBuilder: (context, i) {
                     final linea = ventaEnCurso.lineas[i];
                     final nombre = linea.nombreLibre ?? _buscarNombre(linea.productoId, productos);
-                    return ListTile(
-                      title: Text(nombre),
-                      subtitle: Text(
-                        'x${linea.cantidad}'
-                        '${linea.nota != null && linea.nota!.isNotEmpty ? ' · ${linea.nota}' : ''}',
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('₡${(linea.precioAplicado * linea.cantidad).toStringAsFixed(2)}'),
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined),
-                            onPressed: () => _editarLinea(linea),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => ref
-                                .read(ventaEnCursoNotifierProvider.notifier)
-                                .quitarLinea(linea.id),
-                          ),
-                        ],
-                      ),
+                    return _FilaLineaVenta(
+                      nombre: nombre,
+                      lineaLibre: linea.nombreLibre != null,
+                      cantidad: linea.cantidad,
+                      nota: linea.nota,
+                      subtotal: linea.precioAplicado * linea.cantidad,
+                      onEditar: () => _editarLinea(linea),
+                      onQuitar: () =>
+                          ref.read(ventaEnCursoNotifierProvider.notifier).quitarLinea(linea.id),
                     );
                   },
                 ),
@@ -167,7 +155,7 @@ class _CarritoState extends ConsumerState<_Carrito> {
         Material(
           elevation: 4,
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(BentoSpacing.paddingCelda),
             child: Row(
               children: [
                 Expanded(
@@ -178,14 +166,14 @@ class _CarritoState extends ConsumerState<_Carrito> {
                     onChanged: (v) => _onRecibidoChanged(v, total),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: BentoSpacing.paddingCelda),
                 Text(_cambio == null ? 'Cambio: —' : 'Cambio: ₡${_cambio!.toStringAsFixed(2)}'),
                 const Spacer(),
                 Text(
                   '₡${total.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: BentoSpacing.paddingCelda),
                 FilledButton(
                   onPressed: (ventaEnCurso.lineas.isEmpty || _finalizando) ? null : _finalizar,
                   child: const Text('Finalizar'),
@@ -204,6 +192,69 @@ class _CarritoState extends ConsumerState<_Carrito> {
       if (p.id == productoId) return p.nombre;
     }
     return 'Producto eliminado';
+  }
+}
+
+/// Fila del carrito — mismo lenguaje visual que `_TarjetaProducto` de
+/// Ventana 1 (placeholder cuadrado + nombre + precio), en formato de fila
+/// en vez de tarjeta porque aquí el contexto es una lista angosta, no un
+/// grid (consistencia entre pantallas pedida por la skill
+/// `aesthetic-usability`: la misma "pieza" de producto en toda la app).
+class _FilaLineaVenta extends StatelessWidget {
+  const _FilaLineaVenta({
+    required this.nombre,
+    required this.lineaLibre,
+    required this.cantidad,
+    required this.nota,
+    required this.subtotal,
+    required this.onEditar,
+    required this.onQuitar,
+  });
+
+  final String nombre;
+  final bool lineaLibre;
+  final int cantidad;
+  final String? nota;
+  final double subtotal;
+  final VoidCallback onEditar;
+  final VoidCallback onQuitar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(BentoSpacing.unidad),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(BentoRadius.celda - BentoSpacing.unidad / 2),
+              ),
+              child: Icon(lineaLibre ? Icons.edit_note : Icons.image_outlined, size: 22),
+            ),
+            const SizedBox(width: BentoSpacing.unidad),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(nombre, style: Theme.of(context).textTheme.bodyLarge),
+                  Text(
+                    'x$cantidad${nota != null && nota!.isNotEmpty ? ' · $nota' : ''}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Text('₡${subtotal.toStringAsFixed(2)}', style: Theme.of(context).textTheme.labelLarge),
+            IconButton(icon: const Icon(Icons.edit_outlined), onPressed: onEditar),
+            IconButton(icon: const Icon(Icons.delete_outline), onPressed: onQuitar),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -371,13 +422,12 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(BentoSpacing.unidad),
           child: TextField(
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search),
               hintText: 'Buscar producto o categoría…',
               isDense: true,
-              border: OutlineInputBorder(),
             ),
             onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
           ),
@@ -385,8 +435,9 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
         Expanded(
           child: productosAsync.when(
             data: (productos) => ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.unidad),
               itemCount: productos.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad / 2),
               itemBuilder: (context, i) {
                 final producto = productos[i];
                 final seleccionado = _seleccionados.contains(producto.id);
@@ -415,7 +466,7 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(BentoSpacing.unidad),
           child: Row(
             children: [
               IconButton(
