@@ -27,3 +27,4 @@ Volver a [../index](../index.md)
 | [0021](0021-paquete-mdns-bonsoir.md) | Paquete de mDNS para sync: `bonsoir` | Aceptada |
 | [0022](0022-protocolo-transporte-sync-shelf-puerto-dinamico.md) | Protocolo de transporte de sync: HTTP embebido (`shelf`) + puerto dinámico | Aceptada |
 | [0023](0023-refinamiento-bento-post-implementacion.md) | Refinamiento bento: evitar overlays, figuras conectadas con matices, cascada invertida, tema claro/oscuro | Aceptada |
+| [0024](0024-harness-flutter-driver-mcp.md) | Harness de `flutter_driver` + MCP para control remoto de la app | Aceptada |

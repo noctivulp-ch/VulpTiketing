@@ -67,6 +67,28 @@ Nunca existe una noción de "cuenta" o CRUD de usuarios — no aplica (0002).
 | `TiketbackNotifier`/`TiketbackService` | Exportar/restaurar el backup completo cifrado — **implementado** (Argon2id + AES-256-GCM, [0006](../decisiones/0006-encriptacion-backup.md)/[0017](../decisiones/0017-importar-datos-tiketdata-vs-tiketback.md)), con prueba de round-trip en `test/tiketback_service_test.dart` | — restaurar es siempre reemplazo total, no usa `RowSyncEngine`. No incluye rol/contraseña/`device_id` en el bundle (defensa en profundidad, ver 0006) |
 | `TiketdataNotifier`/`TiketdataService` | Exportar/importar el paquete de catálogo, modo Reemplazar o Fusionar — **implementado**, con pruebas en `test/tiketdata_service_test.dart` (0017) | **`RowSyncEngine`** — mismo mecanismo LWW de sync (método `resolver`, fila por fila), no una copia |
 
+## Gotcha real — `late final` en un campo asignado dentro de `build()`
+
+Bug encontrado en producción (2026-07-29): al importar un catálogo o restaurar
+un backup, la app crasheaba con `LateInitializationError: Field '_dao' has
+already been initialized`. Afectaba a `ProductoNotifier`, `CategoriaNotifier`
+y `VentaNotifier` — los tres declaraban `late final XDao _dao;` y lo asignaban
+dentro de `build()`.
+
+La causa: para un `NotifierProvider`/`AsyncNotifierProvider` normal (sin
+`autoDispose`), Riverpod **reutiliza la misma instancia** de Notifier en cada
+rebuild — `ref.invalidate(provider)` o que cambie una dependencia observada
+(acá, `databaseProvider` al restaurar un backup) no crea un Notifier nuevo,
+vuelve a llamar `build()` sobre el mismo objeto. Un campo `late final`
+asignado ahí revienta en la segunda vuelta. Fix: `late` sin `final` en los
+tres Notifiers. Regresión cubierta en `test/producto_notifier_test.dart`
+(invalida el provider dos veces seguidas y confirma que no revienta).
+
+**Regla derivada:** cualquier campo de un Notifier que se asigna dentro de
+`build()` (no en un constructor aparte) debe ser `late`, nunca `late final`.
+Si un campo realmente necesita ser inmutable, se asigna en el constructor,
+no en `build()`.
+
 ## Ejemplo concreto de lo que NO hacer
 
 ```dart
