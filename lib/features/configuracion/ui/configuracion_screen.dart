@@ -3,133 +3,184 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
-import '../../import_export/ui/tiketback_dialogs.dart';
-import '../../import_export/ui/tiketdata_dialogs.dart';
+import '../../import_export/ui/tiketback_panels.dart';
+import '../../import_export/ui/tiketdata_panel.dart';
 import '../../sync/sync_notifier.dart';
 import '../preferencias_notifier.dart';
-import 'cambiar_contrasena_dialog.dart';
+import 'cambiar_contrasena_panel.dart';
+
+enum _Opcion {
+  contrasena,
+  exportarBackup,
+  restaurarBackup,
+  catalogo,
+  sincronizacion,
+  cerrarSesion,
+  ordenProducto,
+  acento,
+  modoTema,
+}
 
 /// Ventana 5 — ver docs/pantallas/flujo-descripcion.md#ventana-5--configuración.
-/// Orden de productos, acento (decision 0018 / iconografia.md), cambiar
-/// contraseña, exportar/restaurar backup (.tiketback) y cerrar sesión ya
-/// conectados de verdad. Grid deslizante de tiles (boceto en
-/// prototipos-ascii.md#ventana-5--configuración): agregar una opción nueva
-/// a futuro es una celda más, el grid nunca se satura porque hace scroll
-/// vertical — mismo principio que el rail de navegación del Dashboard.
-class ConfiguracionScreen extends ConsumerWidget {
+/// Grid deslizante de tiles (boceto en prototipos-ascii.md): agregar una
+/// opción nueva a futuro es una celda más, el grid nunca se satura porque
+/// hace scroll vertical — mismo principio que el rail de navegación del
+/// Dashboard.
+///
+/// Cada tile es una opción seleccionable (no un disparador de diálogo): el
+/// panel de abajo muestra el contenido de la opción elegida. La app evita
+/// overlays/menús emergentes en la medida de lo posible — Cambiar
+/// contraseña, Exportar/Restaurar backup y Catálogo eran `AlertDialog`/
+/// `SimpleDialog` antes, ahora son paneles inline (ver
+/// cambiar_contrasena_panel.dart, tiketback_panels.dart, tiketdata_panel.dart).
+class ConfiguracionScreen extends ConsumerStatefulWidget {
   const ConfiguracionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final preferenciasAsync = ref.watch(preferenciasNotifierProvider);
+  ConsumerState<ConfiguracionScreen> createState() => _ConfiguracionScreenState();
+}
+
+class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
+  _Opcion? _seleccion;
+
+  @override
+  Widget build(BuildContext context) {
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
 
     return Scaffold(
-      body: ListView(
-        padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+      body: Column(
         children: [
-          GridView(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 160,
-              mainAxisSpacing: BentoSpacing.gapCelda,
-              crossAxisSpacing: BentoSpacing.gapCelda,
-              childAspectRatio: 1,
-            ),
-            children: [
-              _TileConfiguracion(
-                icono: Icons.lock_outline,
-                etiqueta: 'Cambiar contraseña',
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => const CambiarContrasenaDialog(),
-                ),
-              ),
-              _TileConfiguracion(
-                icono: Icons.save_outlined,
-                etiqueta: 'Exportar backup',
-                onTap: () => mostrarDialogoExportarTiketback(context, ref),
-              ),
-              if (esGerente)
-                _TileConfiguracion(
-                  icono: Icons.restore_outlined,
-                  etiqueta: 'Restaurar backup',
-                  onTap: () => mostrarDialogoRestaurarTiketback(context, ref),
-                ),
-              if (esGerente)
-                _TileConfiguracion(
-                  icono: Icons.folder_open_outlined,
-                  etiqueta: 'Catálogo (.tiketdata)',
-                  onTap: () => mostrarDialogoCatalogo(context, ref),
-                ),
-              const _TileEstadoSync(),
-              _TileConfiguracion(
-                icono: Icons.logout,
-                etiqueta: 'Cerrar sesión',
-                onTap: () => ref.read(sesionNotifierProvider.notifier).cerrarSesion(),
-              ),
-            ],
-          ),
-          const Divider(height: BentoSpacing.gapGrupo * 2),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: BentoSpacing.unidad),
-            child: Text('Orden de productos', style: Theme.of(context).textTheme.titleMedium),
-          ),
-          preferenciasAsync.when(
-            data: (prefs) => SegmentedButton<OrdenProducto>(
-              segments: const [
-                ButtonSegment(value: OrdenProducto.alfabetico, label: Text('Alfabético')),
-                ButtonSegment(value: OrdenProducto.precio, label: Text('Precio')),
-                ButtonSegment(value: OrdenProducto.categoria, label: Text('Categoría')),
+            padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+            child: GridView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 160,
+                mainAxisSpacing: BentoSpacing.gapCelda,
+                crossAxisSpacing: BentoSpacing.gapCelda,
+                childAspectRatio: 1,
+              ),
+              children: [
+                _TileConfiguracion(
+                  icono: Icons.lock_outline,
+                  etiqueta: 'Cambiar contraseña',
+                  seleccionado: _seleccion == _Opcion.contrasena,
+                  onTap: () => setState(() => _seleccion = _Opcion.contrasena),
+                ),
+                _TileConfiguracion(
+                  icono: Icons.save_outlined,
+                  etiqueta: 'Exportar backup',
+                  seleccionado: _seleccion == _Opcion.exportarBackup,
+                  onTap: () => setState(() => _seleccion = _Opcion.exportarBackup),
+                ),
+                if (esGerente)
+                  _TileConfiguracion(
+                    icono: Icons.restore_outlined,
+                    etiqueta: 'Restaurar backup',
+                    seleccionado: _seleccion == _Opcion.restaurarBackup,
+                    onTap: () => setState(() => _seleccion = _Opcion.restaurarBackup),
+                  ),
+                if (esGerente)
+                  _TileConfiguracion(
+                    icono: Icons.folder_open_outlined,
+                    etiqueta: 'Catálogo (.tiketdata)',
+                    seleccionado: _seleccion == _Opcion.catalogo,
+                    onTap: () => setState(() => _seleccion = _Opcion.catalogo),
+                  ),
+                _TileConfiguracion(
+                  icono: Icons.wifi_tethering,
+                  etiqueta: 'Sincronización',
+                  seleccionado: _seleccion == _Opcion.sincronizacion,
+                  onTap: () => setState(() => _seleccion = _Opcion.sincronizacion),
+                ),
+                _TileConfiguracion(
+                  icono: Icons.logout,
+                  etiqueta: 'Cerrar sesión',
+                  seleccionado: _seleccion == _Opcion.cerrarSesion,
+                  onTap: () => setState(() => _seleccion = _Opcion.cerrarSesion),
+                ),
+                _TileConfiguracion(
+                  icono: Icons.sort,
+                  etiqueta: 'Orden de productos',
+                  seleccionado: _seleccion == _Opcion.ordenProducto,
+                  onTap: () => setState(() => _seleccion = _Opcion.ordenProducto),
+                ),
+                _TileConfiguracion(
+                  icono: Icons.palette_outlined,
+                  etiqueta: 'Acento',
+                  seleccionado: _seleccion == _Opcion.acento,
+                  onTap: () => setState(() => _seleccion = _Opcion.acento),
+                ),
+                _TileConfiguracion(
+                  icono: Icons.brightness_6_outlined,
+                  etiqueta: 'Modo de tema',
+                  seleccionado: _seleccion == _Opcion.modoTema,
+                  onTap: () => setState(() => _seleccion = _Opcion.modoTema),
+                ),
               ],
-              selected: {prefs.ordenProducto},
-              onSelectionChanged: (seleccion) => ref
-                  .read(preferenciasNotifierProvider.notifier)
-                  .cambiarOrden(seleccion.first),
             ),
-            loading: () => const CircularProgressIndicator(),
-            error: (e, st) => Text('Error: $e'),
           ),
-          const SizedBox(height: BentoSpacing.gapCelda),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: BentoSpacing.unidad),
-            child: Text('Acento', style: Theme.of(context).textTheme.titleMedium),
-          ),
-          preferenciasAsync.when(
-            data: (prefs) => SegmentedButton<AcentoTinte>(
-              segments: const [
-                ButtonSegment(value: AcentoTinte.grisAzulado, label: Text('Azulado')),
-                ButtonSegment(value: AcentoTinte.grisVerdoso, label: Text('Verdoso')),
-                ButtonSegment(value: AcentoTinte.grisCafe, label: Text('Café')),
-              ],
-              selected: {prefs.acento},
-              onSelectionChanged: (seleccion) => ref
-                  .read(preferenciasNotifierProvider.notifier)
-                  .cambiarAcento(seleccion.first),
+          const Divider(height: 1, thickness: 1),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+              child: _panelPara(_seleccion),
             ),
-            loading: () => const SizedBox.shrink(),
-            error: (e, st) => Text('Error: $e'),
           ),
         ],
       ),
     );
   }
+
+  Widget _panelPara(_Opcion? opcion) {
+    switch (opcion) {
+      case null:
+        return const Center(child: Text('Elegí una opción arriba'));
+      case _Opcion.contrasena:
+        return const PanelCambiarContrasena();
+      case _Opcion.exportarBackup:
+        return const PanelExportarBackup();
+      case _Opcion.restaurarBackup:
+        return const PanelRestaurarBackup();
+      case _Opcion.catalogo:
+        return const PanelCatalogo();
+      case _Opcion.sincronizacion:
+        return const _PanelSincronizacion();
+      case _Opcion.cerrarSesion:
+        return const _PanelCerrarSesion();
+      case _Opcion.ordenProducto:
+        return const _PanelOrdenProducto();
+      case _Opcion.acento:
+        return const _PanelAcento();
+      case _Opcion.modoTema:
+        return const _PanelModoTema();
+    }
+  }
 }
 
-/// Tile generico del grid de Configuración: ícono grande + etiqueta corta,
-/// tolera texto porque es una pantalla de uso raro (no compite con el
-/// criterio "sin leer" de las pantallas de venta — ver prototipos-ascii.md).
+/// Tile del grid de Configuración: ícono grande + etiqueta corta, tolera
+/// texto porque es una pantalla de uso raro (no compite con el criterio
+/// "sin leer" de las pantallas de venta — ver prototipos-ascii.md). El
+/// estado `seleccionado` resalta cual opcion esta mostrando su panel abajo.
 class _TileConfiguracion extends StatelessWidget {
-  const _TileConfiguracion({required this.icono, required this.etiqueta, required this.onTap});
+  const _TileConfiguracion({
+    required this.icono,
+    required this.etiqueta,
+    required this.seleccionado,
+    required this.onTap,
+  });
 
   final IconData icono;
   final String etiqueta;
+  final bool seleccionado;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Card(
+      color: seleccionado ? scheme.primaryContainer : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(BentoRadius.celda),
@@ -138,14 +189,16 @@ class _TileConfiguracion extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icono, size: 32),
+              Icon(icono, size: 32, color: seleccionado ? scheme.onPrimaryContainer : null),
               const SizedBox(height: BentoSpacing.unidad),
               Text(
                 etiqueta,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: seleccionado ? scheme.onPrimaryContainer : null,
+                    ),
               ),
             ],
           ),
@@ -155,25 +208,19 @@ class _TileConfiguracion extends StatelessWidget {
   }
 }
 
-/// Descubrimiento (0021) y transporte (0022: servidor HTTP + cliente)
-/// ya son reales — al activar el switch, este dispositivo publica su
-/// servicio mDNS, levanta su servidor de sync y sincroniza con cada par
-/// del mismo rol que descubre. Lo que falta es la coordinacion
-/// *entre* grupos (Gerente ↔ Registradora vía orquestadores, 0007) — ver
-/// nota en SyncNotifier.
+/// Descubrimiento (0021) y transporte (0022: servidor HTTP + cliente) ya
+/// son reales — al activar el switch, este dispositivo publica su servicio
+/// mDNS, levanta su servidor de sync y sincroniza con cada par del mismo
+/// rol que descubre. Lo que falta es la coordinacion *entre* grupos
+/// (Gerente ↔ Registradora vía orquestadores, 0007) — ver nota en
+/// SyncNotifier.
 ///
 /// Limitacion conocida: el contador de pares visibles no se refresca en
 /// vivo (SyncNotifier no emite un nuevo `state` cuando cambian los pares,
-/// solo cuando cambia idle/syncing/error) — tocar el tile para apagar y
-/// prender vuelve a leer el valor actual.
-///
-/// Mismo formato de tile que el resto (ícono + etiqueta corta) — el estado
-/// on/off se lee del ícono (relleno vs contorno) y una segunda línea de
-/// texto compacta, en vez de un Switch/subtítulo largo que no entra en una
-/// celda del grid. Tocar el tile entero alterna el estado (reemplaza al
-/// Switch, misma acción en un control más grande y fácil de tocar).
-class _TileEstadoSync extends ConsumerWidget {
-  const _TileEstadoSync();
+/// solo cuando cambia idle/syncing/error) — apagar y prender vuelve a leer
+/// el valor actual.
+class _PanelSincronizacion extends ConsumerWidget {
+  const _PanelSincronizacion();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -181,33 +228,164 @@ class _TileEstadoSync extends ConsumerWidget {
     final notifier = ref.read(syncNotifierProvider.notifier);
     final activo = estado == EstadoSync.syncing;
 
-    return Card(
-      child: InkWell(
-        onTap: () => activo ? notifier.detenerSync() : notifier.iniciarSync(),
-        borderRadius: BorderRadius.circular(BentoRadius.celda),
-        child: Padding(
-          padding: const EdgeInsets.all(BentoSpacing.paddingCelda),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Sincronización', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: BentoSpacing.unidad),
+        Text(
+          activo
+              ? '${notifier.paresVisibles.length} dispositivo(s) del mismo rol visibles'
+                  '${notifier.esOrquestadorDeMiGrupo ? " — este es el orquestador" : ""}'
+              : 'Detenida — actívala para sincronizar con dispositivos del mismo rol',
+        ),
+        const SizedBox(height: BentoSpacing.gapCelda),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(activo ? 'Sincronización activa' : 'Sincronización detenida'),
+          value: activo,
+          onChanged: (v) => v ? notifier.iniciarSync() : notifier.detenerSync(),
+        ),
+      ],
+    );
+  }
+}
+
+class _PanelCerrarSesion extends ConsumerStatefulWidget {
+  const _PanelCerrarSesion();
+
+  @override
+  ConsumerState<_PanelCerrarSesion> createState() => _PanelCerrarSesionState();
+}
+
+class _PanelCerrarSesionState extends ConsumerState<_PanelCerrarSesion> {
+  bool _confirmando = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Cerrar sesión', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: BentoSpacing.unidad),
+        if (_confirmando) ...[
+          const Text('¿Seguro que querés cerrar sesión?'),
+          const SizedBox(height: BentoSpacing.gapCelda),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Icon(activo ? Icons.wifi_tethering : Icons.wifi_tethering_off, size: 32),
-              const SizedBox(height: BentoSpacing.unidad),
-              Text(
-                'Sincronización',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
+              TextButton(
+                onPressed: () => setState(() => _confirmando = false),
+                child: const Text('Cancelar'),
               ),
-              Text(
-                activo ? '${notifier.paresVisibles.length} par(es)' : 'Detenida',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+              const SizedBox(width: BentoSpacing.unidad),
+              FilledButton(
+                onPressed: () => ref.read(sesionNotifierProvider.notifier).cerrarSesion(),
+                child: const Text('Confirmar'),
               ),
             ],
           ),
+        ] else
+          FilledButton(
+            onPressed: () => setState(() => _confirmando = true),
+            child: const Text('Cerrar sesión'),
+          ),
+      ],
+    );
+  }
+}
+
+class _PanelOrdenProducto extends ConsumerWidget {
+  const _PanelOrdenProducto();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preferenciasAsync = ref.watch(preferenciasNotifierProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Orden de productos', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: BentoSpacing.gapCelda),
+        preferenciasAsync.when(
+          data: (prefs) => SegmentedButton<OrdenProducto>(
+            segments: const [
+              ButtonSegment(value: OrdenProducto.alfabetico, label: Text('Alfabético')),
+              ButtonSegment(value: OrdenProducto.precio, label: Text('Precio')),
+              ButtonSegment(value: OrdenProducto.categoria, label: Text('Categoría')),
+            ],
+            selected: {prefs.ordenProducto},
+            onSelectionChanged: (seleccion) =>
+                ref.read(preferenciasNotifierProvider.notifier).cambiarOrden(seleccion.first),
+          ),
+          loading: () => const CircularProgressIndicator(),
+          error: (e, st) => Text('Error: $e'),
         ),
-      ),
+      ],
+    );
+  }
+}
+
+class _PanelAcento extends ConsumerWidget {
+  const _PanelAcento();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preferenciasAsync = ref.watch(preferenciasNotifierProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Acento', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: BentoSpacing.gapCelda),
+        preferenciasAsync.when(
+          data: (prefs) => SegmentedButton<AcentoTinte>(
+            segments: const [
+              ButtonSegment(value: AcentoTinte.grisAzulado, label: Text('Azulado')),
+              ButtonSegment(value: AcentoTinte.grisVerdoso, label: Text('Verdoso')),
+              ButtonSegment(value: AcentoTinte.grisCafe, label: Text('Café')),
+            ],
+            selected: {prefs.acento},
+            onSelectionChanged: (seleccion) =>
+                ref.read(preferenciasNotifierProvider.notifier).cambiarAcento(seleccion.first),
+          ),
+          loading: () => const SizedBox.shrink(),
+          error: (e, st) => Text('Error: $e'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PanelModoTema extends ConsumerWidget {
+  const _PanelModoTema();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preferenciasAsync = ref.watch(preferenciasNotifierProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Modo de tema', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: BentoSpacing.gapCelda),
+        preferenciasAsync.when(
+          data: (prefs) => SegmentedButton<ModoTema>(
+            segments: const [
+              ButtonSegment(value: ModoTema.claro, label: Text('Claro')),
+              ButtonSegment(value: ModoTema.oscuro, label: Text('Oscuro')),
+              ButtonSegment(value: ModoTema.sistema, label: Text('Sistema')),
+            ],
+            selected: {prefs.modoTema},
+            onSelectionChanged: (seleccion) =>
+                ref.read(preferenciasNotifierProvider.notifier).cambiarModoTema(seleccion.first),
+          ),
+          loading: () => const SizedBox.shrink(),
+          error: (e, st) => Text('Error: $e'),
+        ),
+      ],
     );
   }
 }

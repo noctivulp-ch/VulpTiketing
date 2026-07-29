@@ -1,0 +1,134 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/theme/bento_theme.dart';
+import '../tiketdata_notifier.dart';
+import '../tiketdata_service.dart';
+
+String? _mensaje(ResultadoTiketdata resultado, {required bool importando}) {
+  switch (resultado) {
+    case ResultadoTiketdata.ok:
+      return importando ? '✓ Catálogo importado' : '✓ Catálogo exportado';
+    case ResultadoTiketdata.cancelado:
+      return null;
+    case ResultadoTiketdata.error:
+      return importando
+          ? 'No se pudo importar el catálogo (¿archivo válido?)'
+          : 'No se pudo exportar el catálogo';
+  }
+}
+
+enum _PasoCatalogo { elegirAccion, elegirModo, confirmarReemplazo }
+
+/// Panel inline de Configuración (antes una cadena de `SimpleDialog`/
+/// `AlertDialog`: elegir accion -> elegir modo -> confirmar reemplazo). Cada
+/// paso ahora es un estado del mismo panel en vez de un dialogo nuevo.
+class PanelCatalogo extends ConsumerStatefulWidget {
+  const PanelCatalogo({super.key});
+
+  @override
+  ConsumerState<PanelCatalogo> createState() => _PanelCatalogoState();
+}
+
+class _PanelCatalogoState extends ConsumerState<PanelCatalogo> {
+  _PasoCatalogo _paso = _PasoCatalogo.elegirAccion;
+  bool _procesando = false;
+
+  void _reiniciar() => setState(() => _paso = _PasoCatalogo.elegirAccion);
+
+  Future<void> _exportar() async {
+    setState(() => _procesando = true);
+    final resultado = await ref.read(tiketdataNotifierProvider.notifier).exportarCatalogo();
+    if (!mounted) return;
+    setState(() => _procesando = false);
+    final mensaje = _mensaje(resultado, importando: false);
+    if (mensaje != null) mostrarNotificacionEsquina(context, mensaje);
+  }
+
+  Future<void> _importar(ModoImportacion modo) async {
+    setState(() => _procesando = true);
+    final resultado = await ref.read(tiketdataNotifierProvider.notifier).importarCatalogo(modo);
+    if (!mounted) return;
+    setState(() => _procesando = false);
+    final mensaje = _mensaje(resultado, importando: true);
+    if (mensaje != null) mostrarNotificacionEsquina(context, mensaje);
+    _reiniciar();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    switch (_paso) {
+      case _PasoCatalogo.elegirAccion:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Catálogo (.tiketdata)', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: BentoSpacing.gapCelda),
+            FilledButton(
+              onPressed: _procesando ? null : _exportar,
+              child: const Text('Exportar catálogo actual'),
+            ),
+            const SizedBox(height: BentoSpacing.unidad),
+            OutlinedButton(
+              onPressed: _procesando
+                  ? null
+                  : () => setState(() => _paso = _PasoCatalogo.elegirModo),
+              child: const Text('Importar catálogo'),
+            ),
+          ],
+        );
+
+      case _PasoCatalogo.elegirModo:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('¿Reemplazar o fusionar?', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: BentoSpacing.gapCelda),
+            FilledButton(
+              onPressed: () => _importar(ModoImportacion.fusionar),
+              child: const Text('Fusionar — agrega/actualiza, no toca el resto'),
+            ),
+            const SizedBox(height: BentoSpacing.unidad),
+            OutlinedButton(
+              onPressed: () => setState(() => _paso = _PasoCatalogo.confirmarReemplazo),
+              child: const Text('Reemplazar — descontinúa lo que no venga en el archivo'),
+            ),
+            const SizedBox(height: BentoSpacing.unidad),
+            TextButton(onPressed: _reiniciar, child: const Text('Cancelar')),
+          ],
+        );
+
+      case _PasoCatalogo.confirmarReemplazo:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('¿Reemplazar catálogo?', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: BentoSpacing.unidad),
+            const Text(
+              'Todo producto o categoría activa que no esté en el archivo se descontinuará '
+              '(no se borra, queda como descontinuado — se puede revisar en el listado).',
+            ),
+            const SizedBox(height: BentoSpacing.gapCelda),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: _procesando ? null : _reiniciar,
+                  child: const Text('Cancelar'),
+                ),
+                const SizedBox(width: BentoSpacing.unidad),
+                FilledButton(
+                  onPressed: _procesando ? null : () => _importar(ModoImportacion.reemplazar),
+                  child: const Text('Continuar'),
+                ),
+              ],
+            ),
+          ],
+        );
+    }
+  }
+}
