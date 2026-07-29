@@ -17,6 +17,16 @@ class ProductoDao {
     return rows.map(Producto.fromMap).toList();
   }
 
+  /// Incluye descontinuados a propósito — Reportes necesita poder resolver
+  /// el nombre de un producto que ya no está en el catálogo activo pero
+  /// aparece en ventas históricas. (Un producto purgado nunca llega aquí:
+  /// 0015 garantiza que purgar exige cero ventas asociadas.)
+  Future<Producto?> obtenerPorId(String id) async {
+    final rows = await _db.query('producto', where: 'id = ?', whereArgs: [id]);
+    if (rows.isEmpty) return null;
+    return Producto.fromMap(rows.first);
+  }
+
   Future<void> insertar(Producto producto) {
     return _db.insert('producto', producto.toMap());
   }

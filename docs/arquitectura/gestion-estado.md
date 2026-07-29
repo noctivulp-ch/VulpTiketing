@@ -35,7 +35,7 @@ Esta lista es la referencia concreta contra la que comparar antes de escribir c�
 | Provider | Responsabilidad | Depende de |
 |----------|------------------|------------|
 | `ProductoQueryProvider` | Combina lista base + orden + búsqueda para producir la lista final que ve la UI ([0018](../decisiones/0018-orden-y-busqueda-de-producto.md)) | `ProductoNotifier` (datos) + `PreferenciasNotifier` (orden) + término de búsqueda local de pantalla |
-| `ReportesNotifier` (o `FutureProvider` por consulta) | Cálculo de reportes (agrupación por turno/período) | `VentaNotifier`/`LineaVenta` — solo lectura, sin estado propio que mutar |
+| `reportesProvider` (`FutureProvider.family<ReporteResultado, ReportesParametros>`) | Cálculo de reportes (agrupación por turno/período, ranking excluyendo líneas libres — [reportes.md](../funciones/reportes.md)) | Consulta directa a `venta`/`linea_venta`/`producto` — solo lectura, sin estado propio que mutar |
 
 ### Sesión y dispositivo (separado en 3 — 0019)
 

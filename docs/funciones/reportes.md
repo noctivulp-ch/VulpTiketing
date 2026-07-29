@@ -25,12 +25,11 @@ Igual que en [Operations](../../features/Operations.feature), la restricción a 
 
 Ver bocetos completos en [pantallas/prototipos-ascii.md](../pantallas/prototipos-ascii.md#ventana-4--reportes-revisada--confirmada-como-reporte-unificado-interactivo-y-exportable).
 
-- **Drill-down**: tocar un turno dentro del período consultado muestra el desglose de ese turno (ventas individuales), con navegación "← Volver" hacia el nivel anterior.
-- **Exportar item puntual**: mantener presionado un ítem específico exporta directo a PDF, sin preguntar formato.
-- **Exportar período completo**: un botón siempre visible exporta el rango actualmente seleccionado (día/semana/mes/año), preguntando PDF o CSV.
+- **Drill-down**: implementado — tocar un turno dentro del período consultado muestra el desglose de ese turno (ventas individuales), con navegación "← Volver" hacia el nivel anterior. El desglose por turno solo aplica al rango "Día" (no tiene sentido mostrar 3 tiles de turno para "todo el mes").
+- **Selector de rango**: Día/Semana (Gerente y Registradora) + Mes/Año (solo Gerente). Para Gerente, "Día" admite elegir una fecha arbitraria (selector de fecha); Registradora queda fija al día/semana actual simplemente porque no tiene ese selector — no hace falta lógica de permisos aparte para eso.
+- **Exportar item puntual / período completo**: aún **no implementado** — mantener presionado un ítem específico exportaría directo a PDF; un botón siempre visible exportaría el rango completo preguntando PDF o CSV. Candidatos de librería: `pdf` + `printing` para PDF, CSV como texto plano. Research aparte, no bloquea el resto de Reportes.
 - Los rankings (más/menos vendido) son solo deslizantes — exportarlos queda fuera de alcance hasta que se pida explícitamente.
-- *Nota de implementación:* candidatos de librería cuando se implemente — `pdf` + `printing` para PDF, CSV como texto plano sin librería especial. Ninguno agregado a `pubspec.yaml` todavía.
 
-## Pendiente
+## Líneas libres en el ranking — resuelto
 
-Cómo tratar las **líneas libres** (sin Producto de catálogo — [decisión 0016](../decisiones/0016-linea-libre-en-venta.md)) en el ranking de "más/menos vendido": ¿se agrupan bajo un "Personalizado", se listan individualmente por `nombre_libre`, o se excluyen del ranking? No bloquea el resto de reportes, se resuelve al implementar esta pantalla.
+Las **líneas libres** ([decisión 0016](../decisiones/0016-linea-libre-en-venta.md)) se **excluyen** del ranking de más/menos vendido, pero **sí cuentan** para los totales de dinero (hero, turnos). Razonamiento: el ranking existe para decisiones de catálogo/inventario ("qué producto vender más"), y una línea libre por definición no es un producto de catálogo — incluirla individualmente (por `nombre_libre`) ensuciaría el ranking con entradas de cantidad 1 sin valor informativo; agruparla bajo un "Personalizado" perdería toda información útil. Excluirla del ranking es lo único de las tres opciones que no comprometía el propósito del ranking.
