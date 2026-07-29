@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../preferencias_notifier.dart';
+import 'cambiar_contrasena_dialog.dart';
 
 /// Ventana 5 — ver docs/pantallas/flujo-descripcion.md#ventana-5--configuración.
-/// Orden de productos y acento (decision 0018 / iconografia.md) y cerrar
-/// sesion ya conectados de verdad; el resto (cambiar contraseña,
-/// backup/.tiketback, catálogo/.tiketdata, estado de sync) queda pendiente
+/// Orden de productos, acento (decision 0018 / iconografia.md), cambiar
+/// contraseña y cerrar sesión ya conectados de verdad; el resto
+/// (backup/.tiketback, catálogo/.tiketdata, estado de sync) queda pendiente
 /// de esos servicios. TODO: convertir a grid deslizante de tiles (boceto en
 /// prototipos-ascii.md) — hoy es una ListView simple mientras se completan
 /// los servicios reales.
@@ -23,10 +24,13 @@ class ConfiguracionScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const ListTile(
-            leading: Icon(Icons.lock_outline),
-            title: Text('Cambiar contraseña'),
-            subtitle: Text('Pendiente (CredencialesService)'),
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('Cambiar contraseña'),
+            onTap: () => showDialog<void>(
+              context: context,
+              builder: (_) => const CambiarContrasenaDialog(),
+            ),
           ),
           const ListTile(
             leading: Icon(Icons.save_outlined),
