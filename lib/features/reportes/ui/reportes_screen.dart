@@ -102,65 +102,86 @@ class _VistaGeneral extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          // El hero (total del periodo) es el numero mas importante de la
-          // pantalla — debe destacar claramente sobre los tiles de turno,
-          // no ser "casi del mismo tamano" (skill visual-hierarchy: al
-          // menos 1.5x de diferencia). displaySmall (40) vs el texto de
-          // los tiles (bodyLarge, 16) da una diferencia de 2.5x.
-          children: [
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            _tituloRango(rango, fecha, esHoy),
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          if (esGerente && rango == RangoReporte.dia)
-                            IconButton(
-                              icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                              tooltip: 'Elegir día',
-                              onPressed: onElegirFecha,
+        // Hero + desglose de turnos: cada uno sigue siendo su propia celda
+        // bento (Card redondeada individual — el usuario confirmo que asi
+        // se veian mejor que fusionadas con lineas divisorias internas), una
+        // al lado de la otra en una Row (como en el diseno original) — lo
+        // que estaba mal no era el orden sino que cada Card no llenaba la
+        // altura disponible. IntrinsicHeight le da al Row una altura finita
+        // real antes de repartirla con stretch (evitando el bug de altura
+        // infinita ya visto en esta pantalla, ver el commit de la Fase 5),
+        // y cada tarjeta de turno queda con `Expanded` + stretch para
+        // ocupar exactamente la misma altura que el hero.
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              _tituloRango(rango, fecha, esHoy),
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                        ],
-                      ),
-                      Text(
-                        '₡${reporte.total.toStringAsFixed(2)}',
-                        style: Theme.of(context).textTheme.displaySmall,
-                      ),
-                    ],
+                            if (esGerente && rango == RangoReporte.dia)
+                              IconButton(
+                                icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                                tooltip: 'Elegir día',
+                                onPressed: onElegirFecha,
+                              ),
+                          ],
+                        ),
+                        // El hero es el numero mas importante de la pantalla
+                        // — debe destacar claramente sobre los turnos, no
+                        // ser "casi del mismo tamano" (skill
+                        // visual-hierarchy: minimo 1.5x de diferencia).
+                        // displaySmall (40) vs bodyLarge (16) de los turnos
+                        // da 2.5x.
+                        Text(
+                          '₡${reporte.total.toStringAsFixed(2)}',
+                          style: Theme.of(context).textTheme.displaySmall,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (rango == RangoReporte.dia) ...[
-              const SizedBox(width: BentoSpacing.gapCelda),
-              _TileTurno(
-                nombre: 'Mañana',
-                monto: reporte.porTurno[Turno.manana]!,
-                onTap: () => onSeleccionarTurno(Turno.manana),
-              ),
-              const SizedBox(width: BentoSpacing.unidad),
-              _TileTurno(
-                nombre: 'Tarde',
-                monto: reporte.porTurno[Turno.tarde]!,
-                onTap: () => onSeleccionarTurno(Turno.tarde),
-              ),
-              const SizedBox(width: BentoSpacing.unidad),
-              _TileTurno(
-                nombre: 'Noche',
-                monto: reporte.porTurno[Turno.noche]!,
-                onTap: () => onSeleccionarTurno(Turno.noche),
-              ),
+              if (rango == RangoReporte.dia) ...[
+                const SizedBox(width: BentoSpacing.gapCelda),
+                Expanded(
+                  child: _TarjetaTurno(
+                    nombre: 'Mañana',
+                    monto: reporte.porTurno[Turno.manana]!,
+                    onTap: () => onSeleccionarTurno(Turno.manana),
+                  ),
+                ),
+                const SizedBox(width: BentoSpacing.unidad),
+                Expanded(
+                  child: _TarjetaTurno(
+                    nombre: 'Tarde',
+                    monto: reporte.porTurno[Turno.tarde]!,
+                    onTap: () => onSeleccionarTurno(Turno.tarde),
+                  ),
+                ),
+                const SizedBox(width: BentoSpacing.unidad),
+                Expanded(
+                  child: _TarjetaTurno(
+                    nombre: 'Noche',
+                    monto: reporte.porTurno[Turno.noche]!,
+                    onTap: () => onSeleccionarTurno(Turno.noche),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
         const SizedBox(height: BentoSpacing.gapCelda),
         Expanded(
@@ -191,8 +212,14 @@ class _VistaGeneral extends StatelessWidget {
   }
 }
 
-class _TileTurno extends StatelessWidget {
-  const _TileTurno({required this.nombre, required this.monto, required this.onTap});
+/// Tarjeta individual de turno — celda bento propia (el usuario confirmo
+/// que el look de tarjeta redondeada individual se veia mejor que fusionar
+/// los 3 turnos en un bloque con lineas divisorias internas). Va en una Row
+/// junto al hero y sus hermanas (`Expanded` + `IntrinsicHeight`/stretch en
+/// `_VistaGeneral.build`) para llenar la misma altura que el hero, en vez
+/// de quedar con una altura fija que no se acomoda al espacio disponible.
+class _TarjetaTurno extends StatelessWidget {
+  const _TarjetaTurno({required this.nombre, required this.monto, required this.onTap});
 
   final String nombre;
   final double monto;
@@ -200,22 +227,22 @@ class _TileTurno extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 110,
-      child: Card(
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(BentoRadius.celda),
-          child: Padding(
-            padding: const EdgeInsets.all(BentoSpacing.unidad * 1.5),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(nombre, style: Theme.of(context).textTheme.bodyMedium),
-                Text('₡${monto.toStringAsFixed(0)}', style: Theme.of(context).textTheme.titleMedium),
-              ],
-            ),
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(BentoRadius.celda),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: BentoSpacing.paddingCelda,
+            vertical: BentoSpacing.unidad,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(nombre, style: Theme.of(context).textTheme.bodyMedium),
+              Text('₡${monto.toStringAsFixed(0)}', style: Theme.of(context).textTheme.titleMedium),
+            ],
           ),
         ),
       ),
