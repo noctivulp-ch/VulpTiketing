@@ -436,6 +436,19 @@ Las 6 fases de la pasada de refinamiento visual, cada una verificada con `flutte
 
 No cubierto por esta pasada (fuera de alcance, no un olvido): layout de teléfono, exportar PDF/CSV en Reportes, ranking de búsqueda con tolerancia a errores ortográficos (0018), ícono vectorial propio para "línea libre".
 
+### Segunda pasada — feedback puntual post-implementación (2026-07-29)
+
+Tras probar la primera pasada, el usuario dio 8 puntos de feedback concretos, resueltos en fases A–F (ver commits) más un fix independiente de foco de teclado. Decisiones y convenciones nuevas documentadas en [0023](../decisiones/0023-refinamiento-bento-post-implementacion.md):
+
+- **Fase A** — `DashboardShell` usa `IndexedStack` (evita el parpadeo de reconstruir cada pantalla al cambiar de tab) + `ExcludeFocus` (evita que el teclado se fugue a pantallas ocultas).
+- **Fase B** — Tema Claro/Oscuro/Sistema (`ModoTema`, `buildBentoTheme(..., brightness:)`, `MaterialApp.darkTheme`/`themeMode`).
+- **Fase C** — Ventana 2: separador real entre carrito y panel de agregar producto, botón de toggle reubicado al fondo (no centrado), buscador movido a una barra inferior unificada con cascada invertida (`ListView(reverse: true)`).
+- **Fase D** — Ventana 3: buscador + botón "Nuevo" unificados en una barra inferior (reemplaza `AppBar`+`FloatingActionButton`), misma cascada invertida.
+- **Fase E** — Ventana 4: las 3 tarjetas de turno vuelven a ser celdas individuales (no fusionadas — ver matiz en 0023), ahora con `IntrinsicHeight`+`stretch` para llenar la misma altura que el hero.
+- **Fase F** — Ventana 5: rediseño completo a grid de 9 tiles (incluye Orden/Acento/Modo de tema) + panel de detalle fijo debajo, sin ningún `showDialog` en la pantalla (`cambiar_contrasena_panel.dart`, `tiketback_panels.dart`, `tiketdata_panel.dart`).
+
+**Pendiente explícito para después de cerrar el resto del feedback puntual**: auditoría de diseño responsive (adaptación correcta a distintos tamaños de pantalla) — mencionado por el usuario, todavía no iniciado.
+
 ## Checklist
 
 - [x] Login / Setup
