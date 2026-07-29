@@ -22,9 +22,14 @@ El esquema soporta más de dos dispositivos: una Gerente principal y posiblement
 
 Los borrados se propagan como cualquier otro cambio de fila: son soft-delete (`deleted_at`) resuelto por la misma lógica LWW basada en `updated_at` — no requieren un mecanismo de sync aparte. Ver [decisión 0005](../decisiones/0005-borrados-en-sync.md).
 
+## Protocolo de transporte
+
+Una vez que dos dispositivos del mismo rol se descubren, intercambian filas vía un servidor HTTP embebido (`shelf`) con puerto asignado dinámicamente por el sistema operativo y anunciado por mDNS — ver [decisión 0022](../decisiones/0022-protocolo-transporte-sync-shelf-puerto-dinamico.md). Cada dispositivo expone `GET /sync/exportar` (todas las filas de las 4 tablas sincronizables, incluyendo tombstones) y hace *pull* del mismo endpoint en cada peer descubierto, aplicando el resultado con `RowUpserter` (LWW vía `RowSyncEngine`).
+
 ## Estado de implementación (2026-07-28)
 
 - **Descubrimiento** (anunciar rol + descubrir pares): implementado con `bonsoir` — ver [decisión 0021](../decisiones/0021-paquete-mdns-bonsoir.md). En Linux depende de `avahi-daemon` activo en el sistema.
+- **Transporte** (`SyncServer` + `SyncClient`): implementado — ver [decisión 0022](../decisiones/0022-protocolo-transporte-sync-shelf-puerto-dinamico.md). Cubre sync **intra-grupo** (pares del mismo rol, pairwise); probado con un test de integración real sobre HTTP (`test/sync_transport_test.dart`).
 - **Elección de orquestador** (`SyncGroupCoordinator`): implementado, lógica pura (regla determinista sobre `device_id`s visibles).
-- **Resolución de conflictos fila por fila** (`RowSyncEngine`): implementado, lógica pura de LWW — reutilizable tal cual por `TiketdataNotifier` (0017).
-- **⚠ Falta — protocolo de transporte**: una vez que dos dispositivos se descubren, todavía no existe una decisión de **cómo intercambian las filas reales** por la red (¿servidor HTTP embebido? ¿socket TCP con un formato propio? ¿WebSocket?). `DeviceDiscoveryService`, `SyncGroupCoordinator` y `RowSyncEngine` están listos para que ese protocolo los use, pero ninguno de los tres resuelve el transporte en sí — es una decisión de arquitectura aparte, todavía no tomada. Mientras no exista, `SyncNotifier.todosLosDispositivosSincronizados` sigue devolviendo `false` siempre (correcto: sin transporte, ninguna sync se completa de verdad).
+- **Resolución de conflictos fila por fila** (`RowSyncEngine`): implementado, lógica pura de LWW — reutilizable tal cual por `TiketdataNotifier` (0017) y por `SyncClient` (0022) vía `RowUpserter`.
+- **⚠ Falta — coordinación entre grupos**: el paso 3/4 del diseño de topología (orquestadores de cada rol sincronizando entre sí) todavía no tiene protocolo definido. Mientras no exista, `SyncNotifier.todosLosDispositivosSincronizados` sigue devolviendo `false` siempre (correcto: un Gerente y una Registradora nunca terminan de verse sincronizados entre sí sin ese handshake, que es el caso que le importa a la purga de Producto, 0015).

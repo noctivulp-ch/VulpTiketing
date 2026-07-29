@@ -46,5 +46,6 @@ La versión `^9.x` de `flutter_secure_storage` trae una copia vieja de `json.hpp
 | `flutter_svg` | Íconos vectoriales propios (0020) |
 | `bonsoir` | mDNS para sync — anunciar + descubrir (0021). En Linux depende de `avahi-daemon` del sistema. |
 | `file_picker` | Selector nativo de archivos para exportar/restaurar `.tiketback`/`.tiketdata` (0006/0017). Verificado que compila en Linux (implementación nativa en Dart desde v4, no depende de zenity/kdialog). |
+| `shelf` | Servidor HTTP embebido para el protocolo de transporte de sync (0022). Puro Dart, sin código nativo por plataforma. |
 
 **Pendiente de decidir, no de paquete:** el protocolo de transporte para intercambiar filas entre dispositivos una vez descubiertos (servidor embebido, socket TCP, WebSocket...) — ver `docs/arquitectura/sincronizacion.md#estado-de-implementación-2026-07-28`.

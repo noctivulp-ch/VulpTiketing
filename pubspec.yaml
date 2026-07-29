@@ -74,6 +74,11 @@ dependencies:
   # depende de zenity/kdialog por shell).
   file_picker: ^8.1.6
 
+  # Protocolo de transporte de sync (decision 0022): servidor HTTP
+  # embebido, puro Dart, sin codigo nativo por plataforma - cero riesgo
+  # de compilacion adicional en Android+Linux+Windows.
+  shelf: ^1.4.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -48,14 +48,17 @@ Esta lista es la referencia concreta contra la que comparar antes de escribir c�
 
 Nunca existe una noción de "cuenta" o CRUD de usuarios — no aplica (0002).
 
-### Sincronización (separado en 4 — 0019)
+### Sincronización (separado por responsabilidad — 0019)
 
 | Servicio | Responsabilidad | No sabe nada de |
 |----------|------------------|-------------------|
-| `DeviceDiscoveryService` (`BonsoirDeviceDiscoveryService`) | Anuncia el rol activo de este dispositivo vía mDNS, descubre pares visibles — **implementado** con `bonsoir` (0021) | LWW, ni qué datos se sincronizan |
+| `DeviceDiscoveryService` (`BonsoirDeviceDiscoveryService`) | Anuncia el rol activo de este dispositivo vía mDNS (incluyendo el puerto real de `SyncServer`), descubre pares visibles — **implementado** con `bonsoir` (0021) | LWW, ni qué datos se sincronizan |
 | `SyncGroupCoordinator` | Calcula el orquestador del grupo (UUID más bajo visible — 0007) — **implementado**, lógica pura | cómo se mezclan filas |
-| `RowSyncEngine` | Aplica LWW fila por fila entre dos conjuntos de datos, dado un `id` y `updated_at` — **implementado**, reutilizado también por `TiketdataNotifier` (ver abajo) | red, mDNS, topología de grupos |
-| `SyncNotifier` | Fachada Riverpod-facing: compone las tres anteriores, expone estado (`idle`/`syncing`/`error`) y pares visibles. **`todosLosDispositivosSincronizados` sigue devolviendo `false` siempre** — falta el protocolo de transporte para intercambiar filas (ver `docs/arquitectura/sincronizacion.md`), sin eso ninguna sync se completa de verdad | — es pura composición, no reimplementa nada de lo anterior |
+| `RowSyncEngine` | Aplica LWW fila por fila entre dos conjuntos de datos, dado un `id` y `updated_at` — **implementado**, lógica pura reutilizada por `RowUpserter` | red, mDNS, topología de grupos, cómo llegan las filas |
+| `RowUpserter` | Aplica un lote de filas remotas contra una tabla local, fila por fila, vía `RowSyncEngine` — **implementado** ([0022](../decisiones/0022-protocolo-transporte-sync-shelf-puerto-dinamico.md)), compartido entre `SyncClient` y `TiketdataService` | de dónde vinieron las filas (archivo o red) |
+| `SyncServer` | Servidor HTTP embebido (`shelf`), expone `GET /sync/exportar` con el contenido completo de las 4 tablas sincronizables, puerto asignado por el SO — **implementado** ([0022](../decisiones/0022-protocolo-transporte-sync-shelf-puerto-dinamico.md)) | quién le pide los datos, ni resolución de conflictos |
+| `SyncClient` | Hace *pull* de `/sync/exportar` en un peer y aplica el resultado vía `RowUpserter` — **implementado** ([0022](../decisiones/0022-protocolo-transporte-sync-shelf-puerto-dinamico.md)), probado con round-trip HTTP real en `test/sync_transport_test.dart` | descubrimiento, topología de grupos |
+| `SyncNotifier` | Fachada Riverpod-facing: compone `DeviceDiscoveryService` + `SyncServer` + `SyncClient` + `SyncGroupCoordinator`, expone estado (`idle`/`syncing`/`error`) y pares visibles — **sync intra-grupo implementada**. **`todosLosDispositivosSincronizados` sigue devolviendo `false` siempre** — falta la coordinación *entre* grupos vía orquestadores (ver `docs/arquitectura/sincronizacion.md`) | — es pura composición, no reimplementa nada de lo anterior |
 
 ### Importación de datos (separado por tipo de archivo — 0019)
 

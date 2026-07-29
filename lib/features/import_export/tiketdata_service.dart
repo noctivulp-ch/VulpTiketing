@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
 
-import '../sync/row_sync_engine.dart';
+import '../sync/row_upserter.dart';
 
 enum ModoImportacion { reemplazar, fusionar }
 
@@ -11,13 +11,14 @@ enum ModoImportacion { reemplazar, fusionar }
 /// solo Producto y Categoria (nunca Ventas), JSON sin cifrar, preservando
 /// los UUID originales de cada fila.
 ///
-/// Reutiliza [RowSyncEngine] para el merge — el mismo motor que usa la sync
-/// entre dispositivos (0019), no una copia de esa lógica.
+/// Reutiliza [RowUpserter] (y por lo tanto `RowSyncEngine`) para el merge —
+/// el mismo motor que usa la sync entre dispositivos (0019/0022), no una
+/// copia de esa lógica.
 class TiketdataService {
   TiketdataService(this._db);
 
   final Database _db;
-  final _rowSyncEngine = const RowSyncEngine();
+  late final _upserter = RowUpserter(_db);
 
   /// Solo categorías/productos activos — un catálogo compartido no debería
   /// incluir ítems ya descontinuados en el negocio de origen.
@@ -38,8 +39,8 @@ class TiketdataService {
 
     // Orden importa: categorias primero porque producto.categoria_id las
     // referencia.
-    await _upsertConLww('categoria', categoriasIncoming);
-    await _upsertConLww('producto', productosIncoming);
+    await _upserter.aplicar('categoria', categoriasIncoming);
+    await _upserter.aplicar('producto', productosIncoming);
 
     if (modo == ModoImportacion.reemplazar) {
       await _descontinuarAusentes('producto', productosIncoming);
@@ -51,22 +52,6 @@ class TiketdataService {
     return List<Map<String, Object?>>.from(
       (lista as List).map((fila) => Map<String, Object?>.from(fila as Map)),
     );
-  }
-
-  /// Upsert fila por fila usando RowSyncEngine.resolver — mismo mecanismo
-  /// LWW que la sync entre dispositivos, aplicado aquí contra un archivo
-  /// en vez de un peer de red.
-  Future<void> _upsertConLww(String tabla, List<Map<String, Object?>> remotas) async {
-    for (final remota in remotas) {
-      final id = remota['id'] as String;
-      final localRows = await _db.query(tabla, where: 'id = ?', whereArgs: [id]);
-      if (localRows.isEmpty) {
-        await _db.insert(tabla, remota);
-      } else {
-        final ganadora = _rowSyncEngine.resolver(local: localRows.first, remota: remota);
-        await _db.update(tabla, ganadora, where: 'id = ?', whereArgs: [id]);
-      }
-    }
   }
 
   /// Modo "Reemplazar" (0017): descontinúa (soft-delete, nunca borrado

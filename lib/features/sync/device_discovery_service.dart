@@ -12,39 +12,48 @@ import 'package:bonsoir/bonsoir.dart';
 /// simplemente no se ve a otros dispositivos — no es un error fatal (0007:
 /// la app funciona 100% offline sin sync).
 abstract class DeviceDiscoveryService {
-  Future<void> anunciar({required String deviceId, required String rol});
+  /// [puerto] es el puerto REAL donde este dispositivo ya esta escuchando
+  /// (asignado dinamicamente por el SO al arrancar SyncServer, nunca un
+  /// numero fijo — decision 0022, evita coordinarlo/hardcodearlo en
+  /// ningun lado. mDNS es justo el mecanismo para que los pares se enteren
+  /// del puerto real sin adivinarlo).
+  Future<void> anunciar({required String deviceId, required String rol, required int puerto});
   Stream<List<PeerVisible>> descubrirPares();
   Future<void> detener();
 }
 
 class PeerVisible {
-  const PeerVisible({required this.deviceId, required this.rol, required this.direccion});
+  const PeerVisible({
+    required this.deviceId,
+    required this.rol,
+    required this.direccion,
+    required this.puerto,
+  });
+
   final String deviceId;
   final String rol;
   final String direccion;
+  final int puerto;
 }
 
 /// Tipo de servicio mDNS propio — sintaxis exigida por RFC 6335:
 /// "_nombre._tcp", primera parte <= 15 caracteres.
 const _tipoServicio = '_vulptiketing._tcp';
 
-/// Puerto provisional: DeviceDiscoveryService solo anuncia/descubre, todavia
-/// no existe un protocolo de transporte definido para intercambiar filas
-/// entre dispositivos (eso es una decision aparte, pendiente — ver
-/// docs/arquitectura/sincronizacion.md). Este puerto no se usa para nada
-/// todavia, es un placeholder hasta que exista ese protocolo.
-const _puertoProvisional = 4321;
-
 class BonsoirDeviceDiscoveryService implements DeviceDiscoveryService {
   BonsoirBroadcast? _broadcast;
   BonsoirDiscovery? _discovery;
 
   @override
-  Future<void> anunciar({required String deviceId, required String rol}) async {
+  Future<void> anunciar({
+    required String deviceId,
+    required String rol,
+    required int puerto,
+  }) async {
     final service = BonsoirService(
       name: deviceId,
       type: _tipoServicio,
-      port: _puertoProvisional,
+      port: puerto,
       attributes: {'rol': rol},
     );
     final broadcast = BonsoirBroadcast(service: service);
@@ -74,6 +83,7 @@ class BonsoirDeviceDiscoveryService implements DeviceDiscoveryService {
                 deviceId: service.name,
                 rol: service.attributes['rol'] ?? '',
                 direccion: direccion,
+                puerto: service.port,
               );
               controller.add(pares.values.toList());
             case BonsoirDiscoveryServiceLostEvent(:final service):

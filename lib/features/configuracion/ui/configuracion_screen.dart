@@ -104,17 +104,17 @@ class ConfiguracionScreen extends ConsumerWidget {
   }
 }
 
-/// Descubrimiento (0021) ya es real; el intercambio de datos en si
-/// (protocolo de transporte) todavia no existe — ver nota en
-/// SyncNotifier. Este tile ya permite probar que el descubrimiento
-/// funciona (util con 2+ dispositivos en la misma red).
+/// Descubrimiento (0021) y transporte (0022: servidor HTTP + cliente)
+/// ya son reales — al activar el switch, este dispositivo publica su
+/// servicio mDNS, levanta su servidor de sync y sincroniza con cada par
+/// del mismo rol que descubre. Lo que falta es la coordinacion
+/// *entre* grupos (Gerente ↔ Registradora vía orquestadores, 0007) — ver
+/// nota en SyncNotifier.
 ///
 /// Limitacion conocida: el contador de pares visibles no se refresca en
 /// vivo (SyncNotifier no emite un nuevo `state` cuando cambian los pares,
 /// solo cuando cambia idle/syncing/error) — apagar y prender el switch
-/// vuelve a leer el valor actual. No vale la pena resolver la reactividad
-/// fina todavia porque el dato en si no tiene uso real hasta que exista
-/// el protocolo de transporte.
+/// vuelve a leer el valor actual.
 class _TileEstadoSync extends ConsumerWidget {
   const _TileEstadoSync();
 
@@ -131,7 +131,7 @@ class _TileEstadoSync extends ConsumerWidget {
         activo
             ? '${notifier.paresVisibles.length} dispositivo(s) del mismo rol visibles'
                 '${notifier.esOrquestadorDeMiGrupo ? " — este es el orquestador" : ""}'
-            : 'Detenida — el intercambio de datos todavía no está implementado',
+            : 'Detenida — actívala para sincronizar con dispositivos del mismo rol',
       ),
       trailing: Switch(
         value: activo,
