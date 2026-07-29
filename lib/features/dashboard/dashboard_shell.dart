@@ -20,6 +20,12 @@ import '../venta/ui/venta_rapida_screen.dart';
 /// estado y volvia a pedir datos a sus providers desde cero, y como no todas
 /// tienen la misma barra superior, el salto de layout se veia como un
 /// parpadeo.
+///
+/// `IndexedStack` solo controla que subarbol se PINTA — no excluye del foco
+/// de teclado a las pantallas ocultas, asi que sin `ExcludeFocus` un Tab
+/// podia saltar a un campo de busqueda o boton de una pantalla invisible
+/// (bug real encontrado al verificar la navegacion por teclado de las
+/// fases siguientes).
 class DashboardShell extends StatefulWidget {
   const DashboardShell({super.key});
 
@@ -46,6 +52,16 @@ class _DashboardShellState extends State<DashboardShell> {
     ConfiguracionScreen(),
   ];
 
+  Widget _stack() {
+    return IndexedStack(
+      index: _indice,
+      children: [
+        for (var i = 0; i < _pantallas.length; i++)
+          ExcludeFocus(excluding: i != _indice, child: _pantallas[i]),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final anchoAmplio = MediaQuery.sizeOf(context).width >= 720;
@@ -68,14 +84,14 @@ class _DashboardShellState extends State<DashboardShell> {
               ],
             ),
             const VerticalDivider(width: 1),
-            Expanded(child: IndexedStack(index: _indice, children: _pantallas)),
+            Expanded(child: _stack()),
           ],
         ),
       );
     }
 
     return Scaffold(
-      body: IndexedStack(index: _indice, children: _pantallas),
+      body: _stack(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _indice,
         onDestinationSelected: (i) => setState(() => _indice = i),
