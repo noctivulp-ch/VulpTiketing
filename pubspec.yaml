@@ -64,6 +64,10 @@ dependencies:
   # runtime.
   flutter_svg: ^2.1.0
 
+  # mDNS para sync (decision 0021) - unico paquete que cubre
+  # Android+Linux+Windows con anunciar Y descubrir a la vez.
+  bonsoir: ^7.1.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

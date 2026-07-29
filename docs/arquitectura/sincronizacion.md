@@ -21,3 +21,10 @@ El esquema soporta más de dos dispositivos: una Gerente principal y posiblement
 ## Borrados
 
 Los borrados se propagan como cualquier otro cambio de fila: son soft-delete (`deleted_at`) resuelto por la misma lógica LWW basada en `updated_at` — no requieren un mecanismo de sync aparte. Ver [decisión 0005](../decisiones/0005-borrados-en-sync.md).
+
+## Estado de implementación (2026-07-28)
+
+- **Descubrimiento** (anunciar rol + descubrir pares): implementado con `bonsoir` — ver [decisión 0021](../decisiones/0021-paquete-mdns-bonsoir.md). En Linux depende de `avahi-daemon` activo en el sistema.
+- **Elección de orquestador** (`SyncGroupCoordinator`): implementado, lógica pura (regla determinista sobre `device_id`s visibles).
+- **Resolución de conflictos fila por fila** (`RowSyncEngine`): implementado, lógica pura de LWW — reutilizable tal cual por `TiketdataNotifier` (0017).
+- **⚠ Falta — protocolo de transporte**: una vez que dos dispositivos se descubren, todavía no existe una decisión de **cómo intercambian las filas reales** por la red (¿servidor HTTP embebido? ¿socket TCP con un formato propio? ¿WebSocket?). `DeviceDiscoveryService`, `SyncGroupCoordinator` y `RowSyncEngine` están listos para que ese protocolo los use, pero ninguno de los tres resuelve el transporte en sí — es una decisión de arquitectura aparte, todavía no tomada. Mientras no exista, `SyncNotifier.todosLosDispositivosSincronizados` sigue devolviendo `false` siempre (correcto: sin transporte, ninguna sync se completa de verdad).

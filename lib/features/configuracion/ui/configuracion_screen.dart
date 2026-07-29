@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
+import '../../sync/sync_notifier.dart';
 import '../preferencias_notifier.dart';
 import 'cambiar_contrasena_dialog.dart';
 
@@ -42,11 +43,7 @@ class ConfiguracionScreen extends ConsumerWidget {
             title: Text('Importar/exportar catálogo (.tiketdata)'),
             subtitle: Text('Pendiente (TiketdataNotifier)'),
           ),
-          const ListTile(
-            leading: Icon(Icons.wifi_tethering),
-            title: Text('Estado de sincronización'),
-            subtitle: Text('Pendiente (SyncNotifier)'),
-          ),
+          const _TileEstadoSync(),
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Cerrar sesión'),
@@ -93,6 +90,43 @@ class ConfiguracionScreen extends ConsumerWidget {
             error: (e, st) => Text('Error: $e'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Descubrimiento (0021) ya es real; el intercambio de datos en si
+/// (protocolo de transporte) todavia no existe — ver nota en
+/// SyncNotifier. Este tile ya permite probar que el descubrimiento
+/// funciona (util con 2+ dispositivos en la misma red).
+///
+/// Limitacion conocida: el contador de pares visibles no se refresca en
+/// vivo (SyncNotifier no emite un nuevo `state` cuando cambian los pares,
+/// solo cuando cambia idle/syncing/error) — apagar y prender el switch
+/// vuelve a leer el valor actual. No vale la pena resolver la reactividad
+/// fina todavia porque el dato en si no tiene uso real hasta que exista
+/// el protocolo de transporte.
+class _TileEstadoSync extends ConsumerWidget {
+  const _TileEstadoSync();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final estado = ref.watch(syncNotifierProvider);
+    final notifier = ref.read(syncNotifierProvider.notifier);
+    final activo = estado == EstadoSync.syncing;
+
+    return ListTile(
+      leading: Icon(activo ? Icons.wifi_tethering : Icons.wifi_tethering_off),
+      title: const Text('Sincronización (descubrimiento)'),
+      subtitle: Text(
+        activo
+            ? '${notifier.paresVisibles.length} dispositivo(s) del mismo rol visibles'
+                '${notifier.esOrquestadorDeMiGrupo ? " — este es el orquestador" : ""}'
+            : 'Detenida — el intercambio de datos todavía no está implementado',
+      ),
+      trailing: Switch(
+        value: activo,
+        onChanged: (v) => v ? notifier.iniciarSync() : notifier.detenerSync(),
       ),
     );
   }

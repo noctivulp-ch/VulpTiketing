@@ -43,5 +43,7 @@ La versión `^9.x` de `flutter_secure_storage` trae una copia vieja de `json.hpp
 | `uuid` | UUID v4 en todas las PK |
 | `path_provider` / `path` | Ubicación del archivo SQLite en cada plataforma |
 | `intl` | Formato de fechas/moneda |
+| `flutter_svg` | Íconos vectoriales propios (0020) |
+| `bonsoir` | mDNS para sync — anunciar + descubrir (0021). En Linux depende de `avahi-daemon` del sistema. |
 
-**A propósito no agregado todavía:** ningún paquete de mDNS (candidatos `multicast_dns`/`nsd`) — falta validar cuál soporta anunciar y descubrir en Android + Linux + Windows a la vez antes de comprometerse (ver `lib/features/sync/device_discovery_service.dart`).
+**Pendiente de decidir, no de paquete:** el protocolo de transporte para intercambiar filas entre dispositivos una vez descubiertos (servidor embebido, socket TCP, WebSocket...) — ver `docs/arquitectura/sincronizacion.md#estado-de-implementación-2026-07-28`.

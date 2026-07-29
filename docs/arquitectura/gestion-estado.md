@@ -52,10 +52,10 @@ Nunca existe una noción de "cuenta" o CRUD de usuarios — no aplica (0002).
 
 | Servicio | Responsabilidad | No sabe nada de |
 |----------|------------------|-------------------|
-| `DeviceDiscoveryService` | Anuncia el rol activo de este dispositivo vía mDNS, descubre pares visibles | LWW, ni qué datos se sincronizan |
-| `SyncGroupCoordinator` | Calcula el orquestador del grupo (UUID más bajo visible — 0007) y si hay tareas pendientes | cómo se mezclan filas |
-| `RowSyncEngine` | Aplica LWW fila por fila entre dos conjuntos de datos, dado un `id` y `updated_at` — **reutilizada también por `TiketdataNotifier`** (ver abajo) | red, mDNS, topología de grupos |
-| `SyncNotifier` | Fachada Riverpod-facing: compone las tres anteriores, expone estado (`idle`/`syncing`/`error`) y si todos los dispositivos están sincronizados (consultado por `ProductoNotifier.purgar`, 0015) | — es pura composición, no reimplementa nada de lo anterior |
+| `DeviceDiscoveryService` (`BonsoirDeviceDiscoveryService`) | Anuncia el rol activo de este dispositivo vía mDNS, descubre pares visibles — **implementado** con `bonsoir` (0021) | LWW, ni qué datos se sincronizan |
+| `SyncGroupCoordinator` | Calcula el orquestador del grupo (UUID más bajo visible — 0007) — **implementado**, lógica pura | cómo se mezclan filas |
+| `RowSyncEngine` | Aplica LWW fila por fila entre dos conjuntos de datos, dado un `id` y `updated_at` — **implementado**, reutilizado también por `TiketdataNotifier` (ver abajo) | red, mDNS, topología de grupos |
+| `SyncNotifier` | Fachada Riverpod-facing: compone las tres anteriores, expone estado (`idle`/`syncing`/`error`) y pares visibles. **`todosLosDispositivosSincronizados` sigue devolviendo `false` siempre** — falta el protocolo de transporte para intercambiar filas (ver `docs/arquitectura/sincronizacion.md`), sin eso ninguna sync se completa de verdad | — es pura composición, no reimplementa nada de lo anterior |
 
 ### Importación de datos (separado por tipo de archivo — 0019)
 
