@@ -29,3 +29,7 @@ A. Es el único que da protección real si el archivo `.tiketback` se pierde o s
 ## Nota posterior (2026-07-27)
 
 Archivo renombrado de `.sodabak` a `.tiketback` — ver [decisión 0017](0017-importar-datos-tiketdata-vs-tiketback.md), que además introduce `.tiketdata` (paquete de catálogo, sin cifrar, con propósito distinto) y define cómo se importa cada uno.
+
+## Nota posterior (2026-07-28) — qué cuentan como "settings" al implementar
+
+Data.feature dice "bundle the SQLite database and settings" sin precisar qué es "settings". Al implementar `TiketbackService` se decidió: **sí** incluye las preferencias de UI no sensibles (orden de productos, acento — `PreferenciasNotifier`); **no** incluye rol, contraseña ni `device_id`, porque esos viven en almacenamiento seguro nativo ([0011](0011-credenciales-almacenamiento-nativo.md)), son específicos de cada dispositivo físico, y sacarlos de ahí para meterlos en un archivo exportable sería exponerlos innecesariamente aunque el archivo vaya cifrado (defensa en profundidad: minimizar qué sale del storage seguro, no depender solo de que el cifrado del backup nunca falle). Consecuencia práctica: restaurar un `.tiketback` en un dispositivo nuevo no cambia el rol/contraseña de ese dispositivo — sigue siendo el que ya tenía (de fábrica, o configurado ahí).

@@ -11,6 +11,21 @@ class AppDatabase {
 
   static Database? _instance;
 
+  /// Ruta del archivo fisico — usada por TiketbackService para
+  /// leer/reemplazar el archivo directo en exportar/restaurar (0006).
+  static Future<String> ruta() async {
+    final dir = await getApplicationSupportDirectory();
+    return join(dir.path, 'vulp_tiketing.db');
+  }
+
+  /// Cierra la conexion activa, si hay una. Necesario antes de reemplazar
+  /// el archivo fisico al restaurar un .tiketback — sqflite no permite
+  /// sobreescribir un archivo con una conexion abierta de forma segura.
+  static Future<void> close() async {
+    await _instance?.close();
+    _instance = null;
+  }
+
   static Future<Database> open() async {
     if (_instance != null) return _instance!;
 
@@ -19,11 +34,8 @@ class AppDatabase {
       databaseFactory = databaseFactoryFfi;
     }
 
-    final dir = await getApplicationSupportDirectory();
-    final path = join(dir.path, 'vulp_tiketing.db');
-
     _instance = await openDatabase(
-      path,
+      await ruta(),
       version: 1,
       onCreate: (db, version) async {
         await db.execute(_createCategoria);

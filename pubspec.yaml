@@ -68,6 +68,12 @@ dependencies:
   # Android+Linux+Windows con anunciar Y descubrir a la vez.
   bonsoir: ^7.1.4
 
+  # Selector nativo de archivos para exportar/restaurar .tiketback y
+  # .tiketdata (decisiones 0006/0017) - verificado que compila en Linux
+  # antes de comprometerse (implementacion nativa en Dart desde v4, no
+  # depende de zenity/kdialog por shell).
+  file_picker: ^8.1.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

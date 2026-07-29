@@ -6,10 +6,13 @@ Dos tipos de archivo con propósitos distintos — ver [decisión 0017](../decis
 
 ## `.tiketback` — backup completo (cifrado)
 
-- Contenido: todo el estado del dispositivo (Producto, Categoria, Venta, LineaVenta históricas + configuración).
-- Exportar: disponible para cualquier rol. Restaurar: solo Gerente.
-- Esquema de encriptación: contraseña de exportación propia (distinta del login) → clave derivada con Argon2id/PBKDF2 → AES-256-GCM. Ver [seguridad](../arquitectura/seguridad.md) y [decisión 0006](../decisiones/0006-encriptacion-backup.md).
-- Restaurar es **siempre un reemplazo completo** del estado local — no existe modo "fusionar" para este archivo (fusionar dos historiales de ventas no tiene sentido contable).
+**Implementado** (`TiketbackService`/`TiketbackNotifier`, con prueba de round-trip en `test/tiketback_service_test.dart`).
+
+- Contenido: la base de datos SQLite completa (Producto, Categoria, Venta, LineaVenta históricas) + preferencias de UI no sensibles (orden de productos, acento). **No incluye** rol, contraseña ni `device_id` — esos son de almacenamiento seguro nativo, específicos de cada dispositivo, y se quedan ahí a propósito aunque el archivo ya vaya cifrado (defensa en profundidad). Restaurar un backup en un dispositivo nuevo deja su rol/contraseña como estaban en ese dispositivo (de fábrica, o lo que se haya configurado ahí).
+- Exportar: disponible para cualquier rol. Restaurar: **solo Gerente** (aplicado en `ConfiguracionScreen`).
+- Esquema de encriptación: contraseña de exportación propia (distinta del login) → clave derivada con Argon2id → AES-256-GCM (`package:cryptography`). Ver [seguridad](../arquitectura/seguridad.md) y [decisión 0006](../decisiones/0006-encriptacion-backup.md).
+- Restaurar es **siempre un reemplazo completo** del estado local — no existe modo "fusionar" para este archivo (fusionar dos historiales de ventas no tiene sentido contable). La UI pide confirmación explícita antes de pedir la contraseña, por ser irreversible.
+- Selector de archivo: `file_picker` (nativo, verificado que compila en los tres targets).
 
 ## `.tiketdata` — paquete de catálogo (sin cifrar)
 

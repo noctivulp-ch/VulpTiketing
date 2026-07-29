@@ -3,23 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
+import '../../import_export/ui/tiketback_dialogs.dart';
 import '../../sync/sync_notifier.dart';
 import '../preferencias_notifier.dart';
 import 'cambiar_contrasena_dialog.dart';
 
 /// Ventana 5 — ver docs/pantallas/flujo-descripcion.md#ventana-5--configuración.
 /// Orden de productos, acento (decision 0018 / iconografia.md), cambiar
-/// contraseña y cerrar sesión ya conectados de verdad; el resto
-/// (backup/.tiketback, catálogo/.tiketdata, estado de sync) queda pendiente
-/// de esos servicios. TODO: convertir a grid deslizante de tiles (boceto en
-/// prototipos-ascii.md) — hoy es una ListView simple mientras se completan
-/// los servicios reales.
+/// contraseña, exportar/restaurar backup (.tiketback) y cerrar sesión ya
+/// conectados de verdad; el catálogo (.tiketdata) queda pendiente. TODO:
+/// convertir a grid deslizante de tiles (boceto en prototipos-ascii.md) —
+/// hoy es una ListView simple mientras se completan los servicios reales.
 class ConfiguracionScreen extends ConsumerWidget {
   const ConfiguracionScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final preferenciasAsync = ref.watch(preferenciasNotifierProvider);
+    final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
 
     return Scaffold(
       body: ListView(
@@ -33,16 +34,23 @@ class ConfiguracionScreen extends ConsumerWidget {
               builder: (_) => const CambiarContrasenaDialog(),
             ),
           ),
-          const ListTile(
-            leading: Icon(Icons.save_outlined),
-            title: Text('Exportar backup (.tiketback)'),
-            subtitle: Text('Pendiente (TiketbackNotifier)'),
+          ListTile(
+            leading: const Icon(Icons.save_outlined),
+            title: const Text('Exportar backup (.tiketback)'),
+            onTap: () => mostrarDialogoExportarTiketback(context, ref),
           ),
-          const ListTile(
-            leading: Icon(Icons.folder_open_outlined),
-            title: Text('Importar/exportar catálogo (.tiketdata)'),
-            subtitle: Text('Pendiente (TiketdataNotifier)'),
-          ),
+          if (esGerente)
+            ListTile(
+              leading: const Icon(Icons.restore_outlined),
+              title: const Text('Restaurar backup (.tiketback)'),
+              onTap: () => mostrarDialogoRestaurarTiketback(context, ref),
+            ),
+          if (esGerente)
+            const ListTile(
+              leading: Icon(Icons.folder_open_outlined),
+              title: Text('Importar/exportar catálogo (.tiketdata)'),
+              subtitle: Text('Pendiente (TiketdataNotifier)'),
+            ),
           const _TileEstadoSync(),
           ListTile(
             leading: const Icon(Icons.logout),
