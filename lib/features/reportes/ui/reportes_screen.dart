@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../reportes_provider.dart';
 
@@ -28,7 +29,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(BentoSpacing.gapCelda),
         child: reporteAsync.when(
           data: (reporte) => _turnoSeleccionado != null
               ? _VistaDrillDown(
@@ -102,13 +103,19 @@ class _VistaGeneral extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          // El hero (total del periodo) es el numero mas importante de la
+          // pantalla — debe destacar claramente sobre los tiles de turno,
+          // no ser "casi del mismo tamano" (skill visual-hierarchy: al
+          // menos 1.5x de diferencia). displaySmall (40) vs el texto de
+          // los tiles (bodyLarge, 16) da una diferencia de 2.5x.
           children: [
             Expanded(
               child: Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Row(
                         children: [
@@ -126,7 +133,7 @@ class _VistaGeneral extends StatelessWidget {
                       ),
                       Text(
                         '₡${reporte.total.toStringAsFixed(2)}',
-                        style: Theme.of(context).textTheme.headlineMedium,
+                        style: Theme.of(context).textTheme.displaySmall,
                       ),
                     ],
                   ),
@@ -134,19 +141,19 @@ class _VistaGeneral extends StatelessWidget {
               ),
             ),
             if (rango == RangoReporte.dia) ...[
-              const SizedBox(width: 16),
+              const SizedBox(width: BentoSpacing.gapCelda),
               _TileTurno(
                 nombre: 'Mañana',
                 monto: reporte.porTurno[Turno.manana]!,
                 onTap: () => onSeleccionarTurno(Turno.manana),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: BentoSpacing.unidad),
               _TileTurno(
                 nombre: 'Tarde',
                 monto: reporte.porTurno[Turno.tarde]!,
                 onTap: () => onSeleccionarTurno(Turno.tarde),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: BentoSpacing.unidad),
               _TileTurno(
                 nombre: 'Noche',
                 monto: reporte.porTurno[Turno.noche]!,
@@ -155,18 +162,18 @@ class _VistaGeneral extends StatelessWidget {
             ],
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: BentoSpacing.gapCelda),
         Expanded(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _Ranking(titulo: 'Más vendidos', items: reporte.masVendidos)),
-              const SizedBox(width: 16),
+              const SizedBox(width: BentoSpacing.gapCelda),
               Expanded(child: _Ranking(titulo: 'Menos vendidos', items: reporte.menosVendidos)),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: BentoSpacing.unidad),
         SegmentedButton<RangoReporte>(
           segments: [
             const ButtonSegment(value: RangoReporte.dia, label: Text('Día')),
@@ -198,14 +205,15 @@ class _TileTurno extends StatelessWidget {
       child: Card(
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(BentoRadius.celda),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(BentoSpacing.unidad * 1.5),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(nombre, style: Theme.of(context).textTheme.bodyMedium),
-                Text('₡${monto.toStringAsFixed(0)}'),
+                Text('₡${monto.toStringAsFixed(0)}', style: Theme.of(context).textTheme.titleMedium),
               ],
             ),
           ),
@@ -230,7 +238,7 @@ class _Ranking extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(BentoSpacing.unidad * 1.5),
             child: Text(titulo, style: Theme.of(context).textTheme.titleSmall),
           ),
           Expanded(
@@ -286,20 +294,20 @@ class _VistaDrillDown extends StatelessWidget {
         ),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_nombreTurno, style: Theme.of(context).textTheme.titleMedium),
                 Text(
                   '₡${total.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.headlineMedium,
+                  style: Theme.of(context).textTheme.displaySmall,
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: BentoSpacing.unidad),
         Expanded(
           child: ventas.isEmpty
               ? const Center(child: Text('Sin ventas en este turno'))
