@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/bento_icon.dart';
+import '../../core/theme/bento_theme.dart';
 import 'sesion_notifier.dart';
 
 /// Ver docs/pantallas/flujo-descripcion.md#login--setup y
@@ -61,12 +62,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(BentoSpacing.gapGrupo),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('VulpTiketing', style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: 32),
+                Text('VulpTiketing', style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: BentoSpacing.gapGrupo * 1.5),
                 if (_rolSeleccionado == null) ...[
                   Row(
                     children: [
@@ -75,7 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         icono: 'rol_gerente',
                         onTap: () => _elegirRol(Rol.gerente),
                       )),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: BentoSpacing.gapCelda),
                       Expanded(child: _TarjetaRol(
                         rol: Rol.registradora,
                         icono: 'rol_registradora',
@@ -100,19 +101,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     seleccionada: true,
                     onTap: _volver,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: BentoSpacing.gapCelda),
                   TextField(
                     controller: _contrasenaController,
                     obscureText: true,
                     autofocus: true,
-                    decoration: InputDecoration(
-                      labelText: 'Contraseña',
-                      border: const OutlineInputBorder(),
-                      errorText: _error,
-                    ),
+                    decoration: InputDecoration(labelText: 'Contraseña', errorText: _error),
                     onSubmitted: (_) => _entrar(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: BentoSpacing.gapCelda),
                   FilledButton(onPressed: _entrar, child: const Text('Entrar')),
                 ],
               ],
@@ -141,15 +138,16 @@ class _TarjetaRol extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       color: seleccionada ? Theme.of(context).colorScheme.primaryContainer : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BentoRadius.hero)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(BentoRadius.hero),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
           child: Column(
             children: [
               BentoIcon(icono, size: 48, activo: seleccionada),
-              const SizedBox(height: 8),
+              const SizedBox(height: BentoSpacing.unidad),
               Text(rol == Rol.gerente ? 'Gerente' : 'Registradora'),
             ],
           ),
