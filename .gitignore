@@ -13,3 +13,9 @@ android/local.properties
 # Herramientas en scripts/ (venvs y previews, no el codigo de la herramienta)
 scripts/**/.venv/
 scripts/**/preview/
+
+# Skills de agente instaladas localmente via `npx skills` (config de herramienta,
+# no codigo del proyecto - se reinstalan con skills-lock.json si hace falta)
+.agents/
+.claude/
+skills-lock.json
