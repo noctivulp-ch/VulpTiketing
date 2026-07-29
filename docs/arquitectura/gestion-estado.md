@@ -62,7 +62,7 @@ Nunca existe una noción de "cuenta" o CRUD de usuarios — no aplica (0002).
 | Servicio | Responsabilidad | Reutiliza |
 |----------|------------------|-----------|
 | `TiketbackNotifier`/`TiketbackService` | Exportar/restaurar el backup completo cifrado — **implementado** (Argon2id + AES-256-GCM, [0006](../decisiones/0006-encriptacion-backup.md)/[0017](../decisiones/0017-importar-datos-tiketdata-vs-tiketback.md)), con prueba de round-trip en `test/tiketback_service_test.dart` | — restaurar es siempre reemplazo total, no usa `RowSyncEngine`. No incluye rol/contraseña/`device_id` en el bundle (defensa en profundidad, ver 0006) |
-| `TiketdataNotifier`/`TiketdataService` | Exportar/importar el paquete de catálogo, modo Reemplazar o Fusionar (0017) | **`RowSyncEngine`** — mismo mecanismo LWW de sync, no una copia |
+| `TiketdataNotifier`/`TiketdataService` | Exportar/importar el paquete de catálogo, modo Reemplazar o Fusionar — **implementado**, con pruebas en `test/tiketdata_service_test.dart` (0017) | **`RowSyncEngine`** — mismo mecanismo LWW de sync (método `resolver`, fila por fila), no una copia |
 
 ## Ejemplo concreto de lo que NO hacer
 

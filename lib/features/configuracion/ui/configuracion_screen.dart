@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../import_export/ui/tiketback_dialogs.dart';
+import '../../import_export/ui/tiketdata_dialogs.dart';
 import '../../sync/sync_notifier.dart';
 import '../preferencias_notifier.dart';
 import 'cambiar_contrasena_dialog.dart';
@@ -46,10 +47,10 @@ class ConfiguracionScreen extends ConsumerWidget {
               onTap: () => mostrarDialogoRestaurarTiketback(context, ref),
             ),
           if (esGerente)
-            const ListTile(
-              leading: Icon(Icons.folder_open_outlined),
-              title: Text('Importar/exportar catálogo (.tiketdata)'),
-              subtitle: Text('Pendiente (TiketdataNotifier)'),
+            ListTile(
+              leading: const Icon(Icons.folder_open_outlined),
+              title: const Text('Importar/exportar catálogo (.tiketdata)'),
+              onTap: () => mostrarDialogoCatalogo(context, ref),
             ),
           const _TileEstadoSync(),
           ListTile(

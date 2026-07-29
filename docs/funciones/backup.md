@@ -16,10 +16,13 @@ Dos tipos de archivo con propósitos distintos — ver [decisión 0017](../decis
 
 ## `.tiketdata` — paquete de catálogo (sin cifrar)
 
-- Contenido: **solo** Producto y Categoria — nunca Ventas. Pensado para compartirse (ej. un menú prearmado entre negocios), por eso no está cifrado.
+**Implementado** (`TiketdataService`/`TiketdataNotifier`, con pruebas en `test/tiketdata_service_test.dart` cubriendo fusionar, reemplazar, y que LWW respeta un cambio local más reciente).
+
+- Contenido: **solo** Producto y Categoria **activos** (no se exportan descontinuados) — nunca Ventas. Pensado para compartirse (ej. un menú prearmado entre negocios), por eso no está cifrado.
 - Formato: JSON, preservando los UUID originales de cada fila (reimportar el mismo paquete dos veces no crea duplicados).
-- Exportar e importar: solo Gerente.
+- Exportar e importar: solo Gerente (aplicado en `ConfiguracionScreen`).
 - Al importar, el usuario elige:
-  - **Reemplazar** — descontinúa (soft-delete) todo lo local que no esté en el archivo, y aplica upsert de lo que sí viene.
-  - **Fusionar** — aplica upsert solo de lo que viene en el archivo, sin tocar el resto del catálogo.
-  - Ambos modos reutilizan el mismo mecanismo LWW de la sync entre dispositivos (0005) — no es un algoritmo de merge nuevo.
+  - **Reemplazar** — descontinúa (soft-delete, nunca borrado físico) todo lo local activo que no esté en el archivo, y aplica upsert de lo que sí viene.
+  - **Fusionar** — aplica upsert solo de lo que viene en el archivo, sin tocar el resto del catálogo. La UI pide confirmación explícita solo para "Reemplazar" (afecta datos existentes).
+  - Ambos modos reutilizan `RowSyncEngine.resolver()` fila por fila — el mismo mecanismo LWW de la sync entre dispositivos (0005), no es un algoritmo de merge nuevo.
+- Selector de archivo: `file_picker`, igual que `.tiketback`.
