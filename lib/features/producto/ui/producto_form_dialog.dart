@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/theme/bento_theme.dart';
 import '../categoria_model.dart';
 import '../categoria_notifier.dart';
 import '../producto_model.dart';
@@ -111,7 +112,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
         updatedAt: ahora,
       ));
     }
-    if (mounted) Navigator.of(context).pop();
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   @override
@@ -140,7 +141,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
                 return null;
               },
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: BentoSpacing.unidad),
             categoriasAsync.when(
               data: (categorias) => Row(
                 children: [

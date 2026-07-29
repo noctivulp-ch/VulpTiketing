@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../sync/sync_notifier.dart';
 import '../producto_model.dart';
@@ -37,52 +39,24 @@ class ProductoCrudScreen extends ConsumerWidget {
       body: productosAsync.when(
         data: (productos) => productos.isEmpty
             ? const Center(child: Text('Sin productos'))
-            : ListView.builder(
+            : ListView.separated(
+                padding: const EdgeInsets.all(BentoSpacing.gapCelda),
                 itemCount: productos.length,
+                separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad),
                 itemBuilder: (context, i) {
                   final producto = productos[i];
-                  return ListTile(
-                    title: Text(producto.nombre),
-                    subtitle: Text(
-                      producto.activo
-                          ? '₡${producto.precioBase.toStringAsFixed(2)}'
-                          : '₡${producto.precioBase.toStringAsFixed(2)} — descontinuado',
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          tooltip: 'Editar',
-                          onPressed: () => showDialog<void>(
-                            context: context,
-                            builder: (_) => ProductoFormDialog(producto: producto),
-                          ),
-                        ),
-                        if (esGerente) ...[
-                          if (producto.activo)
-                            IconButton(
-                              icon: const Icon(Icons.block),
-                              tooltip: 'Descontinuar',
-                              onPressed: () => ref
-                                  .read(productoNotifierProvider.notifier)
-                                  .descontinuar(producto.id),
-                            ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_forever_outlined),
-                            tooltip: sincronizado
-                                ? 'Purgar'
-                                : 'Purgar (requiere que todos los dispositivos estén sincronizados)',
-                            onPressed: () => _confirmarYPurgar(
-                              context,
-                              ref,
-                              producto,
-                              sincronizado: sincronizado,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                  return _FilaProducto(
+                    producto: producto,
+                    esGerente: esGerente,
+                    sincronizado: sincronizado,
+                    onEditar: () => _editar(context, producto),
+                    onDescontinuar: () async {
+                      await ref.read(productoNotifierProvider.notifier).descontinuar(producto.id);
+                      if (context.mounted) {
+                        mostrarNotificacionEsquina(context, '✓ Producto descontinuado');
+                      }
+                    },
+                    onPurgar: () => _confirmarYPurgar(context, ref, producto, sincronizado: sincronizado),
                   );
                 },
               ),
@@ -91,14 +65,31 @@ class ProductoCrudScreen extends ConsumerWidget {
       ),
       floatingActionButton: esGerente
           ? FloatingActionButton(
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (_) => const ProductoFormDialog(),
-              ),
+              onPressed: () => _crear(context),
               child: const Icon(Icons.add),
             )
           : null,
     );
+  }
+
+  Future<void> _editar(BuildContext context, Producto producto) async {
+    final guardado = await showDialog<bool>(
+      context: context,
+      builder: (_) => ProductoFormDialog(producto: producto),
+    );
+    if (guardado == true && context.mounted) {
+      mostrarNotificacionEsquina(context, '✓ Producto actualizado');
+    }
+  }
+
+  Future<void> _crear(BuildContext context) async {
+    final guardado = await showDialog<bool>(
+      context: context,
+      builder: (_) => const ProductoFormDialog(),
+    );
+    if (guardado == true && context.mounted) {
+      mostrarNotificacionEsquina(context, '✓ Producto creado');
+    }
   }
 
   /// Purgar es irreversible (0015) — SIEMPRE pide confirmación aparte,
@@ -135,9 +126,7 @@ class ProductoCrudScreen extends ConsumerWidget {
           todosLosDispositivosSincronizados: sincronizado,
         );
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_mensaje(resultado))),
-      );
+      mostrarNotificacionEsquina(context, _mensaje(resultado));
     }
   }
 
@@ -150,5 +139,80 @@ class ProductoCrudScreen extends ConsumerWidget {
       case PurgarResultado.faltaSincronizar:
         return 'No se puede purgar: faltan dispositivos por sincronizar';
     }
+  }
+}
+
+/// Mismo lenguaje visual que `_TarjetaProducto` (Ventana 1) y
+/// `_FilaLineaVenta` (Ventana 2): placeholder cuadrado + nombre + precio,
+/// en formato de fila — consistencia entre pantallas (skill
+/// `aesthetic-usability`).
+class _FilaProducto extends StatelessWidget {
+  const _FilaProducto({
+    required this.producto,
+    required this.esGerente,
+    required this.sincronizado,
+    required this.onEditar,
+    required this.onDescontinuar,
+    required this.onPurgar,
+  });
+
+  final Producto producto;
+  final bool esGerente;
+  final bool sincronizado;
+  final VoidCallback onEditar;
+  final VoidCallback onDescontinuar;
+  final VoidCallback onPurgar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(BentoSpacing.unidad),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(BentoRadius.celda - BentoSpacing.unidad / 2),
+              ),
+              child: const Icon(Icons.image_outlined, size: 22),
+            ),
+            const SizedBox(width: BentoSpacing.unidad),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(producto.nombre, style: Theme.of(context).textTheme.bodyLarge),
+                  Text(
+                    producto.activo
+                        ? '₡${producto.precioBase.toStringAsFixed(2)}'
+                        : '₡${producto.precioBase.toStringAsFixed(2)} — descontinuado',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Editar', onPressed: onEditar),
+            if (esGerente) ...[
+              if (producto.activo)
+                IconButton(
+                  icon: const Icon(Icons.block),
+                  tooltip: 'Descontinuar',
+                  onPressed: onDescontinuar,
+                ),
+              IconButton(
+                icon: const Icon(Icons.delete_forever_outlined),
+                tooltip: sincronizado
+                    ? 'Purgar'
+                    : 'Purgar (requiere que todos los dispositivos estén sincronizados)',
+                onPressed: onPurgar,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
