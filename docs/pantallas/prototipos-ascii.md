@@ -2,7 +2,7 @@
 
 Ver también: [flujo-descripcion](flujo-descripcion.md) (Fase 1, base funcional)
 
-Diseño bento-box (skill `design:bento-design`). Estos son bocetos para **iterar**, no un diseño final — cada bloque de código es una propuesta de layout, no una implementación literal en Flutter.
+Diseño bento-box (skill `design:bento-design`, más `color-system`/`visual-hierarchy`/`aesthetic-usability`/`typography-scale` para la pasada de implementación). Estos son bocetos de **diseño**, no un mapeo literal widget-por-widget — la implementación real (2026-07-29, ver `lib/core/theme/bento_theme.dart` y las 6 pantallas) sigue estos principios y esta estructura, pero con las adaptaciones de detalle que pide Flutter real (ej. `_TileEstadoSync` es un tile tocable en vez de un switch+subtítulo, el ripple granulado es una implementación `InteractiveInkFeature` propia, la notificación de esquina es un `OverlayEntry`). Layout de teléfono sigue pendiente, igual que exportar PDF/CSV en Reportes.
 
 ## Principios aplicados en esta pasada
 
@@ -421,6 +421,20 @@ Tu razonamiento es acertado y coincido con él: fusionar de entrada obligaría a
 Ventaja técnica adicional que confirma que esto es seguro de posponer: Ventana 1 y Ventana 2 **ya comparten `VentaEnCursoNotifier`** en el scaffold — el toggle es una decisión de navegación/presentación, no de datos. Implementarlo más adelante no requiere tocar el modelo de Venta ni sus DAOs.
 
 Un matiz honesto para cuando se implemente: el flujo unificado en sí (tocar un producto abre el overlay rápido; agregar un segundo producto antes de completar escala a modo carrito) todavía no tiene un diseño detallado — es una idea, no una especificación. Esa pantalla necesitará su propia pasada de diseño cuando llegue el momento, el toggle no resuelve eso por sí solo.
+
+## Estado de implementación en Flutter (2026-07-29)
+
+Las 6 fases de la pasada de refinamiento visual, cada una verificada con `flutter analyze`/`flutter test`/`flutter build linux --debug` + navegación real por teclado con captura de pantalla:
+
+- **Fase 0** — fundación: `lib/core/theme/bento_theme.dart` (tokens `BentoSpacing`/`BentoRadius`, escala tipográfica, theming de componentes compartidos), `bento_ink.dart` (ripple granulado, `BentoGrainSplash`), `bento_corner_notice.dart` (notificación de esquina).
+- **Fase 1** — Login con los tokens aplicados.
+- **Fase 2** — Ventana 1 (grid + overlay de cobro) con tokens y notificación de esquina.
+- **Fase 3** — Ventana 2: fila de carrito (`_FilaLineaVenta`) con el mismo lenguaje visual que la tarjeta de producto.
+- **Fase 4** — Ventana 3: fila de producto (`_FilaProducto`), misma pieza reutilizada por tercera vez; crear/editar/descontinuar/purgar ahora sí notifican.
+- **Fase 5** — Ventana 4: jerarquía de tamaño real entre el hero y los tiles de turno (`displaySmall`, 40px, contra `bodyLarge`/`titleMedium` de los tiles).
+- **Fase 6** — Ventana 5: grid de tiles deslizante (`_TileConfiguracion`), reemplaza el `ListView` de `ListTile`s.
+
+No cubierto por esta pasada (fuera de alcance, no un olvido): layout de teléfono, exportar PDF/CSV en Reportes, ranking de búsqueda con tolerancia a errores ortográficos (0018), ícono vectorial propio para "línea libre".
 
 ## Checklist
 
