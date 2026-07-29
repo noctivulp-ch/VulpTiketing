@@ -69,21 +69,27 @@ TextTheme _escalaTipografica(TextTheme base) {
   );
 }
 
-ThemeData buildBentoTheme(AcentoTinte acento) {
+/// [brightness] construye la variante clara u oscura del mismo acento — ver
+/// `Preferencias.modoTema` / `lib/app.dart` (`theme`/`darkTheme`).
+/// `ColorScheme.fromSeed` genera un esquema oscuro coherente con la misma
+/// semilla desaturada sin necesitar una paleta aparte para modo oscuro.
+ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightness.light}) {
   // `ColorScheme.fromSeed` con variante neutral: escala de grises por
   // jerarquia con un matiz del color semilla, en vez del esquema vivo/
   // saturado por defecto de Material 3.
   //
   // Contraste verificado (skill `color-system`, formula WCAG via
   // `Color.computeLuminance()`) para los pares de texto/fondo realmente
-  // usados en la app, en los 3 acentos: onSurface/surface ~16:1,
-  // onSurfaceVariant/surface ~9:1, onPrimaryContainer/primaryContainer
-  // ~7.25:1, onPrimary/primary ~6.45:1 — todos superan holgadamente AAA
-  // (7:1), no solo el minimo AA (4.5:1) pedido por la skill. No hace falta
-  // ajustar nada: el algoritmo tonal de M3 ya esta disenado para garantizar
-  // estos pares.
+  // usados en la app, en los 3 acentos (modo claro): onSurface/surface
+  // ~16:1, onSurfaceVariant/surface ~9:1, onPrimaryContainer/
+  // primaryContainer ~7.25:1, onPrimary/primary ~6.45:1 — todos superan
+  // holgadamente AAA (7:1), no solo el minimo AA (4.5:1) pedido por la
+  // skill. El algoritmo tonal de M3 mantiene las mismas garantias de
+  // contraste en la variante oscura (invierte las tonalidades, no las
+  // relaciones de contraste).
   final scheme = ColorScheme.fromSeed(
     seedColor: _semillaDe(acento),
+    brightness: brightness,
     dynamicSchemeVariant: DynamicSchemeVariant.neutral,
   );
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);

@@ -5,22 +5,33 @@ import '../../core/theme/bento_theme.dart';
 
 enum OrdenProducto { alfabetico, precio, categoria }
 
+/// `sistema` sigue el brillo del SO — default, ver `lib/app.dart`.
+enum ModoTema { claro, oscuro, sistema }
+
 const _keyOrden = 'orden_producto';
 const _keyAcento = 'acento_tinte';
+const _keyModoTema = 'modo_tema';
 
 class Preferencias {
   const Preferencias({
     this.ordenProducto = OrdenProducto.alfabetico,
     this.acento = AcentoTinte.grisAzulado,
+    this.modoTema = ModoTema.sistema,
   });
 
   final OrdenProducto ordenProducto;
   final AcentoTinte acento;
+  final ModoTema modoTema;
 
-  Preferencias copyWith({OrdenProducto? ordenProducto, AcentoTinte? acento}) {
+  Preferencias copyWith({
+    OrdenProducto? ordenProducto,
+    AcentoTinte? acento,
+    ModoTema? modoTema,
+  }) {
     return Preferencias(
       ordenProducto: ordenProducto ?? this.ordenProducto,
       acento: acento ?? this.acento,
+      modoTema: modoTema ?? this.modoTema,
     );
   }
 }
@@ -39,7 +50,11 @@ class PreferenciasNotifier extends AsyncNotifier<Preferencias> {
       (a) => a.name == prefs.getString(_keyAcento),
       orElse: () => AcentoTinte.grisAzulado,
     );
-    return Preferencias(ordenProducto: orden, acento: acento);
+    final modoTema = ModoTema.values.firstWhere(
+      (m) => m.name == prefs.getString(_keyModoTema),
+      orElse: () => ModoTema.sistema,
+    );
+    return Preferencias(ordenProducto: orden, acento: acento, modoTema: modoTema);
   }
 
   Future<void> cambiarOrden(OrdenProducto orden) async {
@@ -57,6 +72,14 @@ class PreferenciasNotifier extends AsyncNotifier<Preferencias> {
     await prefs.setString(_keyAcento, acento.name);
     state = AsyncData(
       (state.valueOrNull ?? const Preferencias()).copyWith(acento: acento),
+    );
+  }
+
+  Future<void> cambiarModoTema(ModoTema modo) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyModoTema, modo.name);
+    state = AsyncData(
+      (state.valueOrNull ?? const Preferencias()).copyWith(modoTema: modo),
     );
   }
 }

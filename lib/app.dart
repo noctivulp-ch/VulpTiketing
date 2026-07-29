@@ -13,15 +13,19 @@ class VulpTiketingApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rol = ref.watch(sesionNotifierProvider);
-    final acento = ref
-            .watch(preferenciasNotifierProvider)
-            .valueOrNull
-            ?.acento ??
-        AcentoTinte.grisAzulado;
+    final preferencias = ref.watch(preferenciasNotifierProvider).valueOrNull;
+    final acento = preferencias?.acento ?? AcentoTinte.grisAzulado;
+    final modoTema = preferencias?.modoTema ?? ModoTema.sistema;
 
     return MaterialApp(
       title: 'VulpTiketing',
       theme: buildBentoTheme(acento),
+      darkTheme: buildBentoTheme(acento, brightness: Brightness.dark),
+      themeMode: switch (modoTema) {
+        ModoTema.claro => ThemeMode.light,
+        ModoTema.oscuro => ThemeMode.dark,
+        ModoTema.sistema => ThemeMode.system,
+      },
       home: rol == null ? const LoginScreen() : const DashboardShell(),
       debugShowCheckedModeBanner: false,
     );
