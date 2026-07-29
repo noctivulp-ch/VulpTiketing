@@ -9,7 +9,10 @@ import 'categoria_model.dart';
 /// para Categoria, no asumir que aplica igual que a Producto (0015 fue
 /// especifico de Producto).
 class CategoriaNotifier extends AsyncNotifier<List<Categoria>> {
-  late final CategoriaDao _dao;
+  // `late` sin `final` — ver comentario equivalente en ProductoNotifier:
+  // Riverpod reutiliza esta instancia y vuelve a llamar build() al
+  // invalidar el provider, `final` rompia con LateInitializationError.
+  late CategoriaDao _dao;
 
   @override
   Future<List<Categoria>> build() async {

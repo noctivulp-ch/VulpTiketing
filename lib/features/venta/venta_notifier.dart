@@ -10,7 +10,10 @@ import 'venta_model.dart';
 /// agregar update()/delete() aqui, ver decision 0009: una Venta no se edita
 /// ni se borra.
 class VentaNotifier extends AsyncNotifier<List<Venta>> {
-  late final VentaDao _dao;
+  // `late` sin `final` — ver comentario equivalente en ProductoNotifier:
+  // Riverpod reutiliza esta instancia y vuelve a llamar build() al
+  // invalidar el provider, `final` rompia con LateInitializationError.
+  late VentaDao _dao;
 
   @override
   Future<List<Venta>> build() async {

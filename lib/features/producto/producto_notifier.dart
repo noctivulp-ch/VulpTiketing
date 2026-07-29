@@ -9,7 +9,12 @@ enum PurgarResultado { ok, tieneVentasAsociadas, faltaSincronizar }
 /// Solo escritura + lectura base (decision 0019) — el orden/busqueda de
 /// presentacion vive en ProductoQueryProvider, no aqui.
 class ProductoNotifier extends AsyncNotifier<List<Producto>> {
-  late final ProductoDao _dao;
+  // `late` sin `final`: Riverpod reutiliza esta misma instancia de Notifier
+  // y vuelve a llamar build() cada vez que se invalida este provider o su
+  // dependencia (databaseProvider) — con `final` la segunda asignacion
+  // tiraba LateInitializationError ("ya estaba inicializado") apenas se
+  // invalidaba este provider desde otro lado (ej. tras importar catalogo).
+  late ProductoDao _dao;
 
   @override
   Future<List<Producto>> build() async {
