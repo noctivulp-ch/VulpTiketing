@@ -24,3 +24,4 @@ Volver a [../index](../index.md)
 | [0018](0018-orden-y-busqueda-de-producto.md) | Orden y búsqueda de Producto: agrupación por categoría + ranking nombre > categoría | Aceptada |
 | [0019](0019-descomponer-servicios-responsabilidad-unica.md) | Descomponer servicios grandes en clases de responsabilidad única | Aceptada |
 | [0020](0020-iconografia-vectorial-propia.md) | Iconografía vectorial propia: Python + SVG + tinte en runtime | Aceptada |
+| [0021](0021-paquete-mdns-bonsoir.md) | Paquete de mDNS para sync: `bonsoir` | Aceptada |
