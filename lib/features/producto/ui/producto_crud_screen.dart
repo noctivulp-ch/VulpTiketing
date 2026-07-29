@@ -26,49 +26,80 @@ class ProductoCrudScreen extends ConsumerWidget {
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
 
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            hintText: 'Buscar producto o categoría…',
-            border: InputBorder.none,
+      body: Column(
+        children: [
+          // Cascada invertida (mismo patron que el panel lateral de Ventana
+          // 2): el buscador vive en la barra inferior, la lista crece hacia
+          // arriba desde ahi con `reverse: true`.
+          Expanded(
+            child: productosAsync.when(
+              data: (productos) => productos.isEmpty
+                  ? const Center(child: Text('Sin productos'))
+                  : ListView.separated(
+                      reverse: true,
+                      padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+                      itemCount: productos.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad),
+                      itemBuilder: (context, i) {
+                        final producto = productos[i];
+                        return _FilaProducto(
+                          producto: producto,
+                          esGerente: esGerente,
+                          sincronizado: sincronizado,
+                          onEditar: () => _editar(context, producto),
+                          onDescontinuar: () async {
+                            await ref
+                                .read(productoNotifierProvider.notifier)
+                                .descontinuar(producto.id);
+                            if (context.mounted) {
+                              mostrarNotificacionEsquina(context, '✓ Producto descontinuado');
+                            }
+                          },
+                          onPurgar: () =>
+                              _confirmarYPurgar(context, ref, producto, sincronizado: sincronizado),
+                        );
+                      },
+                    ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, st) => Center(child: Text('Error: $e')),
+            ),
           ),
-          onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
-        ),
-      ),
-      body: productosAsync.when(
-        data: (productos) => productos.isEmpty
-            ? const Center(child: Text('Sin productos'))
-            : ListView.separated(
-                padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-                itemCount: productos.length,
-                separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad),
-                itemBuilder: (context, i) {
-                  final producto = productos[i];
-                  return _FilaProducto(
-                    producto: producto,
-                    esGerente: esGerente,
-                    sincronizado: sincronizado,
-                    onEditar: () => _editar(context, producto),
-                    onDescontinuar: () async {
-                      await ref.read(productoNotifierProvider.notifier).descontinuar(producto.id);
-                      if (context.mounted) {
-                        mostrarNotificacionEsquina(context, '✓ Producto descontinuado');
-                      }
-                    },
-                    onPurgar: () => _confirmarYPurgar(context, ref, producto, sincronizado: sincronizado),
-                  );
-                },
+          // Barra inferior unificada: buscador + agregar en el mismo panel
+          // (antes el buscador vivia en el AppBar y "agregar" era un FAB
+          // flotando aparte, sin relacion visual con el buscador).
+          ColoredBox(
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(BentoSpacing.unidad),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          hintText: 'Buscar producto o categoría…',
+                          isDense: true,
+                        ),
+                        onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
+                      ),
+                    ),
+                    if (esGerente) ...[
+                      const SizedBox(width: BentoSpacing.unidad),
+                      FilledButton.icon(
+                        onPressed: () => _crear(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Nuevo'),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Error: $e')),
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: esGerente
-          ? FloatingActionButton(
-              onPressed: () => _crear(context),
-              child: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 
