@@ -189,11 +189,41 @@ class LibroVentasService {
     await _adjuntar(db, libro.archivo);
   }
 
-  Future<void> _adjuntar(Database db, String archivo) async {
-    await db.execute("ATTACH DATABASE '${rutaDe(archivo)}' AS $aliasLibro");
+  /// Si el alias del libro ya está adjunto en esta conexión.
+  ///
+  /// `PRAGMA database_list` lista los esquemas realmente montados. Es la única
+  /// forma de saberlo: preguntar por la tabla `venta` no distingue entre "no
+  /// hay libro" y "el libro está adjunto pero vacío".
+  Future<bool> estaAdjunto(DatabaseExecutor db) async {
+    final esquemas = await db.rawQuery('PRAGMA database_list');
+    return esquemas.any((e) => e['name'] == aliasLibro);
   }
 
-  Future<void> _desadjuntar(Database db) async {
+  /// Idempotente, y tolerante a que dos llamadas corran a la vez.
+  ///
+  /// Sin esto, un segundo ATTACH sobre la misma conexión muere con
+  /// `database libro is already in use` y deja la app entera inutilizable —
+  /// toda pantalla que consulte ventas revienta. Ocurría de verdad: sqflite
+  /// abre por defecto en modo `singleInstance`, así que dos aperturas
+  /// concurrentes devuelven LA MISMA conexión, y la segunda volvía a adjuntar.
+  ///
+  /// Comprobar antes NO alcanza: entre la comprobación y el ATTACH hay un
+  /// `await`, y varios llamadores pueden ver "no adjunto" a la vez. Por eso el
+  /// fallo se acepta solo si, al mirar de nuevo, el libro quedó adjunto — o
+  /// sea, si perdimos una carrera contra alguien que hizo el mismo trabajo.
+  /// Cualquier otro error sigue subiendo.
+  Future<void> _adjuntar(Database db, String archivo) async {
+    if (await estaAdjunto(db)) await desadjuntar(db);
+    try {
+      await db.execute("ATTACH DATABASE '${rutaDe(archivo)}' AS $aliasLibro");
+    } catch (_) {
+      if (!await estaAdjunto(db)) rethrow;
+    }
+  }
+
+  /// Suelta el libro adjunto, si lo hay. Público porque cerrar la base también
+  /// tiene que soltarlo (ver `AppDatabase.close`).
+  Future<void> desadjuntar(Database db) async {
     // Falla si no hay nada adjunto; se ignora a propósito para que el llamador
     // no tenga que llevar la cuenta.
     try {
@@ -293,7 +323,7 @@ class LibroVentasService {
   /// siendo legible.
   Future<void> _cerrar(Database db, LibroVentas libro) async {
     final fin = libro.ultimoDia ?? libro.fechaInicio;
-    await _desadjuntar(db);
+    await desadjuntar(db);
 
     final nombreFinal = _nombreCerrado(libro.fechaInicio, fin);
     final origen = File(rutaDe(libro.archivo));

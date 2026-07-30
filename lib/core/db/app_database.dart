@@ -15,6 +15,19 @@ class AppDatabase {
 
   static Database? _instance;
 
+  /// La apertura en curso, para que N lectores concurrentes compartan UNA.
+  ///
+  /// `open()` tenía un `await` entre comprobar `_instance` y asignarlo, así que
+  /// dos llamadas simultáneas pasaban las dos el chequeo de null. Y como
+  /// sqflite abre en modo `singleInstance` por defecto, las dos recibían LA
+  /// MISMA conexión y las dos le adjuntaban el libro: la segunda moría con
+  /// `database libro is already in use` y dejaba la app sin poder consultar
+  /// ventas en ninguna pantalla.
+  ///
+  /// Es fácil de disparar: al entrar, el Dashboard monta las cinco pantallas de
+  /// una y ocho providers distintos piden la base en el mismo frame.
+  static Future<Database>? _aperturaEnCurso;
+
   /// Ruta del archivo fisico — usada por TiketbackService para
   /// leer/reemplazar el archivo directo en exportar/restaurar (0006).
   static Future<String> ruta() async {
@@ -26,8 +39,15 @@ class AppDatabase {
   /// el archivo fisico al restaurar un .tiketback — sqflite no permite
   /// sobreescribir un archivo con una conexion abierta de forma segura.
   static Future<void> close() async {
-    await _instance?.close();
+    _aperturaEnCurso = null;
+    final db = _instance;
     _instance = null;
+    if (db == null) return;
+    // Soltar el libro ANTES de cerrar: si la conexión sobreviviera al cierre
+    // —sqflite la comparte entre aperturas del mismo archivo— volvería con el
+    // alias todavía tomado y el siguiente ATTACH fallaría.
+    await LibroVentasService(directorio: p.dirname(await ruta())).desadjuntar(db);
+    await db.close();
   }
 
   /// Deja `databaseFactory` utilizable en esta plataforma.
@@ -47,12 +67,25 @@ class AppDatabase {
     }
   }
 
+  /// Comparte una sola apertura entre todos los que la pidan a la vez.
   static Future<Database> open() async {
-    if (_instance != null) return _instance!;
+    final abierta = _instance;
+    if (abierta != null) return abierta;
 
+    final enCurso = _aperturaEnCurso ??= _abrir();
+    try {
+      return await enCurso;
+    } finally {
+      // Se limpia pase lo que pase: si la apertura falló, el siguiente intento
+      // tiene que poder reintentar en vez de quedarse pegado a un futuro roto.
+      if (identical(_aperturaEnCurso, enCurso)) _aperturaEnCurso = null;
+    }
+  }
+
+  static Future<Database> _abrir() async {
     inicializarFactory();
 
-    _instance = await openDatabase(
+    final db = await openDatabase(
       await ruta(),
       version: version,
       onCreate: (db, version) => crearEsquema(db),
@@ -74,9 +107,13 @@ class AppDatabase {
     // El libro abierto se adjunta aca: desde este momento `SELECT * FROM venta`
     // resuelve contra el, sin que el resto del codigo tenga que calificar nada.
     await LibroVentasService(directorio: p.dirname(await ruta()))
-        .adjuntarAbierto(_instance!);
+        .adjuntarAbierto(db);
 
-    return _instance!;
+    // `_instance` se asigna al FINAL, con la base ya usable. Asignarla antes
+    // dejaba una ventana donde otro lector se la llevaba a medio preparar, sin
+    // el libro adjunto.
+    _instance = db;
+    return db;
   }
 
   static const version = 3;
