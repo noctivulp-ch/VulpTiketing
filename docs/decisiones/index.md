@@ -29,3 +29,4 @@ Volver a [../index](../index.md)
 | [0023](0023-refinamiento-bento-post-implementacion.md) | Refinamiento bento: evitar overlays, figuras conectadas con matices, cascada invertida, tema claro/oscuro | Aceptada |
 | [0024](0024-harness-flutter-driver-mcp.md) | Harness de `flutter_driver` + MCP para control remoto de la app | Aceptada |
 | [0025](0025-archivado-anual-rodante.md) | Libros de ventas rodantes en archivos SQLite adjuntables | Aceptada |
+| [0026](0026-cuadricula-bento-y-breakpoints.md) | Retícula bento de 6 columnas y tres tamaños de pantalla | Aceptada |

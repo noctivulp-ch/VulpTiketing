@@ -206,7 +206,18 @@ class _CarritoState extends ConsumerState<_Carrito> {
       children: [
         Expanded(
           child: ventaEnCurso.lineas.isEmpty
-              ? const Center(child: Text('Agregá productos con el botón de la derecha'))
+              // El texto sigue al panel: en teléfono la costura está ABAJO, y
+              // decir "a la derecha" mandaba al usuario a mirar donde no hay
+              // nada. Es el tipo de incoherencia que aparece al mover algo de
+              // sitio y no revisar lo que lo nombra.
+              ? Center(
+                  child: Text(
+                    BentoAncho.de(context).esCompacto
+                        ? 'Agregá productos con el botón de abajo'
+                        : 'Agregá productos con el botón de la derecha',
+                    textAlign: TextAlign.center,
+                  ),
+                )
               : ListView.separated(
                   padding: const EdgeInsets.all(BentoSpacing.gapCelda),
                   itemCount: ventaEnCurso.lineas.length,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../sync/sync_notifier.dart';
@@ -36,11 +37,28 @@ class ProductoCrudScreen extends ConsumerWidget {
             child: productosAsync.when(
               data: (productos) => productos.isEmpty
                   ? const Center(child: Text('Sin productos'))
-                  : ListView.separated(
+                  : GridView.builder(
+                      // Se conserva la cascada invertida: la lista crece hacia
+                      // arriba desde el buscador de la barra inferior.
                       reverse: true,
                       padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        // Una fila de producto ocupa 6, 3 o 2 columnas: en
+                        // teléfono va a lo ancho, en escritorio caben tres.
+                        crossAxisCount: bentoPorFila(
+                          BentoAncho.de(context),
+                          compacto: 6,
+                          medio: 3,
+                          amplio: 2,
+                        ),
+                        mainAxisSpacing: BentoSpacing.pared,
+                        crossAxisSpacing: BentoSpacing.pared,
+                        // Alto fijo en vez de proporción: estas celdas son
+                        // filas, y su alto lo fija el contenido (miniatura de
+                        // 44 y botones de 48), no el ancho de la columna.
+                        mainAxisExtent: 76,
+                      ),
                       itemCount: productos.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad),
                       itemBuilder: (context, i) {
                         final producto = productos[i];
                         return _FilaProducto(
@@ -215,12 +233,22 @@ class _FilaProducto extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(producto.nombre, style: Theme.of(context).textTheme.bodyLarge),
+                // La celda tiene alto fijo (es una fila de una cuadrícula), así
+                // que el nombre se corta en vez de envolver: dos líneas de un
+                // nombre largo desbordarían la celda.
+                Text(
+                  producto.nombre,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 Text(
                   producto.activo
                       ? '₡${producto.precioBase.toStringAsFixed(2)}'
                       : '₡${producto.precioBase.toStringAsFixed(2)} — descontinuado',
                   style: Theme.of(context).textTheme.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

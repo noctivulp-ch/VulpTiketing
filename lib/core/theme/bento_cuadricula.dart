@@ -49,6 +49,28 @@ enum BentoAncho {
 /// 21 dp y el número deja de significar nada.
 const int bentoColumnas = 6;
 
+/// Cuántos elementos entran por fila si cada uno ocupa el span indicado.
+///
+/// Para las listas LARGAS —el catálogo, que las pruebas de volumen ejercitan con
+/// 5.000 productos— no se puede usar [BentoCuadricula]: construye todas sus
+/// celdas de una, y una lista de miles tiene que ser perezosa. Estas se arman
+/// con un `GridView` de `crossAxisCount` EXPLÍCITO, y este helper es el que hace
+/// que ese número salga del mismo vocabulario de spans que el resto de la app en
+/// vez de ser un `maxCrossAxisExtent` que reparte por ancho disponible.
+int bentoPorFila(
+  BentoAncho ancho, {
+  required int compacto,
+  required int medio,
+  required int amplio,
+}) {
+  final span = switch (ancho) {
+    BentoAncho.compacto => compacto,
+    BentoAncho.medio => medio,
+    BentoAncho.amplio => amplio,
+  };
+  return bentoColumnas ~/ span;
+}
+
 /// Una pieza de la retícula, con cuántas columnas ocupa en cada tamaño.
 ///
 /// Declarar los tres valores es obligatorio a propósito. Un default del estilo

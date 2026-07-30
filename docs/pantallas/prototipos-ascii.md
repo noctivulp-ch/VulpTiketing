@@ -20,7 +20,10 @@ Además de los principios estándar de bento (una celda = una responsabilidad, j
 | Gap entre celdas | 16px |
 | Gap entre grupos | 24px |
 | Padding interno de celda | 16–24px |
-| Radio de esquina | 12px (celdas normales), 16px (celdas hero) |
+| Pared entre pozos | 12px |
+| Radio de esquina | **4px (pozo), 20px (bandeja)** — geometría invertida, ver `DESIGN.md` regla 3 |
+| Retícula | **6 columnas**; cada pieza declara su span por tamaño (decisión 0026) |
+| Tamaños de pantalla | compacto <600dp · medio 600–1023 · amplio ≥1024 |
 | Acento | un solo color, reservado para la acción primaria de cada pantalla (Entrar, Finalizar venta, Completado, Guardar) |
 | Acciones destructivas/irreversibles | nunca a un solo tap en la vista principal — siempre piden confirmación (Purgar, Revertir) |
 
@@ -459,4 +462,4 @@ Tras probar la primera pasada, el usuario dio 8 puntos de feedback concretos, re
 - [x] Ventana 3 — CRUD de Producto
 - [x] Ventana 4 — Reportes (primera propuesta, a validar)
 - [x] Ventana 5 — Configuración (primera propuesta, a validar)
-- [ ] Layout de teléfono (contenido interno de cada ventana)
+- [x] Layout de teléfono (contenido interno de cada ventana) — decisión 0026

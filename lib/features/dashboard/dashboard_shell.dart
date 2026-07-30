@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/bento_bandeja.dart';
+import '../../core/theme/bento_cuadricula.dart';
 import '../../core/theme/bento_icon.dart';
 import '../../core/theme/bento_theme.dart';
 import '../configuracion/ui/configuracion_screen.dart';
@@ -66,7 +67,10 @@ class _DashboardShellState extends State<DashboardShell> {
 
   @override
   Widget build(BuildContext context) {
-    final anchoAmplio = MediaQuery.sizeOf(context).width >= 720;
+    // El rail lateral aparece desde tablet. Antes esto era un `>= 720` suelto,
+    // el ÚNICO punto de toda la app que reaccionaba al tamaño; ahora sale del
+    // mismo sistema de cortes que usan las cinco pantallas (decisión 0026).
+    final anchoAmplio = !BentoAncho.de(context).esCompacto;
 
     // La navegacion es una banda de la BANDEJA, no un NavigationRail de
     // Material: ese traia su propio fondo (`surface`, o sea el color de pozo)

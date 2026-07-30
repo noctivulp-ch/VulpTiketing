@@ -61,33 +61,33 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
         for (final tile in <Widget>[
                 _TileConfiguracion(
                   icono: Icons.lock_outline,
-                  etiqueta: 'Cambiar contraseña',
+                  etiqueta: 'Contraseña',
                   seleccionado: _seleccion == _Opcion.contrasena,
                   onTap: () => setState(() => _seleccion = _Opcion.contrasena),
                 ),
                 _TileConfiguracion(
                   icono: Icons.save_outlined,
-                  etiqueta: 'Exportar backup',
+                  etiqueta: 'Exportar',
                   seleccionado: _seleccion == _Opcion.exportarBackup,
                   onTap: () => setState(() => _seleccion = _Opcion.exportarBackup),
                 ),
                 if (esGerente)
                   _TileConfiguracion(
                     icono: Icons.restore_outlined,
-                    etiqueta: 'Restaurar backup',
+                    etiqueta: 'Restaurar',
                     seleccionado: _seleccion == _Opcion.restaurarBackup,
                     onTap: () => setState(() => _seleccion = _Opcion.restaurarBackup),
                   ),
                 if (esGerente)
                   _TileConfiguracion(
                     icono: Icons.folder_open_outlined,
-                    etiqueta: 'Catálogo (.tiketdata)',
+                    etiqueta: 'Catálogo',
                     seleccionado: _seleccion == _Opcion.catalogo,
                     onTap: () => setState(() => _seleccion = _Opcion.catalogo),
                   ),
                 _TileConfiguracion(
                   icono: Icons.wifi_tethering,
-                  etiqueta: 'Sincronización',
+                  etiqueta: 'Sincronizar',
                   seleccionado: _seleccion == _Opcion.sincronizacion,
                   onTap: () => setState(() => _seleccion = _Opcion.sincronizacion),
                 ),
@@ -99,7 +99,7 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
                 ),
                 _TileConfiguracion(
                   icono: Icons.sort,
-                  etiqueta: 'Orden de productos',
+                  etiqueta: 'Orden',
                   seleccionado: _seleccion == _Opcion.ordenProducto,
                   onTap: () => setState(() => _seleccion = _Opcion.ordenProducto),
                 ),
@@ -111,7 +111,7 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
                 ),
           _TileConfiguracion(
             icono: Icons.brightness_6_outlined,
-            etiqueta: 'Modo de tema',
+            etiqueta: 'Tema',
             seleccionado: _seleccion == _Opcion.modoTema,
             onTap: () => setState(() => _seleccion = _Opcion.modoTema),
           ),
@@ -216,6 +216,12 @@ class _TileConfiguracion extends StatelessWidget {
     return BentoPozo(
       onTap: onTap,
       seleccionado: seleccionado,
+      // Padding de pared en vez de celda: a 360 dp el tile mide ~101 dp, y con
+      // 16 de padding a cada lado quedaban ~69 dp de texto — "Sincronización"
+      // no entraba y Flutter la partía a MITAD DE PALABRA ("Sincronizac/ión").
+      // Las etiquetas ademas se acortaron a una palabra donde se podia: el
+      // icono ya dice de que se trata y esta pantalla es de uso raro.
+      padding: const EdgeInsets.all(BentoSpacing.pared),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

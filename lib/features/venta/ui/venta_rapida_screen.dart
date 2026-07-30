@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../producto/producto_model.dart';
@@ -35,11 +36,17 @@ class VentaRapidaScreen extends ConsumerWidget {
             BentoPozo(
               padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
               child: TextField(
+                // Los TRES bordes en `none`, no solo `border`: dentro de un
+                // pozo el contorno ya lo pone el pozo, y el del campo dibujaba
+                // un segundo marco por dentro. `border` sola no alcanza —
+                // `enabledBorder` y `focusedBorder` la pisan.
                 decoration: const InputDecoration(
                   isDense: true,
                   prefixIcon: Icon(Icons.search),
                   hintText: 'Buscar producto o categoría…',
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                 ),
                 onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
               ),
@@ -51,8 +58,22 @@ class VentaRapidaScreen extends ConsumerWidget {
                     ? const _SinProductos()
                     : GridView.builder(
                         padding: EdgeInsets.zero,
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 190,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          // Columnas EXPLÍCITAS: cada producto ocupa 3, 2 o 1
+                          // de las 6 columnas de la retícula, o sea 2 por fila
+                          // en teléfono, 3 en tablet y 6 en escritorio.
+                          //
+                          // Antes era `maxCrossAxisExtent: 190`, donde el
+                          // número de columnas salía de si 190 dp entraban o
+                          // no: la cuadrícula era un efecto secundario del
+                          // ancho, no una decisión, y por eso no se leía como
+                          // una forma deliberada.
+                          crossAxisCount: bentoPorFila(
+                            BentoAncho.de(context),
+                            compacto: 3,
+                            medio: 2,
+                            amplio: 1,
+                          ),
                           mainAxisSpacing: BentoSpacing.pared,
                           crossAxisSpacing: BentoSpacing.pared,
                           // Mas ancho que alto: sin hueco de imagen el pozo

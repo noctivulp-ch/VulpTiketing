@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/bento_bandeja.dart';
+import '../../core/theme/bento_cuadricula.dart';
 import '../../core/theme/bento_icon.dart';
 import '../../core/theme/bento_theme.dart';
 import 'sesion_notifier.dart';
@@ -82,19 +83,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: BentoSpacing.gapGrupo * 1.5),
                 if (_rolSeleccionado == null) ...[
-                  Row(
-                    children: [
-                      Expanded(child: _TarjetaRol(
-                        rol: Rol.gerente,
-                        icono: 'rol_gerente',
-                        onTap: () => _elegirRol(Rol.gerente),
-                      )),
-                      const SizedBox(width: BentoSpacing.pared),
-                      Expanded(child: _TarjetaRol(
-                        rol: Rol.registradora,
-                        icono: 'rol_registradora',
-                        onTap: () => _elegirRol(Rol.registradora),
-                      )),
+                  // Mitades exactas de la retícula en cualquier tamaño: los dos
+                  // roles pesan lo mismo, y la elección se hace de un vistazo.
+                  BentoCuadricula(
+                    hijos: [
+                      BentoCelda(
+                        compacto: 3,
+                        medio: 3,
+                        amplio: 3,
+                        hijo: _TarjetaRol(
+                          rol: Rol.gerente,
+                          icono: 'rol_gerente',
+                          onTap: () => _elegirRol(Rol.gerente),
+                        ),
+                      ),
+                      BentoCelda(
+                        compacto: 3,
+                        medio: 3,
+                        amplio: 3,
+                        hijo: _TarjetaRol(
+                          rol: Rol.registradora,
+                          icono: 'rol_registradora',
+                          onTap: () => _elegirRol(Rol.registradora),
+                        ),
+                      ),
                     ],
                   ),
                 ] else ...[

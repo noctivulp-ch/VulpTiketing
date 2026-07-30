@@ -143,13 +143,13 @@ void main() {
     // columnas, así que son 3 por fila den 360 dp o 1440.
     await montar(tester, const ConfiguracionScreen(), const Size(360, 800), Rol.gerente);
 
-    final primeros = ['Cambiar contraseña', 'Exportar backup', 'Restaurar backup'];
+    final primeros = ['Contraseña', 'Exportar', 'Restaurar'];
     final ys = {
       for (final t in primeros) tester.getTopLeft(find.text(t)).dy,
     };
     expect(ys, hasLength(1), reason: 'los tres primeros tiles van en la misma fila');
 
-    final cuarto = tester.getTopLeft(find.text('Catálogo (.tiketdata)')).dy;
+    final cuarto = tester.getTopLeft(find.text('Catálogo')).dy;
     expect(cuarto, greaterThan(ys.first), reason: 'el cuarto abre una fila nueva');
   });
 
