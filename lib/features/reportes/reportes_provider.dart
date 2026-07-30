@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/db_providers.dart';
-import '../producto/producto_dao.dart';
 import '../venta/linea_venta_model.dart';
-import '../venta/venta_dao.dart';
 import '../venta/venta_model.dart';
 
 /// Solo lectura, se deriva de Venta/LineaVenta — ver
@@ -89,63 +87,140 @@ class ReporteResultado {
   }
 }
 
+/// Cuántos productos entran en cada ranking. Antes no había límite: las dos
+/// listas eran el catálogo completo ordenado al revés, así que un mismo
+/// producto salía en "más vendidos" Y en "menos vendidos" a la vez.
+const limiteRanking = 10;
+
+/// Fragmento SQL que clasifica una fila de venta en su turno. Duplica la
+/// lógica de [turnoDe] a propósito, porque agregar en SQL es lo que hace
+/// viable el reporte: traer las filas a Dart para clasificarlas costaba
+/// segundos con un año de datos. Los cortes son los mismos (decisión 0003) y
+/// hay una prueba que compara las dos implementaciones fila por fila.
+const _sqlTurno = '''
+  CASE
+    WHEN CAST(strftime('%H', v.fecha_hora) AS INTEGER) < 12 THEN 'manana'
+    WHEN CAST(strftime('%H', v.fecha_hora) AS INTEGER) < 18 THEN 'tarde'
+    ELSE 'noche'
+  END''';
+
+const _sqlRangoActivo =
+    "v.estado = 'activa' AND v.fecha_hora >= ? AND v.fecha_hora < ?";
+
+Turno _turnoDeNombre(String nombre) => switch (nombre) {
+      'manana' => Turno.manana,
+      'tarde' => Turno.tarde,
+      _ => Turno.noche,
+    };
+
+/// Agrega en SQL, no en Dart.
+///
+/// La versión anterior traía todas las ventas del rango y hacía UNA CONSULTA
+/// POR VENTA para sus líneas, más una consulta por producto para su nombre. Con
+/// un año de volumen real (117 k ventas, 234 k líneas) y sin índices, el
+/// reporte del día tardaba 5,9 s y el del año no terminaba en 4 minutos: el día
+/// escaneaba 320 × 234 k filas, y el año 117 k × 234 k ≈ 27 mil millones.
+///
+/// Ahora son tres consultas agregadas de tamaño fijo, más el drill-down solo
+/// cuando hace falta.
 final reportesProvider =
     FutureProvider.family<ReporteResultado, ReportesParametros>((ref, params) async {
   final db = await ref.watch(databaseProvider.future);
-  final ventaDao = VentaDao(db);
-  final productoDao = ProductoDao(db);
 
   final (desde, hasta) = rangoDeFechas(params.rango, params.fechaReferencia);
+  final args = [desde.toIso8601String(), hasta.toIso8601String()];
 
-  final ventasRows = await db.query(
-    'venta',
-    where: 'estado = ? AND fecha_hora >= ? AND fecha_hora < ?',
-    whereArgs: ['activa', desde.toIso8601String(), hasta.toIso8601String()],
-  );
+  // 1. Totales por turno. El total general es su suma, así no hace falta una
+  //    cuarta consulta.
+  final totalesRows = await db.rawQuery('''
+    SELECT $_sqlTurno AS turno,
+           SUM(lv.precio_aplicado * lv.cantidad) AS total
+    FROM linea_venta lv
+    JOIN venta v ON v.id = lv.venta_id
+    WHERE $_sqlRangoActivo
+    GROUP BY turno
+  ''', args);
 
-  final ventasConLineas = <VentaConLineas>[];
-  for (final row in ventasRows) {
-    final venta = Venta.fromMap(row);
-    final lineas = await ventaDao.lineasDe(venta.id);
-    ventasConLineas.add(VentaConLineas(venta: venta, lineas: lineas));
+  final porTurno = {for (final t in Turno.values) t: 0.0};
+  for (final row in totalesRows) {
+    porTurno[_turnoDeNombre(row['turno'] as String)] =
+        (row['total'] as num?)?.toDouble() ?? 0;
+  }
+  final total = porTurno.values.fold(0.0, (a, b) => a + b);
+
+  // 2. Ranking, con el nombre resuelto en la misma consulta (antes era una
+  //    consulta por producto distinto). Las líneas libres quedan fuera a
+  //    propósito: el ranking existe para decisiones de catálogo, y una línea
+  //    libre por definición no es un producto de catálogo (decisión 0016).
+  //    Sí cuentan para el total de dinero, solo no para "qué producto vender".
+  final rankingRows = await db.rawQuery('''
+    SELECT lv.producto_id AS id,
+           COALESCE(p.nombre, 'Producto eliminado') AS nombre,
+           SUM(lv.cantidad) AS cantidad
+    FROM linea_venta lv
+    JOIN venta v ON v.id = lv.venta_id
+    LEFT JOIN producto p ON p.id = lv.producto_id
+    WHERE $_sqlRangoActivo AND lv.producto_id IS NOT NULL
+    GROUP BY lv.producto_id
+    ORDER BY cantidad DESC
+  ''', args);
+
+  final masVendidos = <RankingItem>[];
+  final idsEnMas = <String>{};
+  for (final row in rankingRows.take(limiteRanking)) {
+    idsEnMas.add(row['id'] as String);
+    masVendidos.add(RankingItem(
+      nombre: row['nombre'] as String,
+      cantidad: (row['cantidad'] as num).toInt(),
+    ));
   }
 
-  double total = 0;
-  final porTurno = {for (final t in Turno.values) t: 0.0};
+  // Los menos vendidos se toman desde la cola, excluyendo lo que ya está en
+  // "más vendidos": dos listas que afirman lo contrario del mismo producto no
+  // informan nada.
+  final menosVendidos = <RankingItem>[];
+  for (final row in rankingRows.reversed) {
+    if (menosVendidos.length >= limiteRanking) break;
+    if (idsEnMas.contains(row['id'] as String)) continue;
+    menosVendidos.add(RankingItem(
+      nombre: row['nombre'] as String,
+      cantidad: (row['cantidad'] as num).toInt(),
+    ));
+  }
+
+  // 3. Drill-down: SOLO para el rango de día, como ya decía la documentación
+  //    de `ventasPorTurno`. Llenarlo siempre hacía que un reporte anual
+  //    retuviera en memoria todas las ventas del año con todas sus líneas.
   final ventasPorTurno = {for (final t in Turno.values) t: <VentaConLineas>[]};
-  // productoId/nombreLibre -> cantidad vendida. Lineas libres se excluyen
-  // del ranking a proposito: el ranking existe para decisiones de catalogo
-  // (que producto vender mas/menos), y una linea libre por definicion no
-  // es un producto de catalogo (decision 0016). Si cuentan para el total
-  // de dinero, solo no para "que producto vender mas".
-  final cantidadPorProducto = <String, int>{};
-  final nombreCache = <String, String>{};
+  if (params.rango == RangoReporte.dia) {
+    final ventasRows = await db.query(
+      'venta',
+      where: 'estado = ? AND fecha_hora >= ? AND fecha_hora < ?',
+      whereArgs: ['activa', ...args],
+    );
+    // Todas las líneas del rango en UNA consulta, agrupadas en Dart — no una
+    // consulta por venta.
+    final lineasRows = await db.rawQuery('''
+      SELECT lv.* FROM linea_venta lv
+      JOIN venta v ON v.id = lv.venta_id
+      WHERE $_sqlRangoActivo
+    ''', args);
 
-  for (final vc in ventasConLineas) {
-    total += vc.total;
-    final turno = turnoDe(vc.venta.fechaHora);
-    porTurno[turno] = (porTurno[turno] ?? 0) + vc.total;
-    ventasPorTurno[turno]!.add(vc);
+    final lineasPorVenta = <String, List<LineaVenta>>{};
+    for (final row in lineasRows) {
+      (lineasPorVenta[row['venta_id'] as String] ??= [])
+          .add(LineaVenta.fromMap(row));
+    }
 
-    for (final linea in vc.lineas) {
-      if (linea.productoId == null) continue; // linea libre, fuera del ranking
-      cantidadPorProducto[linea.productoId!] =
-          (cantidadPorProducto[linea.productoId!] ?? 0) + linea.cantidad;
+    for (final row in ventasRows) {
+      final venta = Venta.fromMap(row);
+      final vc = VentaConLineas(
+        venta: venta,
+        lineas: lineasPorVenta[venta.id] ?? const [],
+      );
+      ventasPorTurno[turnoDe(venta.fechaHora)]!.add(vc);
     }
   }
-
-  for (final id in cantidadPorProducto.keys) {
-    if (nombreCache.containsKey(id)) continue;
-    final producto = await productoDao.obtenerPorId(id);
-    nombreCache[id] = producto?.nombre ?? 'Producto eliminado';
-  }
-
-  final items = [
-    for (final entry in cantidadPorProducto.entries)
-      RankingItem(nombre: nombreCache[entry.key]!, cantidad: entry.value),
-  ];
-  final masVendidos = [...items]..sort((a, b) => b.cantidad.compareTo(a.cantidad));
-  final menosVendidos = [...items]..sort((a, b) => a.cantidad.compareTo(b.cantidad));
 
   return ReporteResultado(
     total: total,

@@ -36,15 +36,30 @@ class AppDatabase {
 
     _instance = await openDatabase(
       await ruta(),
-      version: 1,
-      onCreate: (db, version) async {
-        await db.execute(_createCategoria);
-        await db.execute(_createProducto);
-        await db.execute(_createVenta);
-        await db.execute(_createLineaVenta);
-      },
+      version: version,
+      onCreate: (db, version) => crearEsquema(db),
     );
     return _instance!;
+  }
+
+  static const version = 1;
+
+  /// El esquema como lista ordenada de sentencias, publico a proposito: las
+  /// pruebas lo aplican en bases en memoria en vez de duplicar el DDL a mano.
+  /// Duplicarlo hacia que el esquema de las pruebas pudiera divergir del real
+  /// en silencio — y una prueba contra un esquema que ya no existe no prueba
+  /// nada.
+  static const esquema = [
+    _createCategoria,
+    _createProducto,
+    _createVenta,
+    _createLineaVenta,
+  ];
+
+  static Future<void> crearEsquema(DatabaseExecutor db) async {
+    for (final sentencia in esquema) {
+      await db.execute(sentencia);
+    }
   }
 
   static const _createCategoria = '''
