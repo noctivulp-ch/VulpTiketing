@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/nav/retroceso.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_theme.dart';
@@ -59,56 +60,56 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
     final rejilla = BentoCuadricula(
       hijos: [
         for (final tile in <Widget>[
-                _TileConfiguracion(
-                  icono: Icons.lock_outline,
-                  etiqueta: 'Contraseña',
-                  seleccionado: _seleccion == _Opcion.contrasena,
-                  onTap: () => setState(() => _seleccion = _Opcion.contrasena),
-                ),
-                _TileConfiguracion(
-                  icono: Icons.save_outlined,
-                  etiqueta: 'Exportar',
-                  seleccionado: _seleccion == _Opcion.exportarBackup,
-                  onTap: () => setState(() => _seleccion = _Opcion.exportarBackup),
-                ),
-                if (esGerente)
-                  _TileConfiguracion(
-                    icono: Icons.restore_outlined,
-                    etiqueta: 'Restaurar',
-                    seleccionado: _seleccion == _Opcion.restaurarBackup,
-                    onTap: () => setState(() => _seleccion = _Opcion.restaurarBackup),
-                  ),
-                if (esGerente)
-                  _TileConfiguracion(
-                    icono: Icons.folder_open_outlined,
-                    etiqueta: 'Catálogo',
-                    seleccionado: _seleccion == _Opcion.catalogo,
-                    onTap: () => setState(() => _seleccion = _Opcion.catalogo),
-                  ),
-                _TileConfiguracion(
-                  icono: Icons.wifi_tethering,
-                  etiqueta: 'Sincronizar',
-                  seleccionado: _seleccion == _Opcion.sincronizacion,
-                  onTap: () => setState(() => _seleccion = _Opcion.sincronizacion),
-                ),
-                _TileConfiguracion(
-                  icono: Icons.logout,
-                  etiqueta: 'Cerrar sesión',
-                  seleccionado: _seleccion == _Opcion.cerrarSesion,
-                  onTap: () => setState(() => _seleccion = _Opcion.cerrarSesion),
-                ),
-                _TileConfiguracion(
-                  icono: Icons.sort,
-                  etiqueta: 'Orden',
-                  seleccionado: _seleccion == _Opcion.ordenProducto,
-                  onTap: () => setState(() => _seleccion = _Opcion.ordenProducto),
-                ),
-                _TileConfiguracion(
-                  icono: Icons.palette_outlined,
-                  etiqueta: 'Acento',
-                  seleccionado: _seleccion == _Opcion.acento,
-                  onTap: () => setState(() => _seleccion = _Opcion.acento),
-                ),
+          _TileConfiguracion(
+            icono: Icons.lock_outline,
+            etiqueta: 'Contraseña',
+            seleccionado: _seleccion == _Opcion.contrasena,
+            onTap: () => setState(() => _seleccion = _Opcion.contrasena),
+          ),
+          _TileConfiguracion(
+            icono: Icons.save_outlined,
+            etiqueta: 'Exportar',
+            seleccionado: _seleccion == _Opcion.exportarBackup,
+            onTap: () => setState(() => _seleccion = _Opcion.exportarBackup),
+          ),
+          if (esGerente)
+            _TileConfiguracion(
+              icono: Icons.restore_outlined,
+              etiqueta: 'Restaurar',
+              seleccionado: _seleccion == _Opcion.restaurarBackup,
+              onTap: () => setState(() => _seleccion = _Opcion.restaurarBackup),
+            ),
+          if (esGerente)
+            _TileConfiguracion(
+              icono: Icons.folder_open_outlined,
+              etiqueta: 'Catálogo',
+              seleccionado: _seleccion == _Opcion.catalogo,
+              onTap: () => setState(() => _seleccion = _Opcion.catalogo),
+            ),
+          _TileConfiguracion(
+            icono: Icons.wifi_tethering,
+            etiqueta: 'Sincronizar',
+            seleccionado: _seleccion == _Opcion.sincronizacion,
+            onTap: () => setState(() => _seleccion = _Opcion.sincronizacion),
+          ),
+          _TileConfiguracion(
+            icono: Icons.logout,
+            etiqueta: 'Cerrar sesión',
+            seleccionado: _seleccion == _Opcion.cerrarSesion,
+            onTap: () => setState(() => _seleccion = _Opcion.cerrarSesion),
+          ),
+          _TileConfiguracion(
+            icono: Icons.sort,
+            etiqueta: 'Orden',
+            seleccionado: _seleccion == _Opcion.ordenProducto,
+            onTap: () => setState(() => _seleccion = _Opcion.ordenProducto),
+          ),
+          _TileConfiguracion(
+            icono: Icons.palette_outlined,
+            etiqueta: 'Acento',
+            seleccionado: _seleccion == _Opcion.acento,
+            onTap: () => setState(() => _seleccion = _Opcion.acento),
+          ),
           _TileConfiguracion(
             icono: Icons.brightness_6_outlined,
             etiqueta: 'Tema',
@@ -132,10 +133,18 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
         ? BentoCuadricula(
             llenarAlto: true,
             hijos: [
-              BentoCelda(compacto: 6, medio: 6, amplio: 2,
-                  hijo: SingleChildScrollView(child: rejilla)),
-              BentoCelda(compacto: 6, medio: 6, amplio: 4,
-                  hijo: SingleChildScrollView(child: panel)),
+              BentoCelda(
+                compacto: 6,
+                medio: 6,
+                amplio: 2,
+                hijo: SingleChildScrollView(child: rejilla),
+              ),
+              BentoCelda(
+                compacto: 6,
+                medio: 6,
+                amplio: 4,
+                hijo: SingleChildScrollView(child: panel),
+              ),
             ],
           )
         : Column(
@@ -147,18 +156,19 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
             ],
           );
 
-    return Scaffold(
-      body: SafeArea(
-        child: ancho == BentoAncho.amplio
-            ? Padding(
-                padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-                child: cuerpo,
-              )
-            // La página entera scrollea, que es el arreglo del desborde.
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-                child: cuerpo,
-              ),
+    return RetrocesoCierra(
+      activo: _seleccion != null,
+      alRetroceder: () => setState(() => _seleccion = null),
+      child: Scaffold(
+        body: SafeArea(
+          child: ancho == BentoAncho.amplio
+              ? Padding(padding: const EdgeInsets.all(BentoSpacing.gapCelda), child: cuerpo)
+              // La página entera scrollea, que es el arreglo del desborde.
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+                  child: cuerpo,
+                ),
+        ),
       ),
     );
   }
@@ -269,7 +279,7 @@ class _PanelSincronizacion extends ConsumerWidget {
         Text(
           activo
               ? '${notifier.paresVisibles.length} dispositivo(s) del mismo rol visibles'
-                  '${notifier.esOrquestadorDeMiGrupo ? " — este es el orquestador" : ""}'
+                    '${notifier.esOrquestadorDeMiGrupo ? " — este es el orquestador" : ""}'
               : 'Detenida — actívala para sincronizar con dispositivos del mismo rol',
         ),
         const SizedBox(height: BentoSpacing.gapCelda),

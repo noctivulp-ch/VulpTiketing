@@ -230,3 +230,71 @@ final reportesProvider =
     ventasPorTurno: ventasPorTurno,
   );
 });
+
+/// Cuántas ventas trae como mucho el detalle de un rango.
+///
+/// Hay tope porque el rango puede ser un AÑO: con el volumen real medido son
+/// 117 k ventas y 234 k líneas, y traerlas todas a memoria para pintar una
+/// lista es exactamente el problema que se arregló al agregar en SQL. Se
+/// muestran las más recientes y se dice cuántas quedaron fuera — mentir por
+/// omisión sería peor que el tope.
+const limiteDetalleRango = 300;
+
+class DetalleRango {
+  const DetalleRango({required this.ventas, required this.totalVentas});
+
+  final List<VentaConLineas> ventas;
+
+  /// Cuántas hay en el rango completo, más allá de las que se trajeron.
+  final int totalVentas;
+
+  bool get truncado => totalVentas > ventas.length;
+}
+
+/// Las ventas de un rango, para el detalle que se abre al tocar el total.
+///
+/// Provider APARTE de `reportesProvider` a propósito: se resuelve solo cuando
+/// alguien entra al detalle. Meterlo en el reporte general habría hecho que
+/// abrir Reportes cargara el año entero aunque nadie mirara la lista.
+final detalleRangoProvider =
+    FutureProvider.family<DetalleRango, ReportesParametros>((ref, params) async {
+  final db = await ref.watch(databaseProvider.future);
+  final (desde, hasta) = rangoDeFechas(params.rango, params.fechaReferencia);
+  final args = [desde.toIso8601String(), hasta.toIso8601String()];
+
+  final cuenta = await db.rawQuery(
+    'SELECT COUNT(*) c FROM venta v WHERE $_sqlRangoActivo',
+    args,
+  );
+  final total = (cuenta.first['c'] as num).toInt();
+
+  final ventasRows = await db.rawQuery(
+    'SELECT v.* FROM venta v WHERE $_sqlRangoActivo '
+    'ORDER BY v.fecha_hora DESC LIMIT $limiteDetalleRango',
+    args,
+  );
+  if (ventasRows.isEmpty) {
+    return DetalleRango(ventas: const [], totalVentas: total);
+  }
+
+  // Las líneas de ESAS ventas en una sola consulta, no una por venta.
+  final ids = ventasRows.map((r) => "'${r['id']}'").join(',');
+  final lineasRows = await db.rawQuery(
+    'SELECT * FROM linea_venta WHERE venta_id IN ($ids)',
+  );
+  final lineasPorVenta = <String, List<LineaVenta>>{};
+  for (final row in lineasRows) {
+    (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaVenta.fromMap(row));
+  }
+
+  return DetalleRango(
+    ventas: [
+      for (final row in ventasRows)
+        VentaConLineas(
+          venta: Venta.fromMap(row),
+          lineas: lineasPorVenta[row['id'] as String] ?? const [],
+        ),
+    ],
+    totalVentas: total,
+  );
+});

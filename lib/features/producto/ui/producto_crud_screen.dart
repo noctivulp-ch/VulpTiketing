@@ -22,7 +22,9 @@ class ProductoCrudScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final productosAsync = ref.watch(productoQueryProvider);
+    // El catálogo del Gerente SÍ muestra los descontinuados: es la única
+    // pantalla desde la que se puede recontinuarlos.
+    final productosAsync = ref.watch(productoCatalogoProvider);
     final sincronizado =
         ref.watch(syncNotifierProvider.notifier).todosLosDispositivosSincronizados;
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
@@ -67,11 +69,19 @@ class ProductoCrudScreen extends ConsumerWidget {
                           sincronizado: sincronizado,
                           onEditar: () => _editar(context, producto),
                           onDescontinuar: () async {
-                            await ref
-                                .read(productoNotifierProvider.notifier)
-                                .descontinuar(producto.id);
+                            final notifier = ref.read(productoNotifierProvider.notifier);
+                            if (producto.activo) {
+                              await notifier.descontinuar(producto.id);
+                            } else {
+                              await notifier.recontinuar(producto.id);
+                            }
                             if (context.mounted) {
-                              mostrarNotificacionEsquina(context, '✓ Producto descontinuado');
+                              mostrarNotificacionEsquina(
+                                context,
+                                producto.activo
+                                    ? '✓ Producto descontinuado'
+                                    : '✓ Producto de vuelta en la carta',
+                              );
                             }
                           },
                           onPurgar: () =>
@@ -226,7 +236,13 @@ class _FilaProducto extends StatelessWidget {
               color: lacaDe(context).pozoContacto,
               borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
             ),
-            child: const Icon(Icons.image_outlined, size: 22),
+            // La miniatura es la señal que se ve sin leer: un producto fuera
+            // de la carta se distingue de un vistazo en una lista larga.
+            child: Icon(
+              producto.activo ? Icons.image_outlined : Icons.block,
+              size: 22,
+              color: producto.activo ? null : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(width: BentoSpacing.unidad),
           Expanded(
@@ -245,8 +261,15 @@ class _FilaProducto extends StatelessWidget {
                 Text(
                   producto.activo
                       ? '₡${producto.precioBase.toStringAsFixed(2)}'
-                      : '₡${producto.precioBase.toStringAsFixed(2)} — descontinuado',
-                  style: Theme.of(context).textTheme.bodySmall,
+                      : 'Fuera de la carta · ₡${producto.precioBase.toStringAsFixed(2)}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        // Atenuado, no translúcido: bajar la opacidad se
+                        // llevaría el contraste por debajo del mínimo AA, y el
+                        // dato tiene que seguir leyéndose.
+                        color: producto.activo
+                            ? null
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

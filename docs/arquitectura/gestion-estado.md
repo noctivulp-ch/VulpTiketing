@@ -24,7 +24,7 @@ Esta lista es la referencia concreta contra la que comparar antes de escribir c�
 
 | Notifier | Entidad/responsabilidad | Operaciones permitidas | Operaciones que NO debe tener |
 |----------|--------------------------|--------------------------|-------------------------------|
-| `ProductoNotifier` | Producto — solo escritura + lectura base | crear, leer/listar base (filtrando `deleted_at IS NULL`), actualizar, **descontinuar**, **purgar** (solo si descontinuado + cero ventas asociadas + `SyncNotifier` confirma todos los dispositivos sincronizados — [0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md)) | "revertir"; **orden/búsqueda de presentación** (eso es `ProductoQueryProvider`, abajo) |
+| `ProductoNotifier` | Producto — solo escritura + lectura base | crear, leer/listar base (**todos**, descontinuados incluidos), actualizar, **descontinuar**, **recontinuar**, **purgar** (solo si descontinuado + cero ventas asociadas + `SyncNotifier` confirma todos los dispositivos sincronizados — [0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md)) | "revertir"; **orden/búsqueda de presentación** (eso es `ProductoQueryProvider`, abajo) |
 | `CategoriaNotifier` | Categoria | crear, leer/listar, actualizar, **descontinuar** | eliminar físicamente, "revertir" |
 | `VentaEnCursoNotifier` | El "carrito" de una venta que se está armando (antes de guardar) | agregar línea de catálogo, **agregar línea libre** (nombre + precio sin Producto — [0016](../decisiones/0016-linea-libre-en-venta.md)), quitar línea, editar precio/cantidad/nota de una línea, agregar `detalle` general, **guardar** (persiste como Venta `activa`) | editar/borrar una venta ya guardada — esta clase deja de aplicar una vez guardada |
 | `VentaNotifier` (o `VentasNotifier` para listados) | Venta ya persistida | leer/listar, **revertir** (exige motivo, cambia `estado` a `revertida`) | crear (eso lo hace `VentaEnCursoNotifier` al guardar), editar, eliminar |
@@ -34,7 +34,7 @@ Esta lista es la referencia concreta contra la que comparar antes de escribir c�
 
 | Provider | Responsabilidad | Depende de |
 |----------|------------------|------------|
-| `ProductoQueryProvider` | Combina lista base + orden + búsqueda para producir la lista final que ve la UI ([0018](../decisiones/0018-orden-y-busqueda-de-producto.md)) | `ProductoNotifier` (datos) + `PreferenciasNotifier` (orden) + término de búsqueda local de pantalla |
+| `ProductoQueryProvider` | Combina lista base + orden + búsqueda para producir la lista final que ve la UI ([0018](../decisiones/0018-orden-y-busqueda-de-producto.md)). Dos salidas: `productoQueryProvider` (solo activos, para vender) y `productoCatalogoProvider` (incluye descontinuados, para el catálogo del Gerente). **Quién ve un descontinuado es presentación, no dato** — la lista base ya no filtra | `ProductoNotifier` (datos) + `PreferenciasNotifier` (orden) + término de búsqueda local de pantalla |
 | `reportesProvider` (`FutureProvider.family<ReporteResultado, ReportesParametros>`) | Cálculo de reportes (agrupación por turno/período, ranking excluyendo líneas libres — [reportes.md](../funciones/reportes.md)) | Consulta directa a `venta`/`linea_venta`/`producto` — solo lectura, sin estado propio que mutar |
 
 ### Sesión y dispositivo (separado en 3 — 0019)

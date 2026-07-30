@@ -32,26 +32,38 @@ class ProductoNotifier extends AsyncNotifier<List<Producto>> {
   @override
   Future<List<Producto>> build() async {
     final db = await ref.watch(databaseProvider.future);
-    return ProductoDao(db).listarActivos();
+    return ProductoDao(db).listar();
   }
 
   Future<void> crear(Producto producto) async {
     final dao = await _dao;
     await dao.insertar(producto);
-    state = AsyncData(await dao.listarActivos());
+    state = AsyncData(await dao.listar());
   }
 
   Future<void> actualizar(Producto producto) async {
     final dao = await _dao;
     await dao.actualizar(producto);
-    state = AsyncData(await dao.listarActivos());
+    state = AsyncData(await dao.listar());
   }
 
   /// Soft-delete (decision 0005) — nunca borrado fisico.
   Future<void> descontinuar(String id) async {
     final dao = await _dao;
     await dao.descontinuar(id, DateTime.now());
-    state = AsyncData(await dao.listarActivos());
+    state = AsyncData(await dao.listar());
+  }
+
+  /// Deshace un descontinuado.
+  ///
+  /// Existe porque descontinuar es reversible POR DISEÑO — la 0005 lo define
+  /// como una marca, no un borrado— y sin embargo no había forma de volver
+  /// atrás. Un producto de temporada obligaba a crearlo de nuevo con otro id,
+  /// partiendo su historial de ventas en dos.
+  Future<void> recontinuar(String id) async {
+    final dao = await _dao;
+    await dao.recontinuar(id, DateTime.now());
+    state = AsyncData(await dao.listar());
   }
 
   /// Borrado fisico real, solo si se cumplen las 3 condiciones de la
@@ -70,7 +82,7 @@ class ProductoNotifier extends AsyncNotifier<List<Producto>> {
     }
 
     await dao.purgar(id);
-    state = AsyncData(await dao.listarActivos());
+    state = AsyncData(await dao.listar());
     return PurgarResultado.ok;
   }
 }

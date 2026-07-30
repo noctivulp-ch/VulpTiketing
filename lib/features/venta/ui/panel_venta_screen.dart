@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/nav/retroceso.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_cuadricula.dart';
@@ -36,36 +37,45 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
       onTap: () => setState(() => _panelAbierto = !_panelAbierto),
     );
 
-    // El panel se ACOPLA AL LADO LARGO: a la derecha cuando hay ancho, abajo
+    // El panel se ACOPLA AL LADO LARGO: a la derecha cuando hay ancho, ARRIBA
     // cuando no. Es el mismo panel persistente y el mismo botón de la costura,
     // rotados — no un overlay, que es lo que la decisión 0023 descarta.
     //
     // En teléfono la fila fija de antes repartía 3:4, o sea ~144 dp de carrito:
     // ahí no entra una línea de venta (miniatura 44 + nombre + subtotal + dos
     // botones de 48). Apilado, cada panel usa el ancho completo.
+    //
+    // Y va ARRIBA, no abajo: abajo empujaba la barra de cobro cada vez que se
+    // abría o cerraba, así que el botón de Finalizar y el campo de Recibí se
+    // movían debajo del dedo. Arriba, la zona con la que se cobra no se mueve
+    // nunca — que es la que importa que esté quieta.
     if (BentoAncho.de(context).esCompacto) {
-      return Scaffold(
-        body: Column(
-          children: [
-            Expanded(flex: _panelAbierto ? 2 : 1, child: carrito),
-            costura,
-            if (_panelAbierto) Expanded(flex: 3, child: _PanelAgregarProducto()),
-          ],
+      return RetrocesoCierra(
+        activo: _panelAbierto,
+        alRetroceder: () => setState(() => _panelAbierto = false),
+        child: Scaffold(
+          body: Column(
+            children: [
+              if (_panelAbierto) Expanded(flex: 3, child: _PanelAgregarProducto()),
+              costura,
+              Expanded(flex: _panelAbierto ? 2 : 1, child: carrito),
+            ],
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      body: Row(
-        children: [
-          Expanded(
-            flex: _panelAbierto ? 3 : 5,
-            child: carrito,
-          ),
-          costura,
-          if (_panelAbierto)
-            Expanded(flex: 4, child: _PanelAgregarProducto()),
-        ],
+    return RetrocesoCierra(
+      activo: _panelAbierto,
+      alRetroceder: () => setState(() => _panelAbierto = false),
+      child: Scaffold(
+        body: Row(
+          children: [
+            Expanded(flex: _panelAbierto ? 3 : 5, child: carrito),
+            costura,
+            if (_panelAbierto) Expanded(flex: 4, child: _PanelAgregarProducto()),
+          ],
+        ),
       ),
     );
   }
@@ -103,7 +113,7 @@ class _SeparadorConToggle extends StatelessWidget {
             // El icono apunta hacia donde se va el panel: a la derecha cuando
             // la costura es vertical, hacia abajo cuando es horizontal.
             abierto
-                ? (horizontal ? Icons.expand_more : Icons.chevron_right)
+                ? (horizontal ? Icons.expand_less : Icons.chevron_right)
                 : Icons.add_shopping_cart,
             size: 20,
             color: scheme.onPrimaryContainer,
@@ -213,7 +223,7 @@ class _CarritoState extends ConsumerState<_Carrito> {
               ? Center(
                   child: Text(
                     BentoAncho.de(context).esCompacto
-                        ? 'Agregá productos con el botón de abajo'
+                        ? 'Agregá productos con el botón de arriba'
                         : 'Agregá productos con el botón de la derecha',
                     textAlign: TextAlign.center,
                   ),
@@ -299,15 +309,13 @@ class _BarraDeCobro extends StatelessWidget {
     );
     final textoTotal = Align(
       alignment: Alignment.centerRight,
-      child: Text(
-        '₡${total.toStringAsFixed(2)}',
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
+      child: Text('₡${total.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleMedium),
     );
     final finalizar = FilledButton(
       onPressed: habilitado ? onFinalizar : null,
       child: const Text('Finalizar'),
     );
+    final vertical = BentoAncho.de(context).esCompacto;
 
     return ColoredBox(
       color: lacaDe(context).pozo,
@@ -316,12 +324,27 @@ class _BarraDeCobro extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(BentoSpacing.paddingCelda),
           child: BentoCuadricula(
-            hijos: [
-              BentoCelda(compacto: 3, medio: 2, amplio: 2, hijo: recibido),
-              BentoCelda(compacto: 3, medio: 2, amplio: 2, hijo: textoCambio),
-              BentoCelda(compacto: 3, medio: 1, amplio: 1, hijo: textoTotal),
-              BentoCelda(compacto: 3, medio: 1, amplio: 1, hijo: finalizar),
-            ],
+            // En dos filas, Recibí arriba-izquierda y Finalizar abajo-derecha
+            // dejaban los dos elementos INTERACTIVOS en diagonal, con los dos
+            // textos cruzándolos. Invirtiendo Recibí y Cambio, lo que se toca
+            // queda en la misma columna y lo que solo se lee en la otra.
+            //
+            // En una sola fila —tablet y escritorio— no hay diagonal que
+            // arreglar, y ahí el orden natural es Recibí antes que Cambio:
+            // primero se escribe, después se lee el resultado.
+            hijos: vertical
+                ? [
+                    BentoCelda(compacto: 3, medio: 3, amplio: 3, hijo: textoCambio),
+                    BentoCelda(compacto: 3, medio: 3, amplio: 3, hijo: recibido),
+                    BentoCelda(compacto: 3, medio: 3, amplio: 3, hijo: textoTotal),
+                    BentoCelda(compacto: 3, medio: 3, amplio: 3, hijo: finalizar),
+                  ]
+                : [
+                    BentoCelda(compacto: 3, medio: 2, amplio: 2, hijo: recibido),
+                    BentoCelda(compacto: 3, medio: 2, amplio: 2, hijo: textoCambio),
+                    BentoCelda(compacto: 3, medio: 1, amplio: 1, hijo: textoTotal),
+                    BentoCelda(compacto: 3, medio: 1, amplio: 1, hijo: finalizar),
+                  ],
           ),
         ),
       ),
@@ -407,8 +430,7 @@ class _DialogoEditarLineaState extends ConsumerState<_DialogoEditarLinea> {
   @override
   void initState() {
     super.initState();
-    _precioController =
-        TextEditingController(text: widget.linea.precioAplicado.toStringAsFixed(2));
+    _precioController = TextEditingController(text: widget.linea.precioAplicado.toStringAsFixed(2));
     _notaController = TextEditingController(text: widget.linea.nota ?? '');
     _cantidad = widget.linea.cantidad;
   }
@@ -421,7 +443,9 @@ class _DialogoEditarLineaState extends ConsumerState<_DialogoEditarLinea> {
   }
 
   void _guardar() {
-    ref.read(ventaEnCursoNotifierProvider.notifier).editarLinea(
+    ref
+        .read(ventaEnCursoNotifierProvider.notifier)
+        .editarLinea(
           widget.linea.id,
           precioAplicado: double.tryParse(_precioController.text),
           cantidad: _cantidad,
@@ -488,10 +512,9 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
   bool get _modoSeleccion => _seleccionados.isNotEmpty;
 
   void _agregarUno(Producto producto) {
-    ref.read(ventaEnCursoNotifierProvider.notifier).agregarLineaDeCatalogo(
-          productoId: producto.id,
-          precioAplicado: producto.precioBase,
-        );
+    ref
+        .read(ventaEnCursoNotifierProvider.notifier)
+        .agregarLineaDeCatalogo(productoId: producto.id, precioAplicado: producto.precioBase);
   }
 
   void _agregarSeleccionados(List<Producto> productos) {
@@ -540,10 +563,9 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
     final nombre = nombreController.text.trim();
     final precio = double.tryParse(precioController.text);
     if (nombre.isEmpty || precio == null) return;
-    ref.read(ventaEnCursoNotifierProvider.notifier).agregarLineaLibre(
-          nombreLibre: nombre,
-          precio: precio,
-        );
+    ref
+        .read(ventaEnCursoNotifierProvider.notifier)
+        .agregarLineaLibre(nombreLibre: nombre, precio: precio);
   }
 
   @override
@@ -603,9 +625,7 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
               child: FilledButton.icon(
                 icon: const Icon(Icons.add),
                 label: Text('Agregar (${_seleccionados.length})'),
-                onPressed: () => _agregarSeleccionados(
-                  productosAsync.valueOrNull ?? const [],
-                ),
+                onPressed: () => _agregarSeleccionados(productosAsync.valueOrNull ?? const []),
               ),
             ),
           ),

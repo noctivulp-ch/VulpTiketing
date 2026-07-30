@@ -56,12 +56,22 @@ class _DashboardShellState extends State<DashboardShell> {
   ];
 
   Widget _stack() {
-    return IndexedStack(
-      index: _indice,
-      children: [
-        for (var i = 0; i < _pantallas.length; i++)
-          ExcludeFocus(excluding: i != _indice, child: _pantallas[i]),
-      ],
+    // `SafeArea` acá y no en cada pantalla: la app no tiene AppBar, así que el
+    // contenido empieza pegado al borde y se le mete debajo de la barra de
+    // estado del teléfono. Pasó de verdad — el botón de la costura de Ventana 2
+    // quedaba tapado por el reloj.
+    //
+    // Solo arriba: el margen inferior lo pone la banda de navegación, que sí
+    // llega hasta el borde a propósito.
+    return SafeArea(
+      bottom: false,
+      child: IndexedStack(
+        index: _indice,
+        children: [
+          for (var i = 0; i < _pantallas.length; i++)
+            ExcludeFocus(excluding: i != _indice, child: _pantallas[i]),
+        ],
+      ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/nav/retroceso.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
@@ -24,44 +25,107 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   DateTime _fecha = DateTime.now();
   Turno? _turnoSeleccionado;
 
+  /// Detalle del RANGO completo, abierto al tocar el total. Es otro nivel que
+  /// el de turno: uno recorta por franja horaria y este no recorta nada.
+  bool _detalleDelRango = false;
+
+  bool get enDetalle => _turnoSeleccionado != null || _detalleDelRango;
+
+  void volver() => setState(() {
+    _turnoSeleccionado = null;
+    _detalleDelRango = false;
+  });
+
+  String _tituloDelRango() => switch (_rango) {
+    RangoReporte.dia => 'Ventas del día',
+    RangoReporte.semana => 'Ventas de la semana',
+    RangoReporte.mes => 'Ventas del mes',
+    RangoReporte.anio => 'Ventas del año',
+  };
+
   @override
   Widget build(BuildContext context) {
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
     final params = ReportesParametros(rango: _rango, fechaReferencia: _fecha);
     final reporteAsync = ref.watch(reportesProvider(params));
 
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-        child: reporteAsync.when(
-          data: (reporte) => _turnoSeleccionado != null
-              ? _VistaDrillDown(
-                  turno: _turnoSeleccionado!,
-                  ventas: reporte.ventasPorTurno[_turnoSeleccionado]!,
-                  onVolver: () => setState(() => _turnoSeleccionado = null),
-                )
-              : _VistaGeneral(
-                  rango: _rango,
-                  fecha: _fecha,
-                  reporte: reporte,
-                  esGerente: esGerente,
-                  onCambiarRango: (r) => setState(() => _rango = r),
-                  onSeleccionarTurno: (t) => setState(() => _turnoSeleccionado = t),
-                  onElegirFecha: () async {
-                    final elegida = await showDatePicker(
-                      context: context,
-                      initialDate: _fecha,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                    );
-                    if (elegida != null) setState(() => _fecha = elegida);
-                  },
+    return RetrocesoCierra(
+      activo: enDetalle,
+      alRetroceder: volver,
+      child: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+          child: _detalleDelRango
+              ? _DetalleDelRango(params: params, titulo: _tituloDelRango(), onVolver: volver)
+              : reporteAsync.when(
+                  data: (reporte) => _turnoSeleccionado != null
+                      ? _VistaDrillDown(
+                          titulo: _nombreTurno(_turnoSeleccionado!),
+                          ventas: reporte.ventasPorTurno[_turnoSeleccionado]!,
+                          total: reporte.porTurno[_turnoSeleccionado]!,
+                          vacio: 'Sin ventas en este turno',
+                          onVolver: volver,
+                        )
+                      : _VistaGeneral(
+                          rango: _rango,
+                          fecha: _fecha,
+                          reporte: reporte,
+                          esGerente: esGerente,
+                          onCambiarRango: (r) => setState(() => _rango = r),
+                          onSeleccionarTurno: (t) => setState(() => _turnoSeleccionado = t),
+                          onVerDetalle: () => setState(() => _detalleDelRango = true),
+                          onElegirFecha: () async {
+                            final elegida = await showDatePicker(
+                              context: context,
+                              initialDate: _fecha,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime.now(),
+                            );
+                            if (elegida != null) setState(() => _fecha = elegida);
+                          },
+                        ),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (e, st) => Center(child: Text('Error: $e')),
                 ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, st) => Center(child: Text('Error: $e')),
         ),
       ),
     );
+  }
+}
+
+String _nombreTurno(Turno turno) => switch (turno) {
+  Turno.manana => 'Mañana',
+  Turno.tarde => 'Tarde',
+  Turno.noche => 'Noche',
+};
+
+/// Carga el detalle del rango bajo demanda: pedirlo por adelantado haría que
+/// abrir Reportes trajera el año entero aunque nadie mire la lista.
+class _DetalleDelRango extends ConsumerWidget {
+  const _DetalleDelRango({required this.params, required this.titulo, required this.onVolver});
+
+  final ReportesParametros params;
+  final String titulo;
+  final VoidCallback onVolver;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref
+        .watch(detalleRangoProvider(params))
+        .when(
+          data: (detalle) => _VistaDrillDown(
+            titulo: titulo,
+            ventas: detalle.ventas,
+            total: detalle.ventas.fold<double>(0, (s, v) => s + v.total),
+            onVolver: onVolver,
+            nota: detalle.truncado
+                ? 'Mostrando las ${detalle.ventas.length} más recientes '
+                      'de ${detalle.totalVentas}.'
+                : null,
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => Center(child: Text('Error: $e')),
+        );
   }
 }
 
@@ -73,6 +137,7 @@ class _VistaGeneral extends StatelessWidget {
     required this.esGerente,
     required this.onCambiarRango,
     required this.onSeleccionarTurno,
+    required this.onVerDetalle,
     required this.onElegirFecha,
   });
 
@@ -82,6 +147,12 @@ class _VistaGeneral extends StatelessWidget {
   final bool esGerente;
   final ValueChanged<RangoReporte> onCambiarRango;
   final ValueChanged<Turno> onSeleccionarTurno;
+
+  /// Abre la lista de ventas del rango completo. Antes solo se podía entrar al
+  /// detalle por turno, y solo con el rango de día: no había forma de ver qué
+  /// ventas componían el total de una semana, un mes o un año.
+  final VoidCallback onVerDetalle;
+
   final VoidCallback onElegirFecha;
 
   String _tituloRango(RangoReporte r, DateTime f, bool esHoy) {
@@ -122,40 +193,41 @@ class _VistaGeneral extends StatelessWidget {
               medio: 6,
               amplio: 3,
               hijo: BentoPozo(
-                  padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            _tituloRango(rango, fecha, esHoy),
-                            style: Theme.of(context).textTheme.titleMedium,
+                onTap: onVerDetalle,
+                padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          _tituloRango(rango, fecha, esHoy),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        if (esGerente && rango == RangoReporte.dia)
+                          IconButton(
+                            icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                            tooltip: 'Elegir día',
+                            onPressed: onElegirFecha,
                           ),
-                          if (esGerente && rango == RangoReporte.dia)
-                            IconButton(
-                              icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                              tooltip: 'Elegir día',
-                              onPressed: onElegirFecha,
-                            ),
-                        ],
-                      ),
-                      // El hero es el numero mas importante de la pantalla
-                      // — debe destacar claramente sobre los turnos, no
-                      // ser "casi del mismo tamano" (skill
-                      // visual-hierarchy: minimo 1.5x de diferencia).
-                      // displaySmall (40) vs bodyLarge (16) de los turnos
-                      // da 2.5x.
-                      BentoTextoTallado(
-                        '₡${reporte.total.toStringAsFixed(2)}',
-                        sobre: lacaDe(context).pozo,
-                        nivel: TalladoNivel.marcado,
-                        estilo: Theme.of(context).textTheme.displaySmall,
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                    // El hero es el numero mas importante de la pantalla
+                    // — debe destacar claramente sobre los turnos, no
+                    // ser "casi del mismo tamano" (skill
+                    // visual-hierarchy: minimo 1.5x de diferencia).
+                    // displaySmall (40) vs bodyLarge (16) de los turnos
+                    // da 2.5x.
+                    BentoTextoTallado(
+                      '₡${reporte.total.toStringAsFixed(2)}',
+                      sobre: lacaDe(context).pozo,
+                      nivel: TalladoNivel.marcado,
+                      estilo: Theme.of(context).textTheme.displaySmall,
+                    ),
+                  ],
                 ),
+              ),
             ),
             if (rango == RangoReporte.dia)
               for (final (nombre, turno) in const [
@@ -291,31 +363,32 @@ class _Ranking extends StatelessWidget {
   }
 }
 
+/// Detalle: la lista de ventas de un turno o de un rango completo.
+///
+/// El mismo widget para los dos casos — un turno y "todo el mes" son la misma
+/// pregunta con distinto recorte, y tener dos pantallas casi iguales las haría
+/// divergir a la primera corrección.
 class _VistaDrillDown extends StatelessWidget {
   const _VistaDrillDown({
-    required this.turno,
+    required this.titulo,
     required this.ventas,
+    required this.total,
     required this.onVolver,
+    this.vacio = 'Sin ventas en este período',
+    this.nota,
   });
 
-  final Turno turno;
+  final String titulo;
   final List<VentaConLineas> ventas;
+  final double total;
   final VoidCallback onVolver;
+  final String vacio;
 
-  String get _nombreTurno {
-    switch (turno) {
-      case Turno.manana:
-        return 'Mañana';
-      case Turno.tarde:
-        return 'Tarde';
-      case Turno.noche:
-        return 'Noche';
-    }
-  }
+  /// Aviso cuando la lista no trae todo lo que hay (ver [limiteDetalleRango]).
+  final String? nota;
 
   @override
   Widget build(BuildContext context) {
-    final total = ventas.fold<double>(0, (s, v) => s + v.total);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -329,9 +402,9 @@ class _VistaDrillDown extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_nombreTurno, style: Theme.of(context).textTheme.titleMedium),
+              Text(titulo, style: Theme.of(context).textTheme.titleMedium),
               BentoTextoTallado(
-                '₡${total.toStringAsFixed(2)}',
+                '\u20a1${total.toStringAsFixed(2)}',
                 sobre: lacaDe(context).pozo,
                 nivel: TalladoNivel.marcado,
                 estilo: Theme.of(context).textTheme.displaySmall,
@@ -339,20 +412,29 @@ class _VistaDrillDown extends StatelessWidget {
             ],
           ),
         ),
+        if (nota != null) ...[
+          const SizedBox(height: BentoSpacing.unidad),
+          Text(nota!, style: Theme.of(context).textTheme.bodySmall),
+        ],
         const SizedBox(height: BentoSpacing.unidad),
         Expanded(
           child: ventas.isEmpty
-              ? const Center(child: Text('Sin ventas en este turno'))
-              : ListView.builder(
-                  itemCount: ventas.length,
-                  itemBuilder: (context, i) {
-                    final vc = ventas[i];
-                    final hora = TimeOfDay.fromDateTime(vc.venta.fechaHora).format(context);
-                    return ListTile(
-                      title: Text('$hora — ${vc.lineas.length} línea(s)'),
-                      trailing: Text('₡${vc.total.toStringAsFixed(2)}'),
-                    );
-                  },
+              ? Center(child: Text(vacio))
+              : BentoPozo(
+                  padding: EdgeInsets.zero,
+                  child: ListView.builder(
+                    itemCount: ventas.length,
+                    itemBuilder: (context, i) {
+                      final vc = ventas[i];
+                      final f = vc.venta.fechaHora;
+                      final hora = TimeOfDay.fromDateTime(f).format(context);
+                      return ListTile(
+                        title: Text('${f.day}/${f.month} $hora'),
+                        subtitle: Text('${vc.lineas.length} l\u00ednea(s)'),
+                        trailing: Text('\u20a1${vc.total.toStringAsFixed(2)}'),
+                      );
+                    },
+                  ),
                 ),
         ),
       ],

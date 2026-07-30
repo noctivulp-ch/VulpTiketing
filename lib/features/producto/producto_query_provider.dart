@@ -15,7 +15,22 @@ final productoBusquedaProvider = StateProvider<String>((ref) => '');
 /// TODO(0018): el ranking "nombre > categoria" con tolerancia a errores
 /// ortograficos queda pendiente — placeholder de substring exacto por
 /// nombre mientras tanto. No bloquea el resto del scaffold.
-final productoQueryProvider = Provider<AsyncValue<List<Producto>>>((ref) {
+final productoQueryProvider = _query(incluirDescontinuados: false);
+
+/// La misma lista, pero con los descontinuados dentro. La usa el catálogo del
+/// Gerente.
+///
+/// Descontinuar es reversible (0005), así que el producto tiene que seguir
+/// VIÉNDOSE en la pantalla desde la que se lo puede recontinuar. Antes
+/// desaparecía de todos lados y la única salida era crearlo de nuevo con otro
+/// id, partiendo su historial de ventas.
+///
+/// En las pantallas de venta no aparece: no se cobra algo que se sacó de la
+/// carta.
+final productoCatalogoProvider = _query(incluirDescontinuados: true);
+
+Provider<AsyncValue<List<Producto>>> _query({required bool incluirDescontinuados}) {
+  return Provider<AsyncValue<List<Producto>>>((ref) {
   final productosAsync = ref.watch(productoNotifierProvider);
   final ordenAsync = ref.watch(preferenciasNotifierProvider);
   final termino = ref.watch(productoBusquedaProvider).trim().toLowerCase();
@@ -24,6 +39,9 @@ final productoQueryProvider = Provider<AsyncValue<List<Producto>>>((ref) {
     final orden = ordenAsync.valueOrNull?.ordenProducto ?? OrdenProducto.alfabetico;
 
     var lista = List<Producto>.from(productos);
+    if (!incluirDescontinuados) {
+      lista = lista.where((p) => p.activo).toList();
+    }
     if (termino.isNotEmpty) {
       lista = lista
           .where((p) => p.nombre.toLowerCase().contains(termino))
@@ -42,4 +60,5 @@ final productoQueryProvider = Provider<AsyncValue<List<Producto>>>((ref) {
     }
     return lista;
   });
-});
+  });
+}

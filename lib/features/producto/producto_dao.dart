@@ -9,11 +9,14 @@ class ProductoDao {
 
   final Database _db;
 
-  Future<List<Producto>> listarActivos() async {
-    final rows = await _db.query(
-      'producto',
-      where: 'deleted_at IS NULL',
-    );
+  /// TODOS los productos, descontinuados incluidos.
+  ///
+  /// La lista base de la entidad no filtra: quién puede ver un descontinuado es
+  /// una decisión de PRESENTACIÓN y vive en `ProductoQueryProvider`. Antes esto
+  /// filtraba, y por eso descontinuar un producto lo hacía desaparecer también
+  /// del catálogo del Gerente, que es donde tiene que poder recontinuarlo.
+  Future<List<Producto>> listar() async {
+    final rows = await _db.query('producto');
     return rows.map(Producto.fromMap).toList();
   }
 
@@ -37,6 +40,17 @@ class ProductoDao {
       producto.toMap(),
       where: 'id = ?',
       whereArgs: [producto.id],
+    );
+  }
+
+  /// Deshace un descontinuado. El producto vuelve al catálogo con su historial
+  /// intacto: descontinuar solo pone una marca, nunca borra la fila (0005).
+  Future<void> recontinuar(String id, DateTime cuando) {
+    return _db.update(
+      'producto',
+      {'deleted_at': null, 'updated_at': cuando.toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [id],
     );
   }
 
