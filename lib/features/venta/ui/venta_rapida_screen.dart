@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_query_provider.dart';
@@ -24,7 +25,7 @@ class VentaRapidaScreen extends ConsumerWidget {
     // Una sola bandeja: el buscador y el grid son pozos tallados en ella,
     // separados por paredes de material. Sin AppBar — la barra superior de
     // Material seria una pieza pegada ENCIMA de la bandeja, no un hueco
-    // dentro (DESIGN.md, regla 7).
+    // dentro (DESIGN.md, regla 8).
     return Scaffold(
       body: BentoBandeja(
         child: Column(
@@ -165,20 +166,26 @@ class _TarjetaProducto extends StatelessWidget {
           Expanded(
             child: Align(
               alignment: Alignment.topLeft,
-              child: Text(
+              child: BentoTextoTallado(
                 producto.nombre,
+                sobre: laca.pozo,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: tema.textTheme.bodyLarge,
+                estilo: tema.textTheme.bodyLarge,
               ),
             ),
           ),
           const SizedBox(height: BentoSpacing.unidad / 2),
-          // El precio es el dato que decide la accion: peso propio, no una
-          // etiqueta mas.
-          Text(
+          // El precio es el dato que decide la accion, asi que su jerarquia la
+          // dan el tamano y el peso — NO se le baja el contraste. Con nivel
+          // `marcado` quedaba mas apagado que el nombre del producto, o sea
+          // invertia la jerarquia: el tallado se comia justo lo que tenia que
+          // destacar. `marcado` queda reservado para los numeros de 40px de
+          // Reportes, donde el tamano lo sostiene solo.
+          BentoTextoTallado(
             '₡${producto.precioBase.toStringAsFixed(0)}',
-            style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            sobre: laca.pozo,
+            estilo: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
       ),

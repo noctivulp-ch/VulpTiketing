@@ -71,7 +71,7 @@ class _DashboardShellState extends State<DashboardShell> {
     // La navegacion es una banda de la BANDEJA, no un NavigationRail de
     // Material: ese traia su propio fondo (`surface`, o sea el color de pozo)
     // y su propia pildora de seleccion, asi que se leia como un pozo altisimo
-    // pegado al costado en vez de parte del marco (DESIGN.md, regla 7).
+    // pegado al costado en vez de parte del marco (DESIGN.md, regla 8).
     if (anchoAmplio) {
       return Scaffold(
         body: Row(

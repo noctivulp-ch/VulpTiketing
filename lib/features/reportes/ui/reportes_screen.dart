@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../reportes_provider.dart';
@@ -145,9 +146,11 @@ class _VistaGeneral extends StatelessWidget {
                         // visual-hierarchy: minimo 1.5x de diferencia).
                         // displaySmall (40) vs bodyLarge (16) de los turnos
                         // da 2.5x.
-                        Text(
+                        BentoTextoTallado(
                           '₡${reporte.total.toStringAsFixed(2)}',
-                          style: Theme.of(context).textTheme.displaySmall,
+                          sobre: lacaDe(context).pozo,
+                          nivel: TalladoNivel.marcado,
+                          estilo: Theme.of(context).textTheme.displaySmall,
                         ),
                       ],
                     ),
@@ -326,9 +329,11 @@ class _VistaDrillDown extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_nombreTurno, style: Theme.of(context).textTheme.titleMedium),
-                Text(
+                BentoTextoTallado(
                   '₡${total.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.displaySmall,
+                  sobre: lacaDe(context).pozo,
+                  nivel: TalladoNivel.marcado,
+                  estilo: Theme.of(context).textTheme.displaySmall,
                 ),
               ],
             ),

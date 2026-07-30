@@ -130,12 +130,41 @@ La paleta es de autoría propia, no generada por el algoritmo tonal de Google.
 `fromSeed` + `DynamicSchemeVariant.neutral` fue la causa raíz del aspecto por
 defecto: codifica elevación-como-claridad, que es lo contrario de un pozo.
 
-### 6. Táctil de verdad
+### 6. Tallado: contraste gastado a propósito, y con techo
+
+El texto se lee **grabado en su superficie**, no apoyado encima
+(`lib/core/theme/bento_tallado.dart`). Calibrado por el usuario en el banco de
+pruebas: profundidad 1.25, luz 0.70, sombra 0.65 — incisión poco profunda con
+el canto brillante.
+
+El efecto se consigue acercando el glifo al color de su fondo, así que **es
+literalmente contraste gastado en estética**. Por eso tiene dos niveles y un
+techo medido:
+
+| Nivel | Dónde | Piso |
+|---|---|---|
+| `sutil` | texto de lectura, precios | 4.5:1 (AA) |
+| `marcado` | ≥24px e iconos | 3:1 (WCAG 1.4.3 / 1.4.11) |
+
+La fusión es **por modo**, no global: la calibración se hizo en oscuro, donde
+0.50 queda al borde (4.30:1), pero en claro la misma fusión cae a 2.83:1 porque
+la paleta clara tiene menos margen de luminancia. Techos medidos: 0.48 / 0.62 en
+oscuro, 0.32 / 0.47 en claro.
+
+Consecuencia aceptada: **en modo claro el tallado es más sutil** y no hay forma
+de igualarlo sin romper AA.
+
+`marcado` no se usa en un dato que deba dominar aunque su tamaño lo permita: el
+precio de un producto con `marcado` quedaba más apagado que el nombre, o sea el
+tallado se comía justo la jerarquía que había que sostener. La jerarquía la dan
+tamaño y peso; el tallado no es una herramienta de jerarquía.
+
+### 7. Táctil de verdad
 
 Corre en tablet: todo objetivo interactivo tiene **mínimo 48dp**. Vale para
 pozos tocables, botones y filas de lista.
 
-### 7. Sin componentes stock dentro del mundo comprometido
+### 8. Sin componentes stock dentro del mundo comprometido
 
 `NavigationRail`, `Card` y `VerticalDivider` de Material dentro de una
 bandeja comprometida son fugas. La navegación es una banda de bandeja; las
