@@ -1,4 +1,4 @@
-# 0025 — Archivado anual rodante en archivos SQLite adjuntables
+# 0025 — Libros de ventas rodantes en archivos SQLite adjuntables
 
 ## Estado
 
@@ -22,8 +22,9 @@ crecen sin techo.
 
 ## Decisión
 
-La base **viva** contiene una ventana rodante de un año. Lo anterior se mueve
-automáticamente a archivos SQLite que la app puede leer sin restaurarlos.
+Las ventas se escriben en **libros**: archivos SQLite fechados que la app puede
+leer sin restaurarlos. Cuando un libro acumula un año de días con actividad, se
+cierra y se abre otro. Ningún dato se mueve ni se borra jamás.
 
 ### 1. El formato de archivo es SQLite, no uno propio
 
@@ -51,32 +52,56 @@ Un archivo `.db` **con el mismo esquema** da lo mismo y más:
 - SQLite adjunta hasta 10 bases a la vez: un archivo por año da 10 años, y se
   adjuntan **bajo demanda**, solo cuando una consulta pide ese período.
 
-### 2. La ventana se cuenta en días, no por fecha de calendario
+### 2. El año se cuenta en días con actividad, no por calendario
 
-Se archiva lo que tiene más de 365 días, se evalúe cuando se evalúe. No se
-espera al 31 de diciembre.
+Un libro se cierra cuando acumuló **365 días en los que hubo al menos una
+venta** — no 365 días corridos desde que se creó, ni el 31 de diciembre.
 
-Dos razones: el negocio puede no abrir la app ese día, y el 31 de diciembre es
-justo la peor fecha para que la app haga algo inesperado.
+Dos razones: si el negocio cierra dos meses, esos días no tienen por qué
+"gastar" el libro; y el 31 de diciembre es justo la peor fecha para que la app
+haga algo inesperado.
 
-### 3. Archivar es mudar, no borrar — así que no pide confirmación
+### 3. No se archiva nada: se cierra un libro y se abre otro
 
-Argumento del usuario, y es correcto: si el archivo `.db` queda en el
-almacenamiento interno de la app, **no se pierde nada**. La convención del
-proyecto de "nada irreversible sin confirmación" no aplica porque no es
-irreversible: es un cambio de ubicación, invisible salvo que una consulta pida
-años anteriores.
+Modelo del usuario, y reemplaza al que había diseñado. La diferencia es
+importante: **no hay borrado en ningún momento.**
 
-Lo que sí exige es que la mudanza sea **segura**, y eso lo garantiza la app, no
-el usuario:
+El diseño anterior era "las ventas viven en la tabla y al cumplirse el año se
+copian a un archivo y se borran de la tabla". Eso tiene un paso peligroso —
+copiar y después borrar— que obliga a verificar entre medio para no perder
+datos.
 
-1. Escribir el archivo con las filas del período.
-2. **Verificar**: que el archivo abre, que la cantidad de filas coincide y que
-   la suma de importes coincide con lo que se va a borrar.
-3. Recién entonces borrar de las tablas vivas, en una transacción.
-4. Registrar la marca de archivado.
+En este, las ventas **nacen ya en su libro fechado** y nunca se mueven:
 
-Si cualquier paso falla, no se borra nada y se reintenta la próxima vez.
+- Las ventas se escriben en un `.db` nombrado con su **fecha de inicio**.
+- Se le sigue escribiendo hasta acumular **365 días CON ENTRADAS** — no 365 días
+  de calendario desde su creación. Si el negocio cierra dos meses, esos días no
+  cuentan.
+- Al llegar al día 366, su primera venta abre un **libro nuevo** con su propia
+  fecha de inicio, y el anterior se cierra: pasa a llamarse
+  `fechaInicio_fechaFinal.db`, donde la final es la de su última entrada.
+
+Cerrar un libro es dejar de escribirle. No hay copia, no hay borrado, no hay
+paso que verificar. Es estrictamente más simple y más seguro que mover filas.
+
+Consecuencia sobre la estructura de archivos:
+
+| Archivo | Contenido | Cambia |
+|---|---|---|
+| `vulp_tiketing.db` | catálogo, categorías, configuración | sí |
+| `ventas-<inicio>.db` | el libro abierto, recibiendo ventas | sí |
+| `ventas-<inicio>_<final>.db` | libros cerrados | **nunca** |
+
+### 3.bis Índice, además del nombre del archivo
+
+El nombre `inicio_final.db` es bueno para una persona que mira la carpeta. Pero
+que la app **dependa de leer nombres de archivo** para saber qué período tiene
+cada libro es frágil: un renombrado interrumpido o un archivo movido a mano la
+dejan sin saber qué tiene.
+
+Se mantiene la convención de nombres *y además* una tabla índice en
+`vulp_tiketing.db` con qué libro cubre qué rango y cuántos días con entradas
+lleva. El nombre es para el humano; el índice es la fuente de verdad de la app.
 
 ### 4. Los archivos viven solo en el almacenamiento interno
 
@@ -88,41 +113,57 @@ se respalda nada a la nube (ver [datos.md](../arquitectura/datos.md)).
 Consecuencia asumida: en Android, desinstalar borra también los archivos
 históricos. La protección es el backup, no el sistema operativo.
 
-### 5. Los archivos entran al backup, pero una sola vez
+### 5. Un solo backup con todo, y restauración selectiva
 
-Un archivo, una vez cerrado, **nunca cambia**. Eso permite que el backup no
-repita trabajo:
+Decisión del usuario: **todos los `.db` van en el mismo `.tiketback`**. Son datos
+de la misma app; partir el respaldo en uno por libro complica la restauración sin
+necesidad.
 
-- El backup de rutina cubre la base viva (un año, acotada).
-- Cada archivo recibe su propio `.tiketback` cuando se crea, una única vez.
+Se había propuesto lo contrario —un backup por libro, hecho una vez— para
+esquivar el costo medido de respaldar 360 MB (35 s, pico de 1,5 GB). Esa
+propuesta resolvía el problema equivocado: **ese pico es un defecto de
+implementación, no una consecuencia de que el backup sea grande.** Hoy el backup
+carga todo en memoria de una vez; ya bajó de 6,3 GB a 1,5 GB al corregir una
+línea, y escribiéndolo por trozos baja a memoria constante sin importar el
+tamaño. El arreglo va en cómo se escribe el backup, no en partirlo.
 
-Así ninguna operación de respaldo crece sin techo, que era el segundo
-precipicio medido. Si el backup incluyera todo cada vez, el archivado habría
-resuelto el sync pero no el backup.
+Como el backup pasa a contener piezas separables, **restaurar admite elegir qué
+traer**:
 
-### 6. La marca `archivado_hasta`, sin la cual el sync deshace todo
+- **Todo** — como funciona hoy.
+- **Solo el menú** — catálogo y categorías, sin tocar las ventas. Es el caso de
+  copiar la carta a otro dispositivo o recuperarla tras un error de edición.
+- **Solo las ventas** — los libros, sin pisar el catálogo actual.
 
-Este es el punto que el archivado no resuelve solo, y por eso se decide junto.
+Un libro cerrado nunca cambia, así que restaurarlo es idempotente por
+construcción.
 
-Con el sync actual (volcado completo y LWW por `updated_at`), si este
-dispositivo archiva y borra las ventas de 2026, el otro dispositivo **todavía
-las tiene** y en el próximo sync se las devuelve. El vaciado se revierte solo, en
-silencio.
+### 6. El sync solo intercambia el libro abierto
 
-Se agrega una marca `archivado_hasta` que los dispositivos intercambian y
-respetan:
+Con el modelo de libros, el problema del sync cambia de forma y se simplifica.
 
-- Cada dispositivo publica hasta qué fecha tiene archivado.
-- Al aplicar filas remotas, se **descartan** las que caen antes del
-  `archivado_hasta` local: no son datos nuevos, son datos ya guardados en otro
-  lado.
-- Un dispositivo solo archiva un período cuando ese período ya fue sincronizado
-  con los pares que conoce, para no archivar ventas que otro todavía no vio.
+El sync actual vuelca las tablas **completas** en cada intercambio. Si siguiera
+haciéndolo sobre todos los libros, cada sync mandaría el historial entero — que
+es exactamente el precipicio de 435 MB que se midió.
 
-Este último punto usa la misma señal que la
+Como un libro cerrado **nunca cambia**, no hay nada que sincronizar en él más
+que una vez:
+
+- El sync de rutina intercambia **solo el libro abierto**, que está acotado a un
+  año por construcción.
+- Un dispositivo nuevo que entra al grupo pide además los libros cerrados que le
+  falten, una única vez, identificados por el índice.
+- Un libro solo se cierra cuando su contenido ya fue sincronizado con los pares
+  conocidos, para no dejar a otro dispositivo sin ventas que nunca vio.
+
+Ese último punto usa la misma señal que la
 [decisión 0015](0015-purgar-producto-borrado-fisico-condicional.md) definió para
 purgar productos y que hoy devuelve siempre `false`. Implementarla habilita las
 dos cosas.
+
+Nótese que el riesgo del diseño anterior —que el otro dispositivo reinsertara lo
+archivado y revirtiera el vaciado en silencio— **desaparece**: no hay filas
+borradas que puedan volver.
 
 ## Alternativas descartadas
 
@@ -138,7 +179,11 @@ dos cosas.
 
 ## Consecuencias
 
-- La base viva no supera un año: sync y backup dejan de crecer sin límite.
+- El libro abierto no supera un año de días con actividad: sync y backup dejan
+  de crecer sin límite.
+- **No existe un momento de borrado.** El riesgo de perder datos al archivar,
+  que el diseño anterior tenía que mitigar con verificaciones, desaparece por
+  construcción.
 - Los reportes del período vivo no cambian en nada.
 - Un reporte que pide años anteriores adjunta el archivo correspondiente,
   consulta, y lo suelta. Es más lento que el período vivo, y está bien: es una
@@ -146,7 +191,10 @@ dos cosas.
 - Hay que definir qué pasa si una consulta cruza el borde (por ejemplo "últimos
   12 meses" un día que quedan 11 meses vivos): la consulta adjunta el archivo
   más reciente y hace `UNION ALL`.
-- El primer archivado ocurre recién al cumplirse un año de uso, así que hay
-  tiempo para implementarlo — pero la marca `archivado_hasta` conviene que exista
-  en el esquema **antes** de que haya varios dispositivos en producción, para no
-  tener que migrar con datos repartidos.
+- El primer cierre de libro ocurre recién al cumplirse 365 días con actividad,
+  así que hay tiempo — pero **la separación de las ventas a su propio `.db`
+  conviene hacerla antes**, porque mover ventas de la base actual a un libro
+  fechado es exactamente la migración con riesgo que este diseño evita para
+  siempre después. Cuanto antes se haga, menos datos hay que mover una única vez.
+- La marca `archivado_hasta` conviene que exista en el esquema antes de que haya
+  varios dispositivos en producción, para no migrar con datos repartidos.
