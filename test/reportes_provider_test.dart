@@ -4,6 +4,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/features/reportes/reportes_provider.dart';
+import 'package:vulp_tiketing/features/venta/libro_ventas.dart';
 
 /// El reporte agrega en SQL, no en Dart — es lo que lo hizo viable (el reporte
 /// del día pasó de 5.940 ms a 280 ms con un año de volumen real, y el anual de
@@ -25,6 +26,11 @@ void main() {
       options: OpenDatabaseOptions(singleInstance: false),
     );
     await AppDatabase.crearEsquema(db);
+    // Desde v3 `venta` y `linea_venta` viven en los libros, no en la base
+    // principal (decisión 0025). Acá se aplican sobre la misma base en memoria:
+    // SQLite resuelve los nombres igual, así que la lógica de consulta bajo
+    // prueba es exactamente la de producción.
+    await aplicarEsquemaLibro(db);
     return db;
   }
 

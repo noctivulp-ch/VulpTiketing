@@ -1,8 +1,12 @@
 import 'dart:io';
 
 import 'package:path/path.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../features/venta/libro_ventas.dart';
 
 /// Esquema completo en docs/arquitectura/esquema-db.md — cualquier cambio de
 /// columna se hace ahi primero, no directo aqui.
@@ -42,53 +46,72 @@ class AppDatabase {
         // v1 -> v2: solo agrega indices. No toca columnas ni datos, asi que es
         // segura de aplicar sobre una base existente y no necesita migrar
         // filas.
-        if (viejo < 2) await crearIndices(db);
+        if (viejo < 2) await crearIndicesLegacyV2(db);
+
+        // v2 -> v3: las ventas se mudan de la base principal a su primer libro
+        // (decision 0025). Es la UNICA vez que se mueven datos: de aca en
+        // adelante las ventas nacen ya en su libro.
+        if (viejo < 3) {
+          await migrarVentasALibro(db, p.dirname(await ruta()));
+        }
       },
     );
+
+    // El libro abierto se adjunta aca: desde este momento `SELECT * FROM venta`
+    // resuelve contra el, sin que el resto del codigo tenga que calificar nada.
+    await LibroVentasService(directorio: p.dirname(await ruta()))
+        .adjuntarAbierto(_instance!);
+
     return _instance!;
   }
 
-  static const version = 2;
+  static const version = 3;
 
   /// El esquema como lista ordenada de sentencias, publico a proposito: las
   /// pruebas lo aplican en bases en memoria en vez de duplicar el DDL a mano.
   /// Duplicarlo hacia que el esquema de las pruebas pudiera divergir del real
   /// en silencio — y una prueba contra un esquema que ya no existe no prueba
   /// nada.
+  ///
+  /// `venta` y `linea_venta` NO estan aca desde v3: viven en los libros
+  /// (decision 0025). Que no existan en la base principal no es un descuido, es
+  /// lo que hace que funcione — SQLite resuelve los nombres sin calificar
+  /// contra las bases adjuntas, asi que `SELECT * FROM venta` va solo al libro
+  /// abierto y el resto del codigo no tuvo que cambiar.
   static const esquema = [
     _createCategoria,
     _createProducto,
-    _createVenta,
-    _createLineaVenta,
+    _createLibroVentas,
   ];
 
-  /// Indices (v2). El esquema v1 no tenia ninguno, solo claves primarias, y eso
-  /// se midio: con un año de volumen real el reporte del dia tardaba 5,9 s y el
-  /// anual no terminaba. Reescribir las consultas para agregar en SQL bajo el
-  /// dia a 280 ms; estos indices atacan lo que quedaba.
-  ///
-  /// Cada uno corresponde a una consulta concreta que existe hoy, no a una
-  /// suposicion sobre el futuro:
+  /// Indices de la base principal. Desde v3 los de `venta`/`linea_venta` no
+  /// estan aca: se aplican a cada libro (ver `esquemaLibro`), porque es ahi
+  /// donde viven esas tablas.
   static const indices = [
-    // El JOIN de reportes (`ON v.id = lv.venta_id`). Sin esto cada venta del
-    // rango recorre linea_venta completa — es el de mayor impacto.
+    // Agrupar productos por categoria, que es uno de los ordenes de la
+    // Ventana 1 (decision 0018).
+    'CREATE INDEX IF NOT EXISTS idx_producto_categoria ON producto(categoria_id);',
+  ];
+
+  /// Indices que tenia la base principal en v2, cuando `venta` y `linea_venta`
+  /// todavia vivian ahi. Se conservan SOLO para el camino de actualizacion
+  /// v1 -> v2: una base v1 pasa por ese estado intermedio antes de que la
+  /// migracion v3 mude las ventas a su libro.
+  ///
+  /// Un esquema nuevo no los usa nunca — sus equivalentes estan en
+  /// `esquemaLibro`.
+  static const indicesLegacyV2 = [
     'CREATE INDEX IF NOT EXISTS idx_linea_venta_venta ON linea_venta(venta_id);',
-
-    // El filtro de rango de reportes
-    // (`estado = 'activa' AND fecha_hora >= ? AND fecha_hora < ?`).
     'CREATE INDEX IF NOT EXISTS idx_venta_estado_fecha ON venta(estado, fecha_hora);',
-
-    // El orden del historial (`VentaDao.listar`, ORDER BY fecha_hora DESC), que
-    // no lleva WHERE y por eso no puede usar el indice compuesto de arriba.
     'CREATE INDEX IF NOT EXISTS idx_venta_fecha ON venta(fecha_hora);',
-
-    // El GROUP BY del ranking de productos.
     'CREATE INDEX IF NOT EXISTS idx_linea_venta_producto ON linea_venta(producto_id);',
   ];
 
-  /// Crea tablas e indices. Las pruebas usan esto para tener el esquema REAL,
-  /// indices incluidos: medir sobre un esquema sin indices cuando produccion si
-  /// los tiene daria numeros que no le sirven a nadie.
+  /// Crea la base principal completa: catalogo, indice de libros e indices.
+  ///
+  /// OJO: esto NO crea `venta` ni `linea_venta` — esas viven en los libros. Una
+  /// prueba que necesite ventas tiene que aplicar ademas `esquemaLibro`
+  /// (`aplicarEsquemaLibro`), igual que hace la app al abrir un libro.
   static Future<void> crearEsquema(DatabaseExecutor db) async {
     for (final sentencia in esquema) {
       await db.execute(sentencia);
@@ -100,6 +123,89 @@ class AppDatabase {
     for (final sentencia in indices) {
       await db.execute(sentencia);
     }
+  }
+
+  static Future<void> crearIndicesLegacyV2(DatabaseExecutor db) async {
+    for (final sentencia in indicesLegacyV2) {
+      await db.execute(sentencia);
+    }
+  }
+
+  /// Migracion v2 -> v3: mueve `venta` y `linea_venta` de la base principal al
+  /// primer libro, crea el indice y las quita de la principal.
+  ///
+  /// Se escribio como una mudanza real y no como un `DROP` aunque el proyecto
+  /// todavia no esta en uso comercial: una migracion que descarta ventas queda
+  /// en el codigo para siempre y podria correr en la maquina de alguien. El
+  /// costo de hacerla bien era bajo.
+  ///
+  /// Es la unica vez en la vida del proyecto que las ventas se mueven de
+  /// archivo: de aca en adelante nacen ya en su libro (decision 0025).
+  static Future<void> migrarVentasALibro(Database db, String directorio) async {
+    await db.execute(_createLibroVentas);
+
+    final ventas = await db.query('venta', orderBy: 'fecha_hora');
+    if (ventas.isEmpty) {
+      // Sin ventas no hace falta libro: el primero se crea con la primera
+      // venta real, asi una instalacion nueva no arranca con archivos sueltos.
+      await db.execute('DROP TABLE IF EXISTS linea_venta');
+      await db.execute('DROP TABLE IF EXISTS venta');
+      return;
+    }
+
+    final lineas = await db.query('linea_venta');
+    final primera = DateTime.parse(ventas.first['fecha_hora'] as String);
+    final ultima = DateTime.parse(ventas.last['fecha_hora'] as String);
+
+    final servicio = LibroVentasService(directorio: directorio);
+    final archivo = 'ventas-${primera.toIso8601String().split("T").first}.db';
+    final libro = await databaseFactory.openDatabase(
+      servicio.rutaDe(archivo),
+      options: OpenDatabaseOptions(singleInstance: false),
+    );
+    for (final sentencia in esquemaLibro) {
+      await libro.execute(sentencia);
+    }
+    await libro.transaction((txn) async {
+      for (final fila in ventas) {
+        await txn.insert('venta', fila);
+      }
+      for (final fila in lineas) {
+        await txn.insert('linea_venta', fila);
+      }
+    });
+
+    // Verificacion antes de soltar el original: si la copia no cuadra, no se
+    // borra nada y la migracion falla ruidosamente.
+    final copiadas = (await libro.rawQuery('SELECT COUNT(*) c FROM venta')).first['c'] as int;
+    final copiadasLineas =
+        (await libro.rawQuery('SELECT COUNT(*) c FROM linea_venta')).first['c'] as int;
+    await libro.close();
+    if (copiadas != ventas.length || copiadasLineas != lineas.length) {
+      throw StateError(
+        'migracion v3: el libro quedo con $copiadas/${ventas.length} ventas y '
+        '$copiadasLineas/${lineas.length} lineas — no se borra nada',
+      );
+    }
+
+    // Dias distintos con ventas, que es la unidad con la que se mide un libro.
+    final dias = ventas
+        .map((v) => (v['fecha_hora'] as String).split('T').first)
+        .toSet()
+        .length;
+
+    await db.insert('libro_ventas', {
+      'id': const Uuid().v4(),
+      'archivo': archivo,
+      'fecha_inicio': DateTime(primera.year, primera.month, primera.day).toIso8601String(),
+      'fecha_fin': null,
+      'dias_con_ventas': dias,
+      'ultimo_dia': DateTime(ultima.year, ultima.month, ultima.day).toIso8601String(),
+      'cerrado': 0,
+    });
+
+    await db.execute('DROP TABLE linea_venta');
+    await db.execute('DROP TABLE venta');
   }
 
   static const _createCategoria = '''
@@ -123,37 +229,21 @@ class AppDatabase {
     );
   ''';
 
-  // Sin deleted_at a proposito: una Venta nunca se borra, solo cambia de
-  // estado (decision 0009). Sin campo de total: se calcula sumando
-  // linea_venta, nunca se duplica aqui (ver esquema-db.md).
-  static const _createVenta = '''
-    CREATE TABLE venta (
-      id                TEXT PRIMARY KEY,
-      fecha_hora        TEXT NOT NULL,
-      detalle           TEXT,
-      estado            TEXT NOT NULL DEFAULT 'activa'
-                         CHECK (estado IN ('activa', 'revertida')),
-      motivo_reversion  TEXT,
-      updated_at        TEXT NOT NULL
+  /// Indice de libros de ventas (decision 0025). El nombre del archivo
+  /// (`inicio_final.db`) es para que una persona entienda la carpeta de un
+  /// vistazo; ESTA TABLA es la fuente de verdad de la app. Depender de parsear
+  /// nombres de archivo la dejaria sin saber que tiene ante un renombrado
+  /// interrumpido o un archivo movido a mano.
+  static const _createLibroVentas = '''
+    CREATE TABLE libro_ventas (
+      id               TEXT PRIMARY KEY,
+      archivo          TEXT NOT NULL,
+      fecha_inicio     TEXT NOT NULL,
+      fecha_fin        TEXT,
+      dias_con_ventas  INTEGER NOT NULL DEFAULT 0,
+      ultimo_dia       TEXT,
+      cerrado          INTEGER NOT NULL DEFAULT 0
     );
   ''';
 
-  // producto_id nullable + nombre_libre: linea libre sin catalogo
-  // (decision 0016). Sin deleted_at: inmutable, vive y muere con su Venta.
-  static const _createLineaVenta = '''
-    CREATE TABLE linea_venta (
-      id               TEXT PRIMARY KEY,
-      venta_id         TEXT NOT NULL REFERENCES venta(id),
-      producto_id      TEXT REFERENCES producto(id),
-      nombre_libre     TEXT,
-      precio_aplicado  REAL NOT NULL,
-      cantidad         INTEGER NOT NULL DEFAULT 1,
-      nota             TEXT,
-      updated_at       TEXT NOT NULL,
-      CHECK (
-        (producto_id IS NOT NULL AND nombre_libre IS NULL) OR
-        (producto_id IS NULL AND nombre_libre IS NOT NULL)
-      )
-    );
-  ''';
 }

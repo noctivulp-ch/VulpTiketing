@@ -1,7 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:io';
+
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
+import 'package:vulp_tiketing/features/venta/libro_ventas.dart';
 import 'package:vulp_tiketing/features/venta/venta_en_curso_notifier.dart';
 
 /// Regresion de un bug critico: solo se podia guardar UNA venta por sesion.
@@ -26,17 +30,11 @@ void main() {
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(singleInstance: false),
     );
-    await db.execute('''
-      CREATE TABLE venta (
-        id TEXT PRIMARY KEY, fecha_hora TEXT NOT NULL, detalle TEXT,
-        estado TEXT NOT NULL, motivo_reversion TEXT, updated_at TEXT NOT NULL
-      );''');
-    await db.execute('''
-      CREATE TABLE linea_venta (
-        id TEXT PRIMARY KEY, venta_id TEXT NOT NULL, producto_id TEXT,
-        nombre_libre TEXT, precio_aplicado REAL NOT NULL,
-        cantidad INTEGER NOT NULL, nota TEXT, updated_at TEXT NOT NULL
-      );''');
+    // Desde v3 las ventas viven en un libro; acá se aplican sus tablas sobre la
+    // misma base en memoria (decisión 0025). El índice de libros también hace
+    // falta, porque `guardar()` consulta la rotación antes de escribir.
+    await db.execute(AppDatabase.esquema[2]); // libro_ventas
+    await aplicarEsquemaLibro(db);
     return db;
   }
 
@@ -44,8 +42,17 @@ void main() {
     final db = await abrirDb();
     addTearDown(db.close);
 
+    final dir = Directory.systemTemp.createTempSync('vulp-carrito');
+    addTearDown(() => dir.deleteSync(recursive: true));
     final container = ProviderContainer(
-      overrides: [databaseProvider.overrideWith((ref) async => db)],
+      overrides: [
+        databaseProvider.overrideWith((ref) async => db),
+        // Sin esto el servicio intentaría resolver la carpeta real con
+        // path_provider, que no existe en una prueba unitaria.
+        libroVentasServiceProvider.overrideWith(
+          (ref) async => LibroVentasService(directorio: dir.path),
+        ),
+      ],
     );
     addTearDown(container.dispose);
 
@@ -72,8 +79,17 @@ void main() {
     final db = await abrirDb();
     addTearDown(db.close);
 
+    final dir = Directory.systemTemp.createTempSync('vulp-carrito');
+    addTearDown(() => dir.deleteSync(recursive: true));
     final container = ProviderContainer(
-      overrides: [databaseProvider.overrideWith((ref) async => db)],
+      overrides: [
+        databaseProvider.overrideWith((ref) async => db),
+        // Sin esto el servicio intentaría resolver la carpeta real con
+        // path_provider, que no existe en una prueba unitaria.
+        libroVentasServiceProvider.overrideWith(
+          (ref) async => LibroVentasService(directorio: dir.path),
+        ),
+      ],
     );
     addTearDown(container.dispose);
 

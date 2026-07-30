@@ -2,7 +2,8 @@
 
 ## Estado
 
-Propuesta — diseño acordado con el usuario, pendiente de implementar.
+Aceptada — implementada el 2026-07-30 (esquema v3). El sync selectivo por libro
+y el backup con restauración selectiva quedan pendientes; ver Consecuencias.
 
 ## Contexto
 

@@ -4,11 +4,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
+import 'package:vulp_tiketing/features/venta/libro_ventas.dart';
 
-/// La migración v1 → v2 (índices) tiene que aplicarse sobre bases QUE YA
-/// EXISTEN, no solo en instalaciones nuevas: la tablet del negocio ya tiene
-/// datos. Una migración que solo corre en `onCreate` dejaría al usuario real
-/// sin índices para siempre, y en silencio — que es el peor tipo de fallo.
+/// Las migraciones tienen que aplicarse sobre bases QUE YA EXISTEN, no solo en
+/// instalaciones nuevas. Una migración que solo corriera en `onCreate` dejaría
+/// al usuario real con el esquema viejo para siempre, y en silencio — que es el
+/// peor tipo de fallo.
+///
+/// Hay dos saltos:
+/// - **v1 → v2**: agrega índices. No toca datos.
+/// - **v2 → v3**: muda `venta` y `linea_venta` a su primer libro
+///   ([decisión 0025](../docs/decisiones/0025-archivado-anual-rodante.md)). Es
+///   la única vez en la vida del proyecto que las ventas cambian de archivo.
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -25,30 +32,50 @@ void main() {
     if (temporal.existsSync()) temporal.deleteSync(recursive: true);
   });
 
-  Future<List<String>> indicesDe(Database db) async {
+  Future<List<String>> indicesDe(DatabaseExecutor db) async {
     final rows = await db.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx_%' ORDER BY name",
     );
     return rows.map((r) => r['name'] as String).toList();
   }
 
-  test('una base v1 con datos se migra a v2 sin perder nada', () async {
-    final ruta = p.join(temporal.path, 'v1.db');
-
-    // Base v1: tablas SIN indices, tal como quedaron las instalaciones que ya
-    // existen. Se crea a mano con las sentencias de tabla, sin `crearIndices`.
-    final v1 = await databaseFactory.openDatabase(
+  /// Crea una base tal como era en v1: catálogo y ventas juntas, sin índices.
+  Future<Database> crearV1(String ruta) async {
+    return databaseFactory.openDatabase(
       ruta,
       options: OpenDatabaseOptions(
         version: 1,
         singleInstance: false,
         onCreate: (db, _) async {
-          for (final sentencia in AppDatabase.esquema) {
-            await db.execute(sentencia);
-          }
+          await db.execute(AppDatabase.esquema[0]); // categoria
+          await db.execute(AppDatabase.esquema[1]); // producto
+          // En v1 las ventas vivían acá. El DDL es el mismo que hoy usa un
+          // libro, así que se reutiliza en vez de duplicarlo.
+          await aplicarEsquemaLibroSinIndices(db);
         },
       ),
     );
+  }
+
+  /// Abre con la versión y las migraciones REALES de la app.
+  Future<Database> abrirConMigracionesReales(String ruta, String directorio) {
+    return databaseFactory.openDatabase(
+      ruta,
+      options: OpenDatabaseOptions(
+        version: AppDatabase.version,
+        singleInstance: false,
+        onCreate: (db, _) => AppDatabase.crearEsquema(db),
+        onUpgrade: (db, viejo, nuevo) async {
+          if (viejo < 2) await AppDatabase.crearIndicesLegacyV2(db);
+          if (viejo < 3) await AppDatabase.migrarVentasALibro(db, directorio);
+        },
+      ),
+    );
+  }
+
+  test('una base v1 con ventas llega a v3 sin perder nada', () async {
+    final ruta = p.join(temporal.path, 'v1.db');
+    final v1 = await crearV1(ruta);
 
     final fecha = DateTime(2026, 5, 1, 12).toIso8601String();
     await v1.insert('venta', {
@@ -65,77 +92,99 @@ void main() {
       'cantidad': 2,
       'updated_at': fecha,
     });
-    expect(await indicesDe(v1), isEmpty, reason: 'v1 no debe tener indices');
+    expect(await indicesDe(v1), isEmpty, reason: 'v1 no tenía índices');
     await v1.close();
 
-    // Ahora se abre con la version y las migraciones REALES de la app.
-    final v2 = await databaseFactory.openDatabase(
-      ruta,
-      options: OpenDatabaseOptions(
-        version: AppDatabase.version,
-        singleInstance: false,
-        onCreate: (db, _) => AppDatabase.crearEsquema(db),
-        onUpgrade: (db, viejo, nuevo) async {
-          if (viejo < 2) await AppDatabase.crearIndices(db);
-        },
-      ),
+    final v3 = await abrirConMigracionesReales(ruta, temporal.path);
+    addTearDown(v3.close);
+
+    expect(await v3.getVersion(), equals(AppDatabase.version));
+
+    // Las ventas ya no están en la base principal…
+    final quedan = await v3.rawQuery(
+      "SELECT COUNT(*) c FROM main.sqlite_master "
+      "WHERE type='table' AND name IN ('venta','linea_venta')",
     );
-    addTearDown(v2.close);
+    expect(quedan.first['c'], equals(0));
 
-    expect(await v2.getVersion(), equals(AppDatabase.version));
+    // …sino en un libro, con el importe intacto.
+    final libro = await LibroVentasService(directorio: temporal.path).libroAbierto(v3);
+    expect(libro, isNotNull);
+    expect(libro!.diasConVentas, equals(1));
 
-    // Los indices tienen que estar…
-    final indices = await indicesDe(v2);
-    expect(indices, hasLength(AppDatabase.indices.length),
-        reason: 'faltan indices tras migrar: $indices');
+    final libroDb = await databaseFactory.openDatabase(
+      p.join(temporal.path, libro.archivo),
+      options: OpenDatabaseOptions(singleInstance: false),
+    );
+    final lineas = await libroDb.query('linea_venta');
+    await libroDb.close();
 
-    // …y los datos tienen que seguir intactos. Esta migracion no toca columnas
-    // ni filas, asi que perder algo seria un error grave.
-    final ventas = await v2.query('venta');
-    final lineas = await v2.query('linea_venta');
-    expect(ventas, hasLength(1));
     expect(lineas, hasLength(1));
     expect(lineas.first['precio_aplicado'], equals(1500));
     expect(lineas.first['cantidad'], equals(2));
+
+    // El catálogo, que no se muda, sigue en su lugar.
+    final tablasPrincipal = await v3.rawQuery(
+      "SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+    );
+    expect(
+      tablasPrincipal.map((r) => r['name']),
+      containsAll(['categoria', 'libro_ventas', 'producto']),
+    );
+  });
+
+  test('una base v1 SIN ventas llega a v3 sin crear libros vacios', () async {
+    final ruta = p.join(temporal.path, 'vacia.db');
+    final v1 = await crearV1(ruta);
+    await v1.close();
+
+    final v3 = await abrirConMigracionesReales(ruta, temporal.path);
+    addTearDown(v3.close);
+
+    expect(await LibroVentasService(directorio: temporal.path).libroAbierto(v3), isNull);
+    final sueltos = temporal
+        .listSync()
+        .map((e) => p.basename(e.path))
+        .where((n) => n.startsWith('ventas-'));
+    expect(sueltos, isEmpty,
+        reason: 'el primer libro se crea con la primera venta, no al migrar');
   });
 
   test('migrar dos veces no falla', () async {
-    // `onUpgrade` no deberia volver a correr, pero los indices usan
-    // IF NOT EXISTS igual: una migracion que revienta al reintentarse deja la
-    // app sin poder abrir la base nunca mas.
+    // `onUpgrade` no debería repetirse, pero una migración que revienta al
+    // reintentarse deja la app sin poder abrir la base nunca más.
     final ruta = p.join(temporal.path, 'idempotente.db');
 
-    Future<Database> abrir() => databaseFactory.openDatabase(
-          ruta,
-          options: OpenDatabaseOptions(
-            version: AppDatabase.version,
-            singleInstance: false,
-            onCreate: (db, _) => AppDatabase.crearEsquema(db),
-            onUpgrade: (db, viejo, nuevo) async {
-              if (viejo < 2) await AppDatabase.crearIndices(db);
-            },
-          ),
-        );
-
-    final primera = await abrir();
+    final primera = await abrirConMigracionesReales(ruta, temporal.path);
     await AppDatabase.crearIndices(primera); // simula un reintento
-    expect(await indicesDe(primera), hasLength(AppDatabase.indices.length));
     await primera.close();
 
-    final segunda = await abrir();
+    final segunda = await abrirConMigracionesReales(ruta, temporal.path);
     addTearDown(segunda.close);
-    expect(await indicesDe(segunda), hasLength(AppDatabase.indices.length));
+    expect(await segunda.getVersion(), equals(AppDatabase.version));
   });
 
-  test('los indices que declara el esquema son los que dice usar', () async {
-    // Guarda contra agregar un indice y olvidar el comentario que lo justifica,
-    // o al reves: dejar un comentario de un indice que ya no existe.
+  test('la base principal solo declara indices de sus propias tablas', () async {
+    // Desde v3 los índices de `venta`/`linea_venta` viven en el libro, porque
+    // es ahí donde están esas tablas. Declararlos acá reventaría al crear el
+    // esquema.
     final db = await databaseFactory.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(singleInstance: false),
     );
     addTearDown(db.close);
     await AppDatabase.crearEsquema(db);
+
+    expect(await indicesDe(db), equals(['idx_producto_categoria']));
+  });
+
+  test('un libro trae sus propios indices', () async {
+    final db = await databaseFactory.openDatabase(
+      inMemoryDatabasePath,
+      options: OpenDatabaseOptions(singleInstance: false),
+    );
+    addTearDown(db.close);
+    await aplicarEsquemaLibro(db);
 
     expect(
       await indicesDe(db),

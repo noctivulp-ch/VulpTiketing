@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/db/db_providers.dart';
 import 'linea_venta_model.dart';
+import 'libro_ventas.dart';
 import 'venta_dao.dart';
 import 'venta_model.dart';
 import 'venta_notifier.dart';
@@ -127,13 +128,21 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
     if (state.lineas.isEmpty) return;
 
     final db = await ref.read(databaseProvider.future);
+    final ahora = DateTime.now();
+
+    // Deja adjunto el libro que debe recibir esta venta, rotando si ya cumplio
+    // su año de dias con actividad (decision 0025). Va ANTES de escribir: la
+    // venta tiene que aterrizar en el libro correcto, no en el anterior.
+    final libros = await ref.read(libroVentasServiceProvider.future);
+    await libros.prepararPara(db, ahora);
+
     final dao = VentaDao(db);
     final venta = Venta(
       id: ventaIdBorrador,
-      fechaHora: DateTime.now(),
+      fechaHora: ahora,
       detalle: state.detalle,
       estado: EstadoVenta.activa,
-      updatedAt: DateTime.now(),
+      updatedAt: ahora,
     );
     await dao.guardar(venta, state.lineas);
 
