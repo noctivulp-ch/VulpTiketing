@@ -78,6 +78,7 @@ dependencies:
   # embebido, puro Dart, sin codigo nativo por plataforma - cero riesgo
   # de compilacion adicional en Android+Linux+Windows.
   shelf: ^1.4.2
+  cryptography_flutter: ^2.3.4
 
 dev_dependencies:
   flutter_test:

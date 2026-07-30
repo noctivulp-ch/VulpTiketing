@@ -158,13 +158,46 @@ manifiesto JSON de piezas) porque el par de largos fijos anterior solo admitía
 dos partes. Los `.tiketback` del formato viejo se siguen leyendo: se distinguen
 por no tener el magic.
 
-**Medición pendiente de resolver.** Con la base de 5 años (360 MB), exportar
-tarda **36 s con un pico de +1.701 MB de RSS**. Confirma lo que decía el párrafo
-de arriba: el pico es de implementación. La escritura por trozos no entró en
-esta pasada porque exige framing con MAC por trozo —otro cambio de formato
-encima del anterior, en la misma tanda— y un backup ilegible es el peor fallo
-posible de este subsistema. El manifiesto ya deja las piezas enmarcadas, que es
-la mitad del trabajo.
+**Resuelto (formato 3, escritura por trozos).** Medido con la base de 5 años:
+
+| | Antes | Ahora |
+|---|---|---|
+| Exportar, pico de RSS | +1.701 MB | **+138 MB** |
+| Restaurar, pico de RSS | +181 MB | **+0 MB** |
+| Exportar, tiempo | 38 s | 28,6 s |
+
+El backup pasa a escribirse en marcos de 4 MB cifrados por separado, así que el
+pico deja de depender del tamaño total. Confirma lo que este apartado
+sospechaba: el pico era de implementación, no del tamaño.
+
+Antes de tocar nada se aisló dónde se iba el costo
+(`scripts/medir_costo_backup.dart`), y el resultado corrigió el diagnóstico:
+derivar la clave son 238 ms fijos, pero **AES-GCM en Dart puro va a 10,7 MB/s**
+— o sea 34 s de los 36 eran cifrado, no copias de memoria. Los trozos arreglan
+la memoria y no podían arreglar el tiempo. Para eso se agregó
+`cryptography_flutter`, que en Android e iOS delega en el cifrado del sistema y
+usa las instrucciones AES del procesador; en escritorio cae de vuelta a Dart
+puro, y por eso la medición de arriba casi no se mueve. El formato no cambia:
+AES-256-GCM es el mismo algoritmo lo implemente quien lo implemente.
+
+Partir el archivo en marcos abre dos manipulaciones que no existían cuando todo
+iba en un solo bloque, y las dos son silenciosas:
+
+- **reordenar** marcos — cada uno verificaría bien por separado y la
+  contabilidad restaurada quedaría mezclada, con el archivo pareciendo íntegro;
+- **truncar** el archivo — restaurarías medio año creyendo que están todas las
+  ventas.
+
+Se cierran metiendo el número de marco y la marca de "último" en los datos
+autenticados (AAD). Hay una prueba por cada una. Y al restaurar, las piezas van
+primero a una carpeta de paso y solo se mueven a su lugar cuando **todos** los
+marcos verificaron: ni una contraseña mala ni un archivo cortado pueden dejar el
+dispositivo a medio restaurar.
+
+Compatibilidad: se leen los tres formatos. Detectarlos tiene un detalle que no
+es obvio — **solo v3 lleva el magic en claro**; en v1 y v2 el archivo empieza
+con la sal aleatoria y el `VTBK` de v2 viajaba dentro del cifrado, así que los
+dos son indistinguibles hasta descifrarlos.
 
 ### 6. El sync solo intercambia el libro abierto
 

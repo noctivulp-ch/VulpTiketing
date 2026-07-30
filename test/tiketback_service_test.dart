@@ -293,6 +293,43 @@ void main() {
     expect(prefs.getString('orden_producto'), 'nombre');
   });
 
+  test('un backup en formato 2, con libros, todavia se restaura', () async {
+    // v2 ya traía libros, pero cifraba TODO como un solo bloque y guardaba el
+    // magic DENTRO del cifrado. Un lector que busque el magic en los primeros
+    // bytes del archivo ve la sal aleatoria y lo confunde con v1.
+    //
+    // Esta prueba faltaba y el fallo salió recién probando en la app real:
+    // ningún caso cubría "escribir con un formato y leer con el siguiente".
+    final libros = await sembrar(
+      productos: ['Café'],
+      ventasPorLibro: {'ventas-2026-01-01.db': 5000},
+    );
+    final bytesPrincipal = await File(rutaPrincipal).readAsBytes();
+    final bytesLibro =
+        await File(p.join(dir.path, 'ventas-2026-01-01.db')).readAsBytes();
+
+    await File(rutaBackup).writeAsBytes(
+      await _cifrarFormato2(
+        nombrePrincipal: nombrePrincipal,
+        principal: bytesPrincipal,
+        libros: {libros.first: bytesLibro},
+        prefs: utf8.encode('{"acento_tinte":"cobre"}'),
+      ),
+      flush: true,
+    );
+
+    for (final entrada in dir.listSync()) {
+      if (entrada.path != rutaBackup) entrada.deleteSync();
+    }
+
+    await restaurar(AlcanceRestauracion.todo);
+
+    expect(await totalVendido(), closeTo(5000, 0.01));
+    expect(await nombresDeProducto(), equals(['Café']));
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('acento_tinte'), 'cobre');
+  });
+
   test('la contrasena equivocada no escribe nada', () async {
     final libros = await sembrar(
       productos: ['Café'],
@@ -310,6 +347,69 @@ void main() {
         reason: 'una contraseña mala no puede dejar el dispositivo a medio restaurar');
   });
 
+  test('un backup cortado por la mitad no restaura nada', () async {
+    // El riesgo que aparece al partir el backup en marcos: si cada marco lleva
+    // su propio sello y nada mas, cortar el archivo da un backup donde TODOS
+    // los marcos que quedan verifican bien. Restaurarías medio año de ventas
+    // creyendo que están todas, sin ningún aviso.
+    final libros = await sembrar(
+      productos: ['Café'],
+      ventasPorLibro: {'ventas-2026-01-01.db': 5000},
+    );
+    await exportar(libros);
+
+    final entero = await File(rutaBackup).readAsBytes();
+    await File(rutaBackup).writeAsBytes(
+      entero.sublist(0, entero.length ~/ 2),
+      flush: true,
+    );
+
+    await expectLater(restaurar(AlcanceRestauracion.todo), throwsA(anything));
+
+    // Y lo que había sigue en su lugar, no a medio reemplazar.
+    expect(await totalVendido(), closeTo(5000, 0.01));
+    expect(await nombresDeProducto(), equals(['Café']));
+  });
+
+  test('un backup con los marcos alterados no restaura nada', () async {
+    // El otro riesgo del troceado: mover o tocar un marco. Sin el número de
+    // marco dentro de lo que el sello protege, cada pieza seguiría verificando
+    // por separado y la contabilidad restaurada quedaría mezclada, con el
+    // archivo pareciendo íntegro.
+    final libros = await sembrar(
+      productos: ['Café'],
+      ventasPorLibro: {'ventas-2026-01-01.db': 5000},
+    );
+    await exportar(libros);
+
+    final bytes = await File(rutaBackup).readAsBytes();
+    // Un byte del último marco, bien lejos de la cabecera.
+    bytes[bytes.length - 40] ^= 0xFF;
+    await File(rutaBackup).writeAsBytes(bytes, flush: true);
+
+    await expectLater(restaurar(AlcanceRestauracion.todo), throwsA(anything));
+    expect(await totalVendido(), closeTo(5000, 0.01));
+  });
+
+  test('restaurar no deja carpeta de paso ni cuando falla', () async {
+    final libros = await sembrar(
+      productos: ['Café'],
+      ventasPorLibro: {'ventas-2026-01-01.db': 5000},
+    );
+    await exportar(libros);
+
+    await restaurar(AlcanceRestauracion.todo);
+    expect(Directory(p.join(dir.path, '.restaurando')).existsSync(), isFalse);
+
+    await expectLater(
+      restaurar(AlcanceRestauracion.todo, clave: 'mala'),
+      throwsA(anything),
+    );
+    expect(Directory(p.join(dir.path, '.restaurando')).existsSync(), isFalse,
+        reason: 'una carpeta de paso huérfana ocuparía el doble de disco '
+            'y confundiría al siguiente intento');
+  });
+
   test('el backup no deja el contenido en claro', () async {
     final libros = await sembrar(
       productos: ['Marcador-Legible'],
@@ -325,32 +425,66 @@ void main() {
   });
 }
 
-/// Reproduce el formato 1 tal como lo escribía la app antes de la 0025.
-Future<List<int>> _cifrarFormato1(List<int> db, List<int> prefs) async {
-  final algoritmoClave = Argon2id(
-    parallelism: 1,
-    memory: 19456,
-    iterations: 2,
-    hashLength: 32,
-  );
-  final salt = List<int>.generate(16, (i) => i);
-  final nonce = List<int>.generate(12, (i) => i);
-  final clave = await algoritmoClave.deriveKeyFromPassword(
-    password: 'clave-correcta',
-    nonce: salt,
-  );
+/// Reproduce el formato 2: magic + version + manifiesto + piezas, todo cifrado
+/// como un solo bloque. Es como escribía la app entre la 0025 y el troceado.
+Future<List<int>> _cifrarFormato2({
+  required String nombrePrincipal,
+  required List<int> principal,
+  required Map<String, List<int>> libros,
+  required List<int> prefs,
+}) async {
+  final manifiesto = utf8.encode(jsonEncode([
+    {'tipo': 'principal', 'nombre': nombrePrincipal, 'largo': principal.length},
+    for (final e in libros.entries)
+      {'tipo': 'libro', 'nombre': e.key, 'largo': e.value.length},
+    {'tipo': 'preferencias', 'nombre': '', 'largo': prefs.length},
+  ]));
 
+  final bundle = BytesBuilder()
+    ..add(utf8.encode('VTBK'))
+    ..add((ByteData(2)..setUint16(0, 2, Endian.big)).buffer.asUint8List())
+    ..add(_u32(manifiesto.length))
+    ..add(manifiesto)
+    ..add(principal);
+  for (final bytes in libros.values) {
+    bundle.add(bytes);
+  }
+  bundle.add(prefs);
+
+  return _envolver(bundle.takeBytes());
+}
+
+/// Reproduce el formato 1 tal como lo escribía la app antes de la 0025.
+Future<List<int>> _cifrarFormato1(List<int> db, List<int> prefs) {
   final bundle = BytesBuilder()
     ..add(_u32(db.length))
     ..add(db)
     ..add(_u32(prefs.length))
     ..add(prefs);
+  return _envolver(bundle.takeBytes());
+}
 
-  final caja = await AesGcm.with256bits()
-      .encrypt(bundle.takeBytes(), secretKey: clave, nonce: nonce);
+/// La envoltura común de los formatos 1 y 2: `salt|nonce|cipherText|mac`, con
+/// TODO el bundle cifrado de una vez.
+Future<List<int>> _envolver(List<int> bundle) async {
+  final clave = await Argon2id(
+    parallelism: 1,
+    memory: 19456,
+    iterations: 2,
+    hashLength: 32,
+  ).deriveKeyFromPassword(
+    password: 'clave-correcta',
+    nonce: List<int>.generate(16, (i) => i),
+  );
+
+  final caja = await AesGcm.with256bits().encrypt(
+    bundle,
+    secretKey: clave,
+    nonce: List<int>.generate(12, (i) => i),
+  );
 
   return (BytesBuilder()
-        ..add(salt)
+        ..add(List<int>.generate(16, (i) => i))
         ..add(caja.nonce)
         ..add(caja.cipherText)
         ..add(caja.mac.bytes))
