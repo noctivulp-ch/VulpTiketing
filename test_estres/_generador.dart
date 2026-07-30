@@ -62,8 +62,16 @@ class BaseDeEstres {
   final double totalSembrado;
 }
 
+/// Las bases cacheadas van a DISCO REAL, no a `Directory.systemTemp`.
+///
+/// En Linux `/tmp` suele ser tmpfs, o sea RAM. Medir I/O de base de datos ahí
+/// daría números irreales — el objetivo es una tablet con almacenamiento lento,
+/// el extremo opuesto — y además una base de 1,7 GB consumiría memoria en vez
+/// de disco. Se puede redirigir con `VULP_ESTRES_CACHE`.
 String _rutaCache(Nivel nivel) {
-  final dir = Directory(p.join(Directory.systemTemp.path, 'vulp-estres'));
+  final base = Platform.environment['VULP_ESTRES_CACHE'] ??
+      p.join(Platform.environment['HOME']!, '.cache', 'vulptiketing', 'estres');
+  final dir = Directory(base);
   if (!dir.existsSync()) dir.createSync(recursive: true);
   return p.join(dir.path, 'v$_versionGenerador-${nivel.nombre}.db');
 }
