@@ -14,6 +14,17 @@ import 'package:flutter/foundation.dart';
 /// implementación nativa y **cae de vuelta a Dart puro**, así que ahí no cambia
 /// nada. El dispositivo del negocio es una tablet, que es donde sí aplica.
 ///
+/// Verificado en un Huawei P30 lite (Kirin 710, con extensiones AES), en perfil
+/// AOT y cifrando trozos de 4 MB: **85,1 MB/s contra 3,6 MB/s en Dart puro —
+/// 24 veces**. Se mide con el comando `diagnostico_cifrado` del harness, que
+/// corre las dos implementaciones en el mismo aparato; comparar contra el
+/// número de una laptop no dice nada.
+///
+/// Trampa que costó una medición falsa: en Android el paquete solo manda al
+/// sistema lo que mide **menos de 20 MB**. Con una carga de 32 MB las dos vías
+/// daban 3,6 MB/s y parecía que la dependencia no servía para nada. Ver
+/// `TiketbackService._tamanoTrozo`, que depende de ese techo.
+///
 /// Es transparente para el formato: AES-256-GCM es el mismo algoritmo lo
 /// implemente quien lo implemente, así que un `.tiketback` hecho en la tablet
 /// se restaura en Linux y al revés.

@@ -72,7 +72,7 @@ dependencies:
   # .tiketdata (decisiones 0006/0017) - verificado que compila en Linux
   # antes de comprometerse (implementacion nativa en Dart desde v4, no
   # depende de zenity/kdialog por shell).
-  file_picker: ^8.1.6
+  file_picker: ^10.3.10
 
   # Protocolo de transporte de sync (decision 0022): servidor HTTP
   # embebido, puro Dart, sin codigo nativo por plataforma - cero riesgo

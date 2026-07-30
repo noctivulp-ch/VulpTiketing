@@ -15,7 +15,10 @@
 //    Service que llamaria la UI real — nunca toca SQLite a mano, para no
 //    inventar un segundo camino de logica de negocio (decision 0009).
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:cryptography/cryptography.dart';
+import 'package:cryptography/dart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_driver/driver_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +26,7 @@ import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import 'package:vulp_tiketing/app.dart';
+import 'package:vulp_tiketing/core/crypto/cifrado_nativo.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/features/import_export/tiketback_service.dart';
 import 'package:vulp_tiketing/features/import_export/tiketdata_service.dart';
@@ -187,6 +191,45 @@ Future<dynamic> _ejecutar(
     case 'listar_categorias':
       final categorias = await container.read(categoriaNotifierProvider.future);
       return categorias.map((c) => {'id': c.id, 'nombre': c.nombre}).toList();
+
+    case 'diagnostico_cifrado':
+      // Mide AES-GCM EN EL DISPOSITIVO. Es la unica forma de saber si
+      // `cryptography_flutter` esta usando el cifrado del sistema: en Linux no
+      // hay implementacion nativa y cae a Dart puro, asi que el numero de la
+      // laptop no dice nada sobre la tablet del negocio.
+      //
+      // Referencia medida en Dart puro (laptop): 10,7 MB/s.
+      final mb = (args['mb'] as num?)?.toInt() ?? 32;
+      final datos = Uint8List(mb * 1024 * 1024);
+      final nonce = List<int>.generate(12, (i) => i);
+
+      // Se miden LAS DOS implementaciones en el MISMO aparato. Comparar contra
+      // el numero de la laptop no dice nada: son maquinas distintas.
+      Future<int> medir(Cipher cifrador) async {
+        final clave = await cifrador.newSecretKey();
+        // Calentamiento: la primera llamada paga el arranque del canal a la
+        // plataforma, y mediria eso en vez del cifrado.
+        await cifrador.encrypt(Uint8List(1024 * 1024),
+            secretKey: clave, nonce: nonce);
+        final reloj = Stopwatch()..start();
+        await cifrador.encrypt(datos, secretKey: clave, nonce: nonce);
+        return (reloj..stop()).elapsedMilliseconds;
+      }
+
+      String velocidad(int ms) => (mb / (ms / 1000)).toStringAsFixed(1);
+
+      final msActual = await medir(AesGcm.with256bits());
+      final msDart = await medir(DartAesGcm.with256bits());
+
+      return {
+        'nativo': cifradoNativoDisponible,
+        'implementacion': Cryptography.instance.runtimeType.toString(),
+        'mb': mb,
+        'actual_ms': msActual,
+        'actual_mbps': velocidad(msActual),
+        'dartPuro_ms': msDart,
+        'dartPuro_mbps': velocidad(msDart),
+      };
 
     default:
       throw ArgumentError('comando directo desconocido: $cmd');

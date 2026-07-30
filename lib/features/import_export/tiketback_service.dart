@@ -80,9 +80,25 @@ class TiketbackService {
 
   /// Cuánto texto en claro entra en cada marco.
   ///
-  /// 4 MB es el compromiso: el pico de memoria queda en ese orden sin importar
-  /// si la base pesa 300 MB o 3 GB, y el costo de los sellos es despreciable
-  /// (90 marcos para 360 MB son 1,4 KB de sellos).
+  /// Hay DOS razones para este valor, y la segunda no es obvia:
+  ///
+  /// 1. **Memoria.** El pico queda en este orden sin importar si la base pesa
+  ///    300 MB o 3 GB, y el costo de los sellos es despreciable (90 marcos para
+  ///    360 MB son 1,4 KB de sellos).
+  ///
+  /// 2. **Es lo que habilita el cifrado por hardware.** En Android,
+  ///    `cryptography_flutter` manda al cifrado del sistema solo lo que mide
+  ///    entre 2 KB y **20 MB** — el paquete pone ese techo porque observó
+  ///    cuelgues con cargas mayores. Todo lo que se pase de ahí vuelve en
+  ///    silencio a AES en Dart puro.
+  ///
+  /// Medido en un Kirin 710 (perfil AOT), cifrando 4 MB: **85,1 MB/s por
+  /// hardware contra 3,6 MB/s en Dart puro — 24 veces**. Con un trozo de 32 MB,
+  /// que para memoria sería igual de razonable, las dos vías dan 3,6 MB/s: el
+  /// camino nativo no se usa y nada lo avisa.
+  ///
+  /// Por eso: **subir este valor por encima de 20 MB tiraría el cifrado por
+  /// hardware sin ningún error visible.**
   static const _tamanoTrozo = 4 * 1024 * 1024;
 
   // Mismos parametros que CredencialesService (0011) — un solo lugar de
