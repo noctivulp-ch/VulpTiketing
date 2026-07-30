@@ -16,7 +16,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/features/import_export/tiketdata_service.dart';
 import 'package:vulp_tiketing/features/producto/producto_notifier.dart';
@@ -61,7 +60,7 @@ void main() {
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(singleInstance: false),
     );
-    await AppDatabase.crearEsquema(db);
+    await crearEsquemaDeEstres(db);
     await db.transaction((txn) async {
       await txn.insert('categoria', {
         'id': 'c1',
@@ -154,7 +153,7 @@ void main() {
           options: OpenDatabaseOptions(singleInstance: false),
         );
         addTearDown(destino.close);
-        await AppDatabase.crearEsquema(destino);
+        await crearEsquemaDeEstres(destino);
 
         final reloj = Stopwatch()..start();
         await TiketdataService(destino).importarCatalogo(
@@ -193,7 +192,7 @@ void main() {
         options: OpenDatabaseOptions(singleInstance: false),
       );
       addTearDown(destino.close);
-      await AppDatabase.crearEsquema(destino);
+      await crearEsquemaDeEstres(destino);
 
       final servicio = TiketdataService(destino);
       await servicio.importarCatalogo(
@@ -215,7 +214,7 @@ void main() {
         options: OpenDatabaseOptions(singleInstance: false),
       );
       addTearDown(destino.close);
-      await AppDatabase.crearEsquema(destino);
+      await crearEsquemaDeEstres(destino);
 
       final temporal = Directory.systemTemp.createTempSync('vulp-tiketdata3');
       addTearDown(() => temporal.deleteSync(recursive: true));

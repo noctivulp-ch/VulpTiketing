@@ -139,6 +139,33 @@ traer**:
 Un libro cerrado nunca cambia, así que restaurarlo es idempotente por
 construcción.
 
+**Implementado el 2026-07-30.** La regla que quedó, en una frase: *restaurar
+siempre reemplaza; el alcance dice qué*. Es coherente con la
+[decisión 0017](0017-restaurar-backup-reemplazo-total.md) y hace el resultado
+predecible. No hay modo fusionar: para el menú esa vía ya existe por otro camino
+(`.tiketdata` en modo fusionar), y mezclar dos contabilidades por fecha daría un
+híbrido que nadie pidió.
+
+Un detalle de implementación que vale registrar: "solo el menú" **no** puede
+reemplazar el archivo `vulp_tiketing.db`, porque ahí vive también
+`libro_ventas`. Pisarlo dejaría los libros locales fuera del índice: las ventas
+seguirían en disco pero la app dejaría de verlas, que para el usuario es
+indistinguible de perderlas. Por eso ese alcance opera a nivel de filas
+(`DELETE` + `INSERT` desde el backup adjunto como `respaldo`) y no de archivos.
+
+El formato del bundle pasó a ser autodescriptivo (magic `VTBK`, versión, y un
+manifiesto JSON de piezas) porque el par de largos fijos anterior solo admitía
+dos partes. Los `.tiketback` del formato viejo se siguen leyendo: se distinguen
+por no tener el magic.
+
+**Medición pendiente de resolver.** Con la base de 5 años (360 MB), exportar
+tarda **36 s con un pico de +1.701 MB de RSS**. Confirma lo que decía el párrafo
+de arriba: el pico es de implementación. La escritura por trozos no entró en
+esta pasada porque exige framing con MAC por trozo —otro cambio de formato
+encima del anterior, en la misma tanda— y un backup ilegible es el peor fallo
+posible de este subsistema. El manifiesto ya deja las piezas enmarcadas, que es
+la mitad del trabajo.
+
 ### 6. El sync solo intercambia el libro abierto
 
 Con el modelo de libros, el problema del sync cambia de forma y se simplifica.
@@ -151,20 +178,48 @@ Como un libro cerrado **nunca cambia**, no hay nada que sincronizar en él más
 que una vez:
 
 - El sync de rutina intercambia **solo el libro abierto**, que está acotado a un
-  año por construcción.
+  año por construcción. — *Implementado el 2026-07-30.*
 - Un dispositivo nuevo que entra al grupo pide además los libros cerrados que le
-  falten, una única vez, identificados por el índice.
+  falten, una única vez, identificados por el índice. — **No es implementable
+  tal como está escrito; ver la corrección abajo.**
 - Un libro solo se cierra cuando su contenido ya fue sincronizado con los pares
-  conocidos, para no dejar a otro dispositivo sin ventas que nunca vio.
-
-Ese último punto usa la misma señal que la
-[decisión 0015](0015-purgar-producto-borrado-fisico-condicional.md) definió para
-purgar productos y que hoy devuelve siempre `false`. Implementarla habilita las
-dos cosas.
+  conocidos, para no dejar a otro dispositivo sin ventas que nunca vio. —
+  *Pendiente:* depende de `todosLosDispositivosSincronizados`, que la
+  [decisión 0015](0015-purgar-producto-borrado-fisico-condicional.md) definió y
+  que hoy devuelve siempre `false` a mano.
 
 Nótese que el riesgo del diseño anterior —que el otro dispositivo reinsertara lo
 archivado y revirtiera el vaciado en silencio— **desaparece**: no hay filas
 borradas que puedan volver.
+
+#### Corrección (2026-07-30): los libros son POR DISPOSITIVO
+
+Al implementar quedó a la vista un supuesto falso de esta sección. Cada aparato
+crea sus libros por su cuenta, con su propio UUID y su propia fecha de corte, y
+rota cuando **sus** días con ventas llegan a 365. Dos aparatos nunca comparten
+un archivo, ni un id, ni un rango. Así que *"los libros cerrados que le falten,
+identificados por el índice"* no está definido: los índices no son comparables.
+
+La unidad de sincronización es la **fila**, no el archivo. Un libro es un
+contenedor local, no una entidad compartida. Por eso `libro_ventas` está
+deliberadamente fuera de `tablasSincronizables`: describe los archivos de este
+dispositivo, y propagarlo dejaría al otro con filas apuntando a archivos que no
+existen.
+
+Lo que sí quedó implementado y es correcto: el volcado se limita a las ventas
+del libro abierto, el cliente prepara su propio libro antes de aplicarlas, y
+después recuenta los días desde el contenido real (`recontarDias`) en vez de
+incrementar — porque el sync reenvía las mismas filas y un contador incremental
+acumularía error.
+
+**Lo que falta decidir**, y por qué no se resolvió sobre la marcha: si el
+aparato A ya tiene una venta en un libro **cerrado** y B se la manda desde su
+libro **abierto**, `RowUpserter` no la encuentra en el libro abierto de A, la
+inserta, y esa venta queda en dos libros de A. Un reporte que adjunte ambos la
+cuenta dos veces. Ocurre en el solape cercano a una rotación, cuando un aparato
+estuvo apagado un tiempo largo. Corromper contabilidad en silencio es peor que
+no compartir el histórico, así que el intercambio de libros cerrados espera un
+ADR propio.
 
 ## Alternativas descartadas
 

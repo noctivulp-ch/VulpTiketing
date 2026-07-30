@@ -26,6 +26,21 @@ Los borrados se propagan como cualquier otro cambio de fila: son soft-delete (`d
 
 Una vez que dos dispositivos del mismo rol se descubren, intercambian filas vía un servidor HTTP embebido (`shelf`) con puerto asignado dinámicamente por el sistema operativo y anunciado por mDNS — ver [decisión 0022](../decisiones/0022-protocolo-transporte-sync-shelf-puerto-dinamico.md). Cada dispositivo expone `GET /sync/exportar` (todas las filas de las 4 tablas sincronizables, incluyendo tombstones) y hace *pull* del mismo endpoint en cada peer descubierto, aplicando el resultado con `RowUpserter` (LWW vía `RowSyncEngine`).
 
+El payload va envuelto en `{version, esquema, tablas}`. `version` es la forma del mensaje y `esquema` la versión del modelo de datos: un peer con otro `esquema` se **rechaza sin aplicar una sola fila**, porque mezclar filas de dos modelos no produce un error visible sino una contabilidad que no es la de ninguno de los dos aparatos.
+
+### Qué viaja y qué no
+
+| | Viaja | Por qué |
+|---|---|---|
+| `categoria`, `producto` | sí | catálogo compartido |
+| `venta`, `linea_venta` | sí, **solo las del libro abierto** | son las tablas del libro adjunto ([decisión 0025](../decisiones/0025-archivado-anual-rodante.md)); eso acota el volcado a un año en vez de a la vida del negocio |
+| `libro_ventas` | **no** | describe los ARCHIVOS de este dispositivo — sus nombres y fechas de corte son suyos y de nadie más. Propagarlo dejaría al otro con filas apuntando a archivos que no existen. Además no tiene `updated_at`, que `RowSyncEngine` exige |
+| libros cerrados | **no** | pendiente de un ADR propio: los libros son por dispositivo y una venta podría acabar en dos libros del mismo aparato, contándose doble en los reportes |
+
+Dos detalles del lado del cliente que hacen falta con este modelo: se llama a `prepararPara` **antes** de aplicar (sin libro abierto no hay tabla `venta` donde escribir), y a `recontarDias` **después** — porque las ventas que entran por sync no pasan por la caja y el libro no contaría sus días, así que no rotaría nunca. Se recuenta desde el contenido en vez de incrementar: el sync reenvía las mismas filas y un contador incremental acumularía error.
+
+Un aparato **sin ninguna venta** exporta `venta` y `linea_venta` como listas vacías. Antes lanzaba `no such table`, el servidor devolvía 500 y el cliente se comía la excepción en silencio — con lo cual una instalación nueva tampoco recibía el **catálogo**.
+
 ## Estado de implementación (2026-07-28)
 
 - **Descubrimiento** (anunciar rol + descubrir pares): implementado con `bonsoir` — ver [decisión 0021](../decisiones/0021-paquete-mdns-bonsoir.md). En Linux depende de `avahi-daemon` activo en el sistema.

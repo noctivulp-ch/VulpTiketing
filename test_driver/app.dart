@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_driver/driver_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import 'package:vulp_tiketing/app.dart';
@@ -28,6 +29,7 @@ import 'package:vulp_tiketing/features/import_export/tiketdata_service.dart';
 import 'package:vulp_tiketing/features/producto/categoria_notifier.dart';
 import 'package:vulp_tiketing/features/producto/categoria_model.dart';
 import 'package:vulp_tiketing/features/producto/producto_notifier.dart';
+import 'package:vulp_tiketing/features/venta/libro_ventas.dart';
 import 'package:vulp_tiketing/features/venta/venta_en_curso_notifier.dart';
 import 'package:vulp_tiketing/features/venta/venta_notifier.dart';
 import 'package:vulp_tiketing/features/producto/producto_model.dart';
@@ -104,9 +106,13 @@ Future<dynamic> _ejecutar(
       return null;
 
     case 'export_tiketback':
+      final db = await container.read(databaseProvider.future);
+      final libros = await container.read(libroVentasServiceProvider.future);
       await TiketbackService().exportar(
         contrasenaExportacion: args['password'] as String,
-        rutaBaseDeDatos: await AppDatabase.ruta(),
+        directorioDatos: p.dirname(await AppDatabase.ruta()),
+        nombreBasePrincipal: p.basename(await AppDatabase.ruta()),
+        archivosDeLibro: (await libros.todos(db)).map((l) => l.archivo).toList(),
         rutaDestino: args['path'] as String,
       );
       return null;
@@ -114,8 +120,12 @@ Future<dynamic> _ejecutar(
     case 'restore_tiketback':
       await TiketbackService().restaurar(
         contrasenaExportacion: args['password'] as String,
-        rutaBaseDeDatos: await AppDatabase.ruta(),
+        directorioDatos: p.dirname(await AppDatabase.ruta()),
+        nombreBasePrincipal: p.basename(await AppDatabase.ruta()),
         rutaOrigen: args['path'] as String,
+        alcance: AlcanceRestauracion.values.byName(
+          (args['alcance'] as String?) ?? 'todo',
+        ),
       );
       container.invalidate(databaseProvider);
       return null;

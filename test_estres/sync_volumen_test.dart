@@ -14,7 +14,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/features/sync/row_upserter.dart';
 import 'package:vulp_tiketing/features/sync/sync_server.dart';
 
@@ -84,7 +83,7 @@ void main() {
           options: OpenDatabaseOptions(singleInstance: false),
         );
         addTearDown(destino.close);
-        await AppDatabase.crearEsquema(destino);
+        await crearEsquemaDeEstres(destino);
 
         final categorias = await origen.db.query('categoria');
         final productos = await origen.db.query('producto');
@@ -138,7 +137,7 @@ void main() {
           options: OpenDatabaseOptions(singleInstance: false),
         );
         addTearDown(destino.close);
-        await AppDatabase.crearEsquema(destino);
+        await crearEsquemaDeEstres(destino);
 
         final ventas = await origen.db.query('venta', limit: 500);
         final idsVenta = ventas.map((v) => "'${v['id']}'").join(',');
@@ -180,7 +179,7 @@ void main() {
           options: OpenDatabaseOptions(singleInstance: false),
         );
         addTearDown(destino.close);
-        await AppDatabase.crearEsquema(destino);
+        await crearEsquemaDeEstres(destino);
 
         final upserter = RowUpserter(destino);
         await upserter.aplicar('categoria', await origen.db.query('categoria'));

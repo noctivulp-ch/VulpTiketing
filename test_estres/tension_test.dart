@@ -16,7 +16,6 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/features/producto/categoria_notifier.dart';
 import 'package:vulp_tiketing/features/producto/producto_notifier.dart';
@@ -62,7 +61,7 @@ void main() {
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(singleInstance: false),
     );
-    await AppDatabase.crearEsquema(db);
+    await crearEsquemaDeEstres(db);
     return db;
   }
 

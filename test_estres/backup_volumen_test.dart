@@ -81,7 +81,9 @@ void main() {
         final rssAntesExportar = rssMb();
         final (_, tomoExportar) = await medir(() => servicio.exportar(
               contrasenaExportacion: 'clave-de-estres',
-              rutaBaseDeDatos: rutaDb,
+              directorioDatos: temporal.path,
+              nombreBasePrincipal: p.basename(rutaDb),
+              archivosDeLibro: const [],
               rutaDestino: destino,
             ));
         final picoExportar = rssMb();
@@ -93,8 +95,10 @@ void main() {
         final rssAntesRestaurar = rssMb();
         final (_, tomoRestaurar) = await medir(() => servicio.restaurar(
               contrasenaExportacion: 'clave-de-estres',
-              rutaBaseDeDatos: rutaDb,
+              directorioDatos: temporal.path,
+              nombreBasePrincipal: p.basename(rutaDb),
               rutaOrigen: destino,
+              alcance: AlcanceRestauracion.todo,
             ));
         final picoRestaurar = rssMb();
         _anotar(nivel.nombre, 'restaurar', ms(tomoRestaurar),
@@ -121,7 +125,9 @@ void main() {
         final destino = p.join(temporal.path, 'backup2.tiketback');
         await servicio.exportar(
           contrasenaExportacion: 'la-correcta',
-          rutaBaseDeDatos: rutaDb,
+          directorioDatos: temporal.path,
+          nombreBasePrincipal: p.basename(rutaDb),
+          archivosDeLibro: const [],
           rutaDestino: destino,
         );
 
@@ -129,8 +135,10 @@ void main() {
         await expectLater(
           servicio.restaurar(
             contrasenaExportacion: 'la-incorrecta',
-            rutaBaseDeDatos: rutaDb,
+            directorioDatos: temporal.path,
+            nombreBasePrincipal: p.basename(rutaDb),
             rutaOrigen: destino,
+            alcance: AlcanceRestauracion.todo,
           ),
           throwsA(anything),
         );

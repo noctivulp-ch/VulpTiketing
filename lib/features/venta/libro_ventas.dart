@@ -249,6 +249,41 @@ class LibroVentasService {
     );
   }
 
+  /// Recalcula `dias_con_ventas` y `ultimo_dia` del libro abierto a partir de
+  /// lo que hay REALMENTE dentro.
+  ///
+  /// Hace falta porque `prepararPara` solo cuenta los días de las ventas que
+  /// pasan por la caja de este dispositivo, y el sync mete ventas por otro
+  /// camino: `RowUpserter` inserta directo en la tabla `venta` del libro
+  /// adjunto. Un libro que reciba todo por sync no contaría un solo día y no
+  /// rotaría nunca.
+  ///
+  /// Recalcula en vez de incrementar a propósito: incrementar acumularía error
+  /// cada vez que llega una venta de un día que ya estaba contado, y el sync
+  /// reenvía las mismas filas una y otra vez. Contar lo que hay es exacto y da
+  /// igual cuántas veces se llame.
+  Future<void> recontarDias(Database db) async {
+    final libro = await libroAbierto(db);
+    if (libro == null) return;
+
+    final r = (await db.rawQuery(
+      'SELECT COUNT(DISTINCT date(fecha_hora)) AS dias, MAX(fecha_hora) AS ultimo FROM venta',
+    )).first;
+    final dias = (r['dias'] as int?) ?? 0;
+    if (dias == 0) return;
+
+    final ultimo = r['ultimo'] as String?;
+    await db.update(
+      'libro_ventas',
+      {
+        'dias_con_ventas': dias,
+        if (ultimo != null) 'ultimo_dia': _soloFecha(DateTime.parse(ultimo)),
+      },
+      where: 'id = ?',
+      whereArgs: [libro.id],
+    );
+  }
+
   /// Cierra un libro: lo desadjunta, renombra el archivo a
   /// `inicio_final.db` y actualiza el índice.
   ///

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/db/db_providers.dart';
 import '../auth/device_identity_service.dart';
 import '../auth/sesion_notifier.dart';
+import '../venta/libro_ventas.dart';
 import 'device_discovery_service.dart';
 import 'sync_client.dart';
 import 'sync_group_coordinator.dart';
@@ -70,7 +71,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
 
     await _discovery.anunciar(deviceId: miDeviceId, rol: rol.name, puerto: puerto);
 
-    final cliente = SyncClient(db);
+    final cliente = SyncClient(db, libros: await ref.read(libroVentasServiceProvider.future));
     _discovery.descubrirPares().listen(
       (pares) async {
         _paresDelMismoRol = pares.where((p) => p.rol == rol.name).toList();

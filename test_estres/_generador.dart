@@ -16,12 +16,29 @@ import 'dart:math';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
+import 'package:vulp_tiketing/features/venta/libro_ventas.dart';
 
 import '_escalera.dart';
 
 /// Subir esto invalida todas las cachés en disco. Hacerlo al cambiar la forma
 /// de los datos generados o el esquema.
-const _versionGenerador = 1;
+const _versionGenerador = 2;
+
+/// Catálogo y ventas en UN solo archivo — a diferencia de la app real, donde
+/// las ventas viven en libros adjuntos ([decisión 0025](../docs/decisiones/0025-archivado-anual-rodante.md)).
+///
+/// Es deliberado: estas pruebas miden el costo de operar sobre N filas, y ese
+/// costo no cambia porque las filas estén en un archivo adjunto o en el
+/// principal. Montar la topología real en cada fixture añadiría un ATTACH por
+/// base sin mover ninguna de las mediciones.
+///
+/// Lo que SÍ depende de la topología —que el sync exporte solo el libro
+/// abierto, que el backup incluya los libros— se prueba en `test/`, contra la
+/// estructura de verdad.
+Future<void> crearEsquemaDeEstres(Database db) async {
+  await AppDatabase.crearEsquema(db);
+  await aplicarEsquemaLibro(db);
+}
 
 /// Catálogo real de la soda, con la mezcla que importa: los primeros 8
 /// son los items de alta rotación (₡800–1.000) y son los que se venden más.
@@ -140,7 +157,7 @@ Future<double> _totalDe(Database db) async {
 /// pruebas van a medir en `RowUpserter`, pero acá no se está probando eso: es
 /// fixture, y tiene que ser rápido.
 Future<double> _poblar(Database db, Nivel nivel, void Function(String) avisar) async {
-  await AppDatabase.crearEsquema(db);
+  await crearEsquemaDeEstres(db);
 
   final aleatorio = Random(42); // semilla fija: volúmenes reproducibles
   final catalogo = [..._catalogoBarato, ..._catalogoCaro];
