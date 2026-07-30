@@ -312,9 +312,34 @@ ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightnes
     ),
     inputDecorationTheme: InputDecorationThemeData(
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(BentoRadius.pozo)),
+      // En reposo el campo es un hueco (borde de pozo); al enfocarse pasa a ser
+      // accion, y entonces toma el metal — misma logica que los botones.
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(BentoRadius.pozo),
+        borderSide: BorderSide(color: laca.paredCresta),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(BentoRadius.pozo),
+        borderSide: BorderSide(color: scheme.primary, width: 2),
+      ),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: BentoSpacing.paddingCelda,
         vertical: BentoSpacing.unidad * 1.5,
+      ),
+    ),
+    // El contorno de un boton es el metal, no el borde del pozo: el acento
+    // marca accion, y un boton ES accion (DESIGN.md, regla 4). Antes heredaban
+    // `outline`, que es material de bandeja, y no se distinguian de un hueco.
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, bentoObjetivoTactilMin),
+        side: BorderSide(color: scheme.primary),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BentoRadius.pozo)),
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        side: BorderSide(color: scheme.primary),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(

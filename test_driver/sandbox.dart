@@ -878,31 +878,14 @@ class _PanelControl extends StatelessWidget {
                   'Editando: $tokenActivo',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                _Deslizador(
-                  etiqueta: 'matiz',
-                  valor: hsl.hue,
-                  min: 0,
-                  max: 360,
-                  divisiones: 72,
-                  onChanged: (v) => onColor(tokenActivo, hsl.withHue(v).toColor()),
-                ),
-                _Deslizador(
-                  etiqueta: 'saturacion',
-                  valor: hsl.saturation,
-                  min: 0,
-                  max: 1,
-                  divisiones: 40,
-                  onChanged: (v) => onColor(tokenActivo, hsl.withSaturation(v).toColor()),
-                ),
-                _Deslizador(
-                  etiqueta: 'luminosidad',
-                  valor: hsl.lightness,
-                  min: 0,
-                  max: 1,
-                  divisiones: 40,
-                  onChanged: (v) => onColor(tokenActivo, hsl.withLightness(v).toColor()),
-                ),
                 const SizedBox(height: BentoSpacing.unidad),
+                _SelectorColor(
+                  color: activo,
+                  onChanged: (c) => onColor(tokenActivo, c),
+                ),
+                const SizedBox(height: BentoSpacing.gapCelda),
+                // El hex queda como salida, no como forma de entrada: sirve
+                // para copiar un valor o pegar uno exacto si ya lo tenes.
                 _CampoHex(
                   key: ValueKey(tokenActivo),
                   valor: _hex(activo),
@@ -968,6 +951,157 @@ class _PanelControl extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Selector de color visual: area de saturacion/luminosidad con cruz
+/// arrastrable, y barra de espectro para el matiz.
+///
+/// Reemplaza a tres sliders abstractos de HSL, que exigian imaginarse el
+/// resultado antes de verlo — inservibles si no andas pensando en numeros.
+/// Aca se elige el color mirandolo.
+class _SelectorColor extends StatelessWidget {
+  const _SelectorColor({required this.color, required this.onChanged});
+
+  final Color color;
+  final ValueChanged<Color> onChanged;
+
+  static const _altoArea = 150.0;
+  static const _altoBarra = 26.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final hsl = HSLColor.fromColor(color);
+    final radio = BorderRadius.circular(BentoRadius.pozo);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Area 2D: horizontal = saturacion, vertical = luminosidad.
+        LayoutBuilder(
+          builder: (context, limites) {
+            final ancho = limites.maxWidth;
+
+            void actualizar(Offset p) {
+              final s = (p.dx / ancho).clamp(0.0, 1.0);
+              final l = (1 - p.dy / _altoArea).clamp(0.0, 1.0);
+              onChanged(hsl.withSaturation(s).withLightness(l).toColor());
+            }
+
+            return GestureDetector(
+              onPanDown: (d) => actualizar(d.localPosition),
+              onPanUpdate: (d) => actualizar(d.localPosition),
+              child: SizedBox(
+                height: _altoArea,
+                width: ancho,
+                child: Stack(
+                  children: [
+                    // Dos degradados superpuestos aproximan el espacio HSL sin
+                    // tener que pintar pixel por pixel: saturacion en el eje X,
+                    // blanco arriba y negro abajo en el eje Y.
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: radio,
+                        gradient: LinearGradient(
+                          colors: [
+                            HSLColor.fromAHSL(1, hsl.hue, 0, 0.5).toColor(),
+                            HSLColor.fromAHSL(1, hsl.hue, 1, 0.5).toColor(),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: radio,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.white, Colors.transparent, Colors.black],
+                          stops: [0, 0.5, 1],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: (hsl.saturation * ancho - 8).clamp(0.0, ancho - 16),
+                      top: ((1 - hsl.lightness) * _altoArea - 8).clamp(0.0, _altoArea - 16),
+                      child: _Cruz(color: color),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: BentoSpacing.unidad),
+        // Barra de matiz.
+        LayoutBuilder(
+          builder: (context, limites) {
+            final ancho = limites.maxWidth;
+
+            void actualizar(Offset p) {
+              final h = (p.dx / ancho * 360).clamp(0.0, 359.9);
+              onChanged(hsl.withHue(h).toColor());
+            }
+
+            return GestureDetector(
+              onPanDown: (d) => actualizar(d.localPosition),
+              onPanUpdate: (d) => actualizar(d.localPosition),
+              child: SizedBox(
+                height: _altoBarra,
+                width: ancho,
+                child: Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: radio,
+                        gradient: LinearGradient(
+                          colors: [
+                            for (var i = 0; i <= 6; i++)
+                              HSLColor.fromAHSL(1, (i * 60) % 360, 1, 0.5).toColor(),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: (hsl.hue / 360 * ancho - 8).clamp(0.0, ancho - 16),
+                      top: (_altoBarra - 16) / 2,
+                      child: _Cruz(color: HSLColor.fromAHSL(1, hsl.hue, 1, 0.5).toColor()),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Marcador de posicion del selector. Anillo blanco con borde negro para que
+/// se vea sobre cualquier color de fondo, claro u oscuro.
+class _Cruz extends StatelessWidget {
+  const _Cruz({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 16,
+      height: 16,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.black26),
+        ),
+      ),
     );
   }
 }
