@@ -508,7 +508,7 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
         // Barra inferior unificada: buscador + acciones en el mismo panel
         // (antes el buscador vivia arriba, separado de estos botones).
         ColoredBox(
-          color: lacaDe(context).bandeja,
+          color: lacaDe(context).pozo,
           child: Padding(
             padding: const EdgeInsets.all(BentoSpacing.unidad),
             child: Row(

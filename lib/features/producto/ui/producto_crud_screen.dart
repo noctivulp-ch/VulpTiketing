@@ -68,7 +68,7 @@ class ProductoCrudScreen extends ConsumerWidget {
           // (antes el buscador vivia en el AppBar y "agregar" era un FAB
           // flotando aparte, sin relacion visual con el buscador).
           ColoredBox(
-            color: lacaDe(context).bandeja,
+            color: lacaDe(context).pozo,
             child: SafeArea(
               top: false,
               child: Padding(
