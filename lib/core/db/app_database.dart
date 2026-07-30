@@ -38,11 +38,17 @@ class AppDatabase {
       await ruta(),
       version: version,
       onCreate: (db, version) => crearEsquema(db),
+      onUpgrade: (db, viejo, nuevo) async {
+        // v1 -> v2: solo agrega indices. No toca columnas ni datos, asi que es
+        // segura de aplicar sobre una base existente y no necesita migrar
+        // filas.
+        if (viejo < 2) await crearIndices(db);
+      },
     );
     return _instance!;
   }
 
-  static const version = 1;
+  static const version = 2;
 
   /// El esquema como lista ordenada de sentencias, publico a proposito: las
   /// pruebas lo aplican en bases en memoria en vez de duplicar el DDL a mano.
@@ -56,8 +62,42 @@ class AppDatabase {
     _createLineaVenta,
   ];
 
+  /// Indices (v2). El esquema v1 no tenia ninguno, solo claves primarias, y eso
+  /// se midio: con un año de volumen real el reporte del dia tardaba 5,9 s y el
+  /// anual no terminaba. Reescribir las consultas para agregar en SQL bajo el
+  /// dia a 280 ms; estos indices atacan lo que quedaba.
+  ///
+  /// Cada uno corresponde a una consulta concreta que existe hoy, no a una
+  /// suposicion sobre el futuro:
+  static const indices = [
+    // El JOIN de reportes (`ON v.id = lv.venta_id`). Sin esto cada venta del
+    // rango recorre linea_venta completa — es el de mayor impacto.
+    'CREATE INDEX IF NOT EXISTS idx_linea_venta_venta ON linea_venta(venta_id);',
+
+    // El filtro de rango de reportes
+    // (`estado = 'activa' AND fecha_hora >= ? AND fecha_hora < ?`).
+    'CREATE INDEX IF NOT EXISTS idx_venta_estado_fecha ON venta(estado, fecha_hora);',
+
+    // El orden del historial (`VentaDao.listar`, ORDER BY fecha_hora DESC), que
+    // no lleva WHERE y por eso no puede usar el indice compuesto de arriba.
+    'CREATE INDEX IF NOT EXISTS idx_venta_fecha ON venta(fecha_hora);',
+
+    // El GROUP BY del ranking de productos.
+    'CREATE INDEX IF NOT EXISTS idx_linea_venta_producto ON linea_venta(producto_id);',
+  ];
+
+  /// Crea tablas e indices. Las pruebas usan esto para tener el esquema REAL,
+  /// indices incluidos: medir sobre un esquema sin indices cuando produccion si
+  /// los tiene daria numeros que no le sirven a nadie.
   static Future<void> crearEsquema(DatabaseExecutor db) async {
     for (final sentencia in esquema) {
+      await db.execute(sentencia);
+    }
+    await crearIndices(db);
+  }
+
+  static Future<void> crearIndices(DatabaseExecutor db) async {
+    for (final sentencia in indices) {
       await db.execute(sentencia);
     }
   }
