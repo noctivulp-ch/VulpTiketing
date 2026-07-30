@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/nav/retroceso.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_cuadricula.dart';
+import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../import_export/ui/tiketback_panels.dart';
@@ -162,16 +163,24 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
       child: Scaffold(
         body: SafeArea(
           child: ancho == BentoAncho.amplio
-              ? Padding(padding: const EdgeInsets.all(BentoSpacing.gapCelda), child: cuerpo)
+              ? Padding(padding: _margenPagina(context), child: cuerpo)
               // La página entera scrollea, que es el arreglo del desborde.
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+                  padding: _margenPagina(context),
                   child: cuerpo,
                 ),
         ),
       ),
     );
   }
+
+  /// Margen de la página, con el espacio reservado del borde superior.
+  EdgeInsets _margenPagina(BuildContext context) => EdgeInsets.fromLTRB(
+        BentoSpacing.gapCelda,
+        bentoInsetSuperior(context),
+        BentoSpacing.gapCelda,
+        BentoSpacing.gapCelda,
+      );
 
   Widget _panelPara(_Opcion? opcion) {
     switch (opcion) {

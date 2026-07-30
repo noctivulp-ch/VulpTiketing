@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/bento_bandeja.dart';
 import '../../core/theme/bento_cuadricula.dart';
 import '../../core/theme/bento_icon.dart';
+import '../../core/theme/bento_velo.dart';
 import '../../core/theme/bento_theme.dart';
 import '../configuracion/ui/configuracion_screen.dart';
 import '../producto/ui/producto_crud_screen.dart';
@@ -56,22 +57,26 @@ class _DashboardShellState extends State<DashboardShell> {
   ];
 
   Widget _stack() {
-    // `SafeArea` acá y no en cada pantalla: la app no tiene AppBar, así que el
-    // contenido empieza pegado al borde y se le mete debajo de la barra de
-    // estado del teléfono. Pasó de verdad — el botón de la costura de Ventana 2
-    // quedaba tapado por el reloj.
+    // El contenido llega hasta el borde y el velo lo desvanece al pasar por
+    // debajo. Con `SafeArea` en cambio se empuja todo hacia abajo y queda un
+    // borde muerto, y una lista que sube se corta en seco.
     //
-    // Solo arriba: el margen inferior lo pone la banda de navegación, que sí
-    // llega hasta el borde a propósito.
-    return SafeArea(
-      bottom: false,
-      child: IndexedStack(
-        index: _indice,
-        children: [
-          for (var i = 0; i < _pantallas.length; i++)
-            ExcludeFocus(excluding: i != _indice, child: _pantallas[i]),
-        ],
-      ),
+    // Cada pantalla reserva `bentoInsetSuperior` donde le toca: como padding de
+    // su scroll —así los elementos suben y se desvanecen— o como espacio fijo
+    // cuando lo de arriba no scrollea.
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: IndexedStack(
+            index: _indice,
+            children: [
+              for (var i = 0; i < _pantallas.length; i++)
+                ExcludeFocus(excluding: i != _indice, child: _pantallas[i]),
+            ],
+          ),
+        ),
+        const Positioned(top: 0, left: 0, right: 0, child: BentoVeloSuperior()),
+      ],
     );
   }
 

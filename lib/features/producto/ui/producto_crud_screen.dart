@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_cuadricula.dart';
+import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../sync/sync_notifier.dart';
@@ -43,7 +44,14 @@ class ProductoCrudScreen extends ConsumerWidget {
                       // Se conserva la cascada invertida: la lista crece hacia
                       // arriba desde el buscador de la barra inferior.
                       reverse: true,
-                      padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+                      padding: EdgeInsets.fromLTRB(
+                        BentoSpacing.gapCelda,
+                        BentoSpacing.gapCelda,
+                        BentoSpacing.gapCelda,
+                        // `reverse: true` invierte los bordes del padding: el
+                        // "top" visual es el `bottom` del scroll.
+                        BentoSpacing.gapCelda,
+                      ).copyWith(bottom: bentoInsetSuperior(context)),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         // Una fila de producto ocupa 6, 3 o 2 columnas: en
                         // teléfono va a lo ancho, en escritorio caben tres.

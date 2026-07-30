@@ -7,6 +7,7 @@ import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
+import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_query_provider.dart';
@@ -36,7 +37,10 @@ class VentaRapidaScreen extends ConsumerWidget {
                 data: (productos) => productos.isEmpty
                     ? const _SinProductos()
                     : GridView.builder(
-                        padding: EdgeInsets.zero,
+                        // Padding del SCROLL, no del contenedor: así las
+                        // tarjetas suben y se desvanecen bajo el velo en vez
+                        // de frenar contra un borde.
+                        padding: EdgeInsets.only(top: bentoInsetSuperior(context)),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           // Columnas EXPLÍCITAS: cada producto ocupa 3, 2 o 1
                           // de las 6 columnas de la retícula, o sea 2 por fila

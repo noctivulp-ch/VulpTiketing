@@ -5,6 +5,7 @@ import '../../../core/nav/retroceso.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
+import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../reportes_provider.dart';
@@ -54,7 +55,14 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       alRetroceder: volver,
       child: Scaffold(
         body: Padding(
-          padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+          // El hero no scrollea: acá el espacio superior se reserva de verdad,
+          // no se atraviesa.
+          padding: EdgeInsets.fromLTRB(
+            BentoSpacing.gapCelda,
+            bentoInsetSuperior(context),
+            BentoSpacing.gapCelda,
+            BentoSpacing.gapCelda,
+          ),
           child: _detalleDelRango
               ? _DetalleDelRango(params: params, titulo: _tituloDelRango(), onVolver: volver)
               : reporteAsync.when(

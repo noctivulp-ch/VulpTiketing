@@ -8,6 +8,7 @@ import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_theme.dart';
+import '../../../core/theme/bento_velo.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_query_provider.dart';
@@ -56,7 +57,17 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
         child: Scaffold(
           body: Column(
             children: [
-              if (_panelAbierto) Expanded(flex: 3, child: _PanelAgregarProducto()),
+              // Quién ocupa el borde superior cambia según el panel esté
+              // abierto o cerrado, así que el espacio reservado se decide acá y
+              // no dentro de la costura: con el panel abierto la costura queda
+              // en MEDIO, y ahí un margen superior sería un hueco absurdo.
+              if (_panelAbierto)
+                Expanded(flex: 3, child: _PanelAgregarProducto())
+              else
+                // El botón de la costura es fijo: si quedara pegado al borde lo
+                // taparían la muesca de la cámara o una notificación que baje, y
+                // es el control que abre el panel.
+                SizedBox(height: bentoInsetSuperior(context)),
               costura,
               Expanded(flex: _panelAbierto ? 2 : 1, child: carrito),
             ],
@@ -584,7 +595,14 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
           child: productosAsync.when(
             data: (productos) => ListView.separated(
               reverse: true,
-              padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.unidad),
+              padding: EdgeInsets.only(
+                left: BentoSpacing.unidad,
+                right: BentoSpacing.unidad,
+                // `reverse: true` invierte los bordes: el `bottom` del scroll es
+                // el borde VISUAL de arriba, que es donde la lista tiene que
+                // desvanecerse bajo el velo en vez de cortarse.
+                bottom: bentoInsetSuperior(context),
+              ),
               itemCount: productos.length,
               separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad / 2),
               itemBuilder: (context, i) {
