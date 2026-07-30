@@ -27,3 +27,36 @@ Ver [decisión 0008](../decisiones/0008-modelo-venta-multilinea-terminologia.md)
 ## Esquema exacto de columnas
 
 En desarrollo en [esquema-db.md](esquema-db.md) — documento de prototipo con las tablas SQL propuestas y los puntos abiertos a decidir.
+
+## Dónde viven los datos en cada plataforma
+
+La app corre en Android, Windows y Linux, y los datos tienen que sobrevivir al
+cierre y apertura en los tres. `AppDatabase.ruta()` usa
+`getApplicationSupportDirectory()` de `path_provider`, que resuelve al
+directorio privado de la app en cada sistema:
+
+| Sistema | Ruta | Sobrevive cerrar la app | Sobrevive desinstalar |
+|---|---|---|---|
+| Linux | `~/.local/share/com.vulptiketing.vulp_tiketing/` | sí | sí |
+| Windows | `%APPDATA%\com.vulptiketing\vulp_tiketing\` | sí | sí |
+| Android | almacenamiento interno de la app | sí | **no** |
+
+Las credenciales (rol y contraseña) **no** están ahí: viven en el almacenamiento
+seguro nativo ([decisión 0011](../decisiones/0011-credenciales-almacenamiento-nativo.md)).
+Las preferencias de interfaz van en `SharedPreferences`, que en cada sistema
+usa el mecanismo nativo equivalente.
+
+### Android no respalda nada a la nube
+
+`AndroidManifest.xml` declara `allowBackup="false"`, `fullBackupContent="false"`
+y unas `dataExtractionRules` que excluyen todo, en los dos canales: respaldo a
+Google Drive y transferencia directa a un dispositivo nuevo.
+
+**Esto no era el estado por omisión.** Sin declararlo, `allowBackup` vale `true`
+y Android puede subir la base —que es la contabilidad completa del negocio— a la
+cuenta de Google del dueño del dispositivo. Quedaba decidido por descuido.
+
+La consecuencia asumida: en Android, **desinstalar la app borra los datos**. El
+único camino de recuperación es el `.tiketback` cifrado que el usuario genera a
+propósito ([decisión 0006](../decisiones/0006-encriptacion-backup.md)), y eso es
+deliberado — un solo camino de salida de los datos, cifrado y elegido.

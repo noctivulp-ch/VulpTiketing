@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reglas de extracción de datos (Android 12+, API 31).
+
+  Decisión del usuario: los datos del negocio NO salen del dispositivo por
+  mecanismos de Android. La base contiene todas las ventas y el catálogo — es la
+  contabilidad del negocio — y el único camino de salida es el `.tiketback`
+  cifrado que el usuario genera a propósito y guarda donde elige (decisión 0006).
+
+  Sin esto, `allowBackup` viene en `true` por omisión y Android puede subir la
+  base a la cuenta de Google del dueño del dispositivo. Quedaba decidido por
+  descuido, que es la peor forma de decidir dónde vive la contabilidad de un
+  negocio.
+
+  Se excluye todo en los DOS canales:
+  - `cloud-backup`: respaldo automático a Google Drive.
+  - `device-transfer`: copia directa al migrar a un teléfono/tablet nuevo.
+
+  `allowBackup="false"` en el manifest ya cubre el canal de nube, pero en
+  Android 12+ la transferencia entre dispositivos se rige por este archivo, así
+  que hacen falta los dos.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>
