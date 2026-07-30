@@ -107,9 +107,22 @@ El ajuste configurable de la [decisión 0020](docs/decisiones/0020-iconografia-v
 pasa a elegir el **metal del acento** (oro / cobre / peltre) — el pan de metal
 sobre laca, que es tradicionalmente oro pero también cobre y peltre. Se
 conserva la intención de 0020 (pocos, hardcodeados, coherentes) y se le da un
-trabajo que no choca con el modo. El acento se usa **solo** para acción
-primaria, selección actual e indicador de estado — nunca decoración, nunca en
-estados inactivos.
+trabajo que no choca con el modo.
+
+**El metal tiene dos fuerzas, no una:**
+
+| Fuerza | Dónde | Por qué |
+|---|---|---|
+| **Ribete** (apagado, mezclado hacia el pozo) | borde de todos los pozos, campo en reposo | en laca real el pan de metal ribetea los cantos de la pieza |
+| **Pleno** | acción primaria, selección actual, campo enfocado, indicador de estado | el acento marca acción, y sigue destacando porque el ribete está apagado |
+
+El ribete se **deriva** del metal en código, no se hardcodea: con un tono fijo,
+elegir peltre dejaba el elemento seleccionado en plata y todos los demás bordes
+leyéndose dorados — el ajuste cambiaba una pieza y desafinaba el resto.
+Verificado ≥3:1 contra la bandeja en los 3 metales × 2 modos, y hay una prueba
+que exige que **cada metal dé un ribete distinto**.
+
+El acento nunca es decoración y nunca aparece en estados inactivos.
 
 ### 5. Nada de `ColorScheme.fromSeed`
 

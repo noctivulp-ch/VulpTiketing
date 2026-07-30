@@ -39,6 +39,18 @@ void main() {
         });
       });
 
+      test('el ribete esta apagado respecto al acento en $etiqueta', () {
+        // El ribete es el metal apagado: nunca el acento a plena fuerza, porque
+        // entonces la seleccion no tendria con que destacar.
+        final tema = buildBentoTheme(acento, brightness: brillo);
+        final laca = tema.extension<BentoLaca>()!;
+        expect(
+          laca.paredCresta,
+          isNot(equals(tema.colorScheme.primary)),
+          reason: 'el ribete no puede ser el acento a plena fuerza en $etiqueta',
+        );
+      });
+
       test('la cresta de pared cumple 3:1 contra su bandeja en $etiqueta', () {
         // Senal PRIMARIA de tallado (DESIGN.md, regla 1): es lo unico que
         // funciona en modo oscuro, donde bandeja/pozo no puede llegar a 3:1.
@@ -69,5 +81,25 @@ void main() {
         );
       });
     }
+  }
+
+  // La propiedad que motivo este cambio: elegir otro metal tiene que cambiar el
+  // ribete de TODOS los pozos, no solo el del elemento seleccionado. Con un
+  // borde de tono fijo, elegir peltre dejaba el resto leyendose dorado.
+  for (final brillo in Brightness.values) {
+    test('cambiar de metal cambia el ribete de los pozos en ${brillo.name}', () {
+      final ribetes = {
+        for (final acento in AcentoTinte.values)
+          acento: buildBentoTheme(acento, brightness: brillo)
+              .extension<BentoLaca>()!
+              .paredCresta,
+      };
+
+      expect(
+        ribetes.values.toSet().length,
+        equals(AcentoTinte.values.length),
+        reason: 'cada metal debe dar un ribete distinto en ${brillo.name}: $ribetes',
+      );
+    });
   }
 }

@@ -102,11 +102,13 @@ class BentoLaca extends ThemeExtension<BentoLaca> {
   /// paredes entre pozos.
   final Color bandeja;
 
-  /// Cresta iluminada de la pared, 1px en el borde del pozo. Es la senal
-  /// PRIMARIA de tallado — verificada >=3:1 contra la bandeja en los 3
-  /// acabados y los 2 modos, porque en modo oscuro el escalon de valor
-  /// bandeja/pozo no puede llegar a 3:1 (rango de luminancia comprimido).
-  /// Ver DESIGN.md, regla 1.
+  /// Ribete del pozo: 1px en su borde. Es la senal PRIMARIA de tallado
+  /// —verificada >=3:1 contra la bandeja en los 3 metales y los 2 modos,
+  /// porque en modo oscuro el escalon de valor bandeja/pozo no puede llegar a
+  /// 3:1 (rango de luminancia comprimido)— y es el METAL APAGADO, no un tono
+  /// fijo: en laca real el pan de metal ribetea los cantos de la pieza. Con un
+  /// tono fijo, elegir peltre dejaba el elemento seleccionado en plata y todos
+  /// los demas bordes leyendose dorados. Ver DESIGN.md, reglas 1 y 4.
   final Color paredCresta;
 
   /// Fondo del pozo: la superficie donde vive el contenido.
@@ -183,7 +185,6 @@ BentoLaca lacaDe(BuildContext context) => Theme.of(context).extension<BentoLaca>
 const _bandejaOscura = Color(0xFF14100E);
 const _pozoOscuro = Color(0xFF3A1E1B);
 const _pozoContactoOscuro = Color(0xFF2D110E);
-const _bordePozoOscuro = Color(0xFF8E675A); // 3.82:1 vs bandeja, 3.07:1 vs pozo
 const _textoEnPozoOscuro = Color(0xFFF5EAE2); // 12.85:1
 const _textoSecundarioEnPozoOscuro = Color(0xFFCBA99C); // 7.02:1
 const _textoEnBandejaOscura = Color(0xFFEDE4DC); // 15.07:1
@@ -193,7 +194,6 @@ const _textoAtenuadoEnBandejaOscura = Color(0xFFA99C93); // 7.08:1
 const _bandejaClara = Color(0xFFF8F7F2);
 const _pozoClaro = Color(0xFFD7E1D3);
 const _pozoContactoClaro = Color(0xFFC4D2BF);
-const _bordePozoClaro = Color(0xFF5A6E58); // 5.14:1 vs bandeja, 4.10:1 vs pozo
 const _textoEnPozoClaro = Color(0xFF1E2A1C); // 11.12:1
 const _textoSecundarioEnPozoClaro = Color(0xFF495747); // 5.70:1
 const _textoEnBandejaClara = Color(0xFF232522); // 14.40:1
@@ -218,11 +218,30 @@ const _rojoErrorOscuro = Color(0xFFF0A08C);
 const _sobreErrorClaro = Color(0xFFFFFFFF);
 const _sobreErrorOscuro = Color(0xFF2A0D07);
 
-BentoLaca _lacaDe(Brightness brillo) {
+/// Cuanto se apaga el metal para servir de ribete. En laca real el pan de
+/// metal ribetea los cantos de la pieza, asi que el borde de los pozos ES el
+/// metal — pero apagado, para que la seleccion (metal a plena fuerza) siga
+/// destacando. Con un borde de tono fijo, elegir peltre dejaba el resto de la
+/// pantalla leyendose dorada: el ajuste cambiaba una pieza y desafinaba todo
+/// lo demas.
+const _apagadoRibeteClaro = 0.40;
+const _apagadoRibeteOscuro = 0.50;
+
+/// Ribete: el metal mezclado hacia el pozo. Derivado y no hardcodeado para que
+/// siga siendo correcto si un metal cambia. Verificado >=3:1 contra la bandeja
+/// en los 3 metales x 2 modos (`test/contraste_laca_test.dart`).
+Color _ribeteDe(AcentoTinte acento, Brightness brillo) {
+  final claro = brillo == Brightness.light;
+  final metal = claro ? _metales[acento]!.claro : _metales[acento]!.oscuro;
+  final pozo = claro ? _pozoClaro : _pozoOscuro;
+  return Color.lerp(metal, pozo, claro ? _apagadoRibeteClaro : _apagadoRibeteOscuro)!;
+}
+
+BentoLaca _lacaDe(AcentoTinte acento, Brightness brillo) {
   final claro = brillo == Brightness.light;
   return BentoLaca(
     bandeja: claro ? _bandejaClara : _bandejaOscura,
-    paredCresta: claro ? _bordePozoClaro : _bordePozoOscuro,
+    paredCresta: _ribeteDe(acento, brillo),
     pozo: claro ? _pozoClaro : _pozoOscuro,
     pozoContacto: claro ? _pozoContactoClaro : _pozoContactoOscuro,
     textoEnBandeja: claro ? _textoEnBandejaClara : _textoEnBandejaOscura,
@@ -243,7 +262,7 @@ ColorScheme _esquemaDe(AcentoTinte acento, Brightness brillo) {
     onPrimary: sobreMetal,
     primaryContainer: metal,
     onPrimaryContainer: sobreMetal,
-    secondary: claro ? _bordePozoClaro : _bordePozoOscuro,
+    secondary: _ribeteDe(acento, brillo),
     onSecondary: claro ? _bandejaClara : _textoEnBandejaOscura,
     error: claro ? _rojoErrorClaro : _rojoErrorOscuro,
     onError: claro ? _sobreErrorClaro : _sobreErrorOscuro,
@@ -261,7 +280,7 @@ ColorScheme _esquemaDe(AcentoTinte acento, Brightness brillo) {
     surfaceContainerHigh: pozo,
     surfaceContainerHighest: pozo,
     // La cresta es literalmente el contorno del pozo.
-    outline: claro ? _bordePozoClaro : _bordePozoOscuro,
+    outline: _ribeteDe(acento, brillo),
     outlineVariant: claro ? _pozoContactoClaro : _pozoContactoOscuro,
   );
 }
@@ -287,7 +306,7 @@ TextTheme _escalaTipografica(TextTheme base) {
 
 ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightness.light}) {
   final scheme = _esquemaDe(acento, brightness);
-  final laca = _lacaDe(brightness);
+  final laca = _lacaDe(acento, brightness);
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
 
   return base.copyWith(
