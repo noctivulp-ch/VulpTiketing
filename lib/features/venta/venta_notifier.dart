@@ -10,16 +10,14 @@ import 'venta_model.dart';
 /// agregar update()/delete() aqui, ver decision 0009: una Venta no se edita
 /// ni se borra.
 class VentaNotifier extends AsyncNotifier<List<Venta>> {
-  // `late` sin `final` — ver comentario equivalente en ProductoNotifier:
-  // Riverpod reutiliza esta instancia y vuelve a llamar build() al
-  // invalidar el provider, `final` rompia con LateInitializationError.
-  late VentaDao _dao;
+  /// Ver el comentario equivalente en ProductoNotifier: el DAO se resuelve en
+  /// cada llamada, nunca se guarda en un campo.
+  Future<VentaDao> get _dao async => VentaDao(await ref.read(databaseProvider.future));
 
   @override
   Future<List<Venta>> build() async {
     final db = await ref.watch(databaseProvider.future);
-    _dao = VentaDao(db);
-    return _dao.listar();
+    return VentaDao(db).listar();
   }
 
   /// Exige motivo estructurado (decision 0010): tipo, detalle, quien, cuando.
@@ -35,8 +33,9 @@ class VentaNotifier extends AsyncNotifier<List<Venta>> {
       'revertido_por': revertidoPor,
       'revertido_en': DateTime.now().toIso8601String(),
     });
-    await _dao.revertir(ventaId, motivo, DateTime.now());
-    state = AsyncData(await _dao.listar());
+    final dao = await _dao;
+    await dao.revertir(ventaId, motivo, DateTime.now());
+    state = AsyncData(await dao.listar());
   }
 }
 

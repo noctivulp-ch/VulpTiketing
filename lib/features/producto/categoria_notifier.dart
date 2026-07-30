@@ -9,31 +9,33 @@ import 'categoria_model.dart';
 /// para Categoria, no asumir que aplica igual que a Producto (0015 fue
 /// especifico de Producto).
 class CategoriaNotifier extends AsyncNotifier<List<Categoria>> {
-  // `late` sin `final` — ver comentario equivalente en ProductoNotifier:
-  // Riverpod reutiliza esta instancia y vuelve a llamar build() al
-  // invalidar el provider, `final` rompia con LateInitializationError.
-  late CategoriaDao _dao;
+  /// Ver el comentario equivalente en ProductoNotifier: el DAO se resuelve en
+  /// cada llamada, nunca se guarda en un campo.
+  Future<CategoriaDao> get _dao async =>
+      CategoriaDao(await ref.read(databaseProvider.future));
 
   @override
   Future<List<Categoria>> build() async {
     final db = await ref.watch(databaseProvider.future);
-    _dao = CategoriaDao(db);
-    return _dao.listarActivas();
+    return CategoriaDao(db).listarActivas();
   }
 
   Future<void> crear(Categoria categoria) async {
-    await _dao.insertar(categoria);
-    state = AsyncData(await _dao.listarActivas());
+    final dao = await _dao;
+    await dao.insertar(categoria);
+    state = AsyncData(await dao.listarActivas());
   }
 
   Future<void> actualizar(Categoria categoria) async {
-    await _dao.actualizar(categoria);
-    state = AsyncData(await _dao.listarActivas());
+    final dao = await _dao;
+    await dao.actualizar(categoria);
+    state = AsyncData(await dao.listarActivas());
   }
 
   Future<void> descontinuar(String id) async {
-    await _dao.descontinuar(id, DateTime.now());
-    state = AsyncData(await _dao.listarActivas());
+    final dao = await _dao;
+    await dao.descontinuar(id, DateTime.now());
+    state = AsyncData(await dao.listarActivas());
   }
 }
 

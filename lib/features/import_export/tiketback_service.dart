@@ -164,6 +164,10 @@ class TiketbackService {
     final libros = piezas.where((x) => x.tipo == _TipoPieza.libro).toList();
 
     await AppDatabase.close();
+    // Este servicio abre bases por su cuenta (el archivo restaurado y un
+    // temporal), y en escritorio eso exige el factory FFI. Si la app se abre y
+    // lo primero que hace el usuario es restaurar, nadie lo inicializó todavía.
+    AppDatabase.inicializarFactory();
     final rutaPrincipal = p.join(directorioDatos, nombreBasePrincipal);
 
     switch (alcance) {

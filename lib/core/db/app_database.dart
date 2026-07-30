@@ -30,13 +30,27 @@ class AppDatabase {
     _instance = null;
   }
 
-  static Future<Database> open() async {
-    if (_instance != null) return _instance!;
-
+  /// Deja `databaseFactory` utilizable en esta plataforma.
+  ///
+  /// Es publico y separado de [open] porque hay codigo que abre bases SIN pasar
+  /// por la conexion principal: `TiketbackService` abre el archivo restaurado y
+  /// un temporal, y `LibroVentasService` abre cada libro para crearle su
+  /// esquema. Cuando esto vivia solo dentro de [open], restaurar un backup en
+  /// una app recien abierta —antes de que nadie hubiera tocado la base— moria
+  /// con `databaseFactory not initialized`.
+  ///
+  /// Idempotente: llamarlo de mas no cuesta nada.
+  static void inicializarFactory() {
     if (Platform.isLinux || Platform.isWindows) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
+  }
+
+  static Future<Database> open() async {
+    if (_instance != null) return _instance!;
+
+    inicializarFactory();
 
     _instance = await openDatabase(
       await ruta(),

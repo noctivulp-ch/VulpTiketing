@@ -9,34 +9,49 @@ enum PurgarResultado { ok, tieneVentasAsociadas, faltaSincronizar }
 /// Solo escritura + lectura base (decision 0019) — el orden/busqueda de
 /// presentacion vive en ProductoQueryProvider, no aqui.
 class ProductoNotifier extends AsyncNotifier<List<Producto>> {
-  // `late` sin `final`: Riverpod reutiliza esta misma instancia de Notifier
-  // y vuelve a llamar build() cada vez que se invalida este provider o su
-  // dependencia (databaseProvider) — con `final` la segunda asignacion
-  // tiraba LateInitializationError ("ya estaba inicializado") apenas se
-  // invalidaba este provider desde otro lado (ej. tras importar catalogo).
-  late ProductoDao _dao;
+  /// El DAO se resuelve en CADA llamada; nunca se guarda en un campo.
+  ///
+  /// Guardarlo en un campo asignado dentro de `build()` producia
+  /// `database_closed` en la primera operacion despues de restaurar un backup.
+  /// Restaurar cierra la conexion (hay que reemplazar el archivo) e invalida
+  /// `databaseProvider`, pero la reconstruccion de Riverpod es ASINCRONA: leer
+  /// `.notifier` devuelve esta misma instancia con el campo viejo, apuntando a
+  /// la conexion cerrada, porque `build()` todavia no volvio a correr. La
+  /// segunda llamada ya funcionaba, asi que en uso real se veia como "fallo una
+  /// vez y despues anduvo" — el peor tipo de fallo para diagnosticar.
+  ///
+  /// Es el tercer bug de la misma familia en este proyecto (ver
+  /// docs/arquitectura/gestion-estado.md): un campo asignado en `build()` leido
+  /// cuando `build()` todavia no corrio de nuevo. Los dos anteriores se
+  /// arreglaron caso por caso; este quita la causa, porque sin campo cacheado
+  /// no hay nada que pueda quedar viejo. Construir el DAO es envolver una
+  /// referencia a la conexion: no cuesta nada.
+  Future<ProductoDao> get _dao async =>
+      ProductoDao(await ref.read(databaseProvider.future));
 
   @override
   Future<List<Producto>> build() async {
     final db = await ref.watch(databaseProvider.future);
-    _dao = ProductoDao(db);
-    return _dao.listarActivos();
+    return ProductoDao(db).listarActivos();
   }
 
   Future<void> crear(Producto producto) async {
-    await _dao.insertar(producto);
-    state = AsyncData(await _dao.listarActivos());
+    final dao = await _dao;
+    await dao.insertar(producto);
+    state = AsyncData(await dao.listarActivos());
   }
 
   Future<void> actualizar(Producto producto) async {
-    await _dao.actualizar(producto);
-    state = AsyncData(await _dao.listarActivos());
+    final dao = await _dao;
+    await dao.actualizar(producto);
+    state = AsyncData(await dao.listarActivos());
   }
 
   /// Soft-delete (decision 0005) — nunca borrado fisico.
   Future<void> descontinuar(String id) async {
-    await _dao.descontinuar(id, DateTime.now());
-    state = AsyncData(await _dao.listarActivos());
+    final dao = await _dao;
+    await dao.descontinuar(id, DateTime.now());
+    state = AsyncData(await dao.listarActivos());
   }
 
   /// Borrado fisico real, solo si se cumplen las 3 condiciones de la
@@ -47,14 +62,15 @@ class ProductoNotifier extends AsyncNotifier<List<Producto>> {
     String id, {
     required bool todosLosDispositivosSincronizados,
   }) async {
-    final ventasAsociadas = await _dao.contarVentasAsociadas(id);
+    final dao = await _dao;
+    final ventasAsociadas = await dao.contarVentasAsociadas(id);
     if (ventasAsociadas > 0) return PurgarResultado.tieneVentasAsociadas;
     if (!todosLosDispositivosSincronizados) {
       return PurgarResultado.faltaSincronizar;
     }
 
-    await _dao.purgar(id);
-    state = AsyncData(await _dao.listarActivos());
+    await dao.purgar(id);
+    state = AsyncData(await dao.listarActivos());
     return PurgarResultado.ok;
   }
 }
