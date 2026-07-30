@@ -19,7 +19,8 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 - [Prototipos ASCII (Fase 2, bento)](pantallas/prototipos-ascii.md)
 - [Mapa de flujo general](pantallas/mapa-de-flujo.md) (auditoría de navegación — 5 hallazgos, todos resueltos)
 - [Iconografía](pantallas/iconografia.md) (íconos vectoriales propios, Python + SVG)
-- [Referencias visuales — cajas bento reales](pantallas/referencias-visuales/README.md) (por qué la UI actual se ve como botones y no como compartimentos "hundidos")
+- [Referencias visuales — cajas bento reales](pantallas/referencias-visuales/README.md) (por qué la UI se veía como botones y no como compartimentos "hundidos")
+- [**DESIGN.md**](../DESIGN.md) (raíz del repo) — contrato de dirección visual y las reglas de material que no se negocian: bandeja/pozo, la cresta como señal de tallado, prohibición de `ColorScheme.fromSeed`
 
 ## Funciones
 

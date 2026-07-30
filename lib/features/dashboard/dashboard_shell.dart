@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/bento_bandeja.dart';
 import '../../core/theme/bento_icon.dart';
+import '../../core/theme/bento_theme.dart';
 import '../configuracion/ui/configuracion_screen.dart';
 import '../producto/ui/producto_crud_screen.dart';
 import '../reportes/ui/reportes_screen.dart';
@@ -66,24 +68,20 @@ class _DashboardShellState extends State<DashboardShell> {
   Widget build(BuildContext context) {
     final anchoAmplio = MediaQuery.sizeOf(context).width >= 720;
 
+    // La navegacion es una banda de la BANDEJA, no un NavigationRail de
+    // Material: ese traia su propio fondo (`surface`, o sea el color de pozo)
+    // y su propia pildora de seleccion, asi que se leia como un pozo altisimo
+    // pegado al costado en vez de parte del marco (DESIGN.md, regla 7).
     if (anchoAmplio) {
       return Scaffold(
         body: Row(
           children: [
-            NavigationRail(
-              selectedIndex: _indice,
-              onDestinationSelected: (i) => setState(() => _indice = i),
-              labelType: NavigationRailLabelType.none,
-              destinations: [
-                for (final nombre in _iconos)
-                  NavigationRailDestination(
-                    icon: BentoIcon(nombre),
-                    selectedIcon: BentoIcon(nombre, activo: true),
-                    label: const Text(''),
-                  ),
-              ],
+            _BandaNavegacion(
+              indice: _indice,
+              iconos: _iconos,
+              onSeleccion: (i) => setState(() => _indice = i),
+              vertical: true,
             ),
-            const VerticalDivider(width: 1),
             Expanded(child: _stack()),
           ],
         ),
@@ -91,19 +89,113 @@ class _DashboardShellState extends State<DashboardShell> {
     }
 
     return Scaffold(
-      body: _stack(),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _indice,
-        onDestinationSelected: (i) => setState(() => _indice = i),
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-        destinations: [
-          for (final nombre in _iconos)
-            NavigationDestination(
-              icon: BentoIcon(nombre),
-              selectedIcon: BentoIcon(nombre, activo: true),
-              label: '',
-            ),
+      body: Column(
+        children: [
+          Expanded(child: _stack()),
+          _BandaNavegacion(
+            indice: _indice,
+            iconos: _iconos,
+            onSeleccion: (i) => setState(() => _indice = i),
+            vertical: false,
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Banda de navegacion tallada en la bandeja.
+///
+/// La seleccion se expresa en la gramatica del propio material: el
+/// compartimento activo es el que esta HUNDIDO (un pozo, con el icono en oro
+/// de laca), y los inactivos quedan a ras del marco. Es la alternativa a la
+/// pildora generica de Material, que no dice nada sobre este mundo.
+class _BandaNavegacion extends StatelessWidget {
+  const _BandaNavegacion({
+    required this.indice,
+    required this.iconos,
+    required this.onSeleccion,
+    required this.vertical,
+  });
+
+  final int indice;
+  final List<String> iconos;
+  final ValueChanged<int> onSeleccion;
+  final bool vertical;
+
+  @override
+  Widget build(BuildContext context) {
+    final laca = lacaDe(context);
+
+    final destinos = [
+      for (var i = 0; i < iconos.length; i++)
+        Padding(
+          padding: const EdgeInsets.all(BentoSpacing.unidad / 2),
+          child: _Destino(
+            nombre: iconos[i],
+            seleccionado: i == indice,
+            onTap: () => onSeleccion(i),
+          ),
+        ),
+    ];
+
+    return ColoredBox(
+      color: laca.bandeja,
+      child: Padding(
+        padding: const EdgeInsets.all(BentoSpacing.unidad),
+        child: vertical
+            ? Column(mainAxisSize: MainAxisSize.min, children: destinos)
+            : SafeArea(
+                top: false,
+                child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: destinos),
+              ),
+      ),
+    );
+  }
+}
+
+class _Destino extends StatelessWidget {
+  const _Destino({required this.nombre, required this.seleccionado, required this.onTap});
+
+  final String nombre;
+  final bool seleccionado;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final laca = lacaDe(context);
+    final acento = Theme.of(context).colorScheme.primary;
+
+    final icono = Center(
+      child: BentoIcon(
+        nombre,
+        color: seleccionado ? acento : laca.textoAtenuadoEnBandeja,
+      ),
+    );
+
+    if (!seleccionado) {
+      return SizedBox(
+        width: bentoObjetivoTactilMin,
+        height: bentoObjetivoTactilMin,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(BentoRadius.pozo),
+            child: icono,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: bentoObjetivoTactilMin,
+      height: bentoObjetivoTactilMin,
+      child: BentoPozo(
+        onTap: onTap,
+        seleccionado: true,
+        padding: EdgeInsets.zero,
+        child: icono,
       ),
     );
   }

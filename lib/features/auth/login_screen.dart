@@ -138,10 +138,10 @@ class _TarjetaRol extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       color: seleccionada ? Theme.of(context).colorScheme.primaryContainer : null,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BentoRadius.hero)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BentoRadius.bandeja)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(BentoRadius.hero),
+        borderRadius: BorderRadius.circular(BentoRadius.bandeja),
         child: Padding(
           padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
           child: Column(

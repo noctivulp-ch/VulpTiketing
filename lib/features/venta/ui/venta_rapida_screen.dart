@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../producto/producto_model.dart';
@@ -20,39 +21,59 @@ class VentaRapidaScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final productosAsync = ref.watch(productoQueryProvider);
 
+    // Una sola bandeja: el buscador y el grid son pozos tallados en ella,
+    // separados por paredes de material. Sin AppBar — la barra superior de
+    // Material seria una pieza pegada ENCIMA de la bandeja, no un hueco
+    // dentro (DESIGN.md, regla 7).
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            hintText: 'Buscar producto o categoría…',
-            border: InputBorder.none,
-          ),
-          onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
-        ),
-      ),
-      body: productosAsync.when(
-        data: (productos) => productos.isEmpty
-            ? const Center(child: Text('Sin productos'))
-            : GridView.builder(
-                padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 160,
-                  mainAxisSpacing: BentoSpacing.gapCelda,
-                  crossAxisSpacing: BentoSpacing.gapCelda,
-                  childAspectRatio: 0.85,
+      body: BentoBandeja(
+        child: Column(
+          children: [
+            // El buscador es herramienta, no contenido: pozo bajo y denso para
+            // que no compita en peso con una fila del grid.
+            BentoPozo(
+              padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
+              child: TextField(
+                decoration: const InputDecoration(
+                  isDense: true,
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Buscar producto o categoría…',
+                  border: InputBorder.none,
                 ),
-                itemCount: productos.length,
-                itemBuilder: (context, i) {
-                  final producto = productos[i];
-                  return _TarjetaProducto(
-                    producto: producto,
-                    onTap: () => _abrirCobroRapido(context, ref, producto),
-                  );
-                },
+                onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
               ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Error: $e')),
+            ),
+            const SizedBox(height: BentoSpacing.pared),
+            Expanded(
+              child: productosAsync.when(
+                data: (productos) => productos.isEmpty
+                    ? const _SinProductos()
+                    : GridView.builder(
+                        padding: EdgeInsets.zero,
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 190,
+                          mainAxisSpacing: BentoSpacing.pared,
+                          crossAxisSpacing: BentoSpacing.pared,
+                          // Mas ancho que alto: sin hueco de imagen el pozo
+                          // solo tiene que sostener nombre y precio, y una
+                          // celda alta dejaba un vacio muerto en el medio.
+                          childAspectRatio: 1.25,
+                        ),
+                        itemCount: productos.length,
+                        itemBuilder: (context, i) {
+                          final producto = productos[i];
+                          return _TarjetaProducto(
+                            producto: producto,
+                            onTap: () => _abrirCobroRapido(context, ref, producto),
+                          );
+                        },
+                      ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, st) => Center(child: Text('Error: $e')),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -72,6 +93,36 @@ class VentaRapidaScreen extends ConsumerWidget {
   }
 }
 
+/// Estado vacio que enseña la interfaz en vez de decir "no hay nada"
+/// (bandeja recien puesta, todavia sin compartimentos servidos).
+class _SinProductos extends StatelessWidget {
+  const _SinProductos();
+
+  @override
+  Widget build(BuildContext context) {
+    final laca = lacaDe(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'La bandeja está vacía',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(color: laca.textoEnBandeja),
+          ),
+          const SizedBox(height: BentoSpacing.unidad),
+          Text(
+            'Agregá productos en Catálogo, o importá el menú desde Configuración.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: laca.textoAtenuadoEnBandeja,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TarjetaProducto extends StatelessWidget {
   const _TarjetaProducto({required this.producto, required this.onTap});
 
@@ -80,38 +131,56 @@ class _TarjetaProducto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(BentoRadius.celda),
-        child: Padding(
-          padding: const EdgeInsets.all(BentoSpacing.unidad * 1.5),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(BentoRadius.celda - BentoSpacing.unidad / 2),
-                  ),
-                  child: const Center(child: Icon(Icons.image_outlined, size: 32)),
+    final laca = lacaDe(context);
+    final tema = Theme.of(context);
+    final tieneImagen = producto.imagen != null;
+
+    return BentoPozo(
+      onTap: onTap,
+      padding: const EdgeInsets.all(BentoSpacing.unidad * 1.5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sin imagen no se reserva el hueco: un rebaje vacio con un icono
+          // generico se comia el 60% de la celda para no decir nada. Lo que
+          // se lee al cobrar es el nombre y el precio, asi que ellos ocupan
+          // el compartimento.
+          if (tieneImagen)
+            Expanded(
+              // Rebaje mas profundo DENTRO del pozo, no una tarjeta anidada:
+              // es el platito metido en el compartimento (referencias
+              // visuales, fotos 2 y 5), de ahi el tono de sombra de contacto.
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: laca.pozoContacto,
+                  borderRadius: BorderRadius.circular(BentoRadius.pozo / 2),
+                ),
+                child: Center(
+                  child: Icon(Icons.image_outlined, size: 32, color: laca.paredCresta),
                 ),
               ),
-              const SizedBox(height: BentoSpacing.unidad),
-              Text(
+            ),
+          if (tieneImagen) const SizedBox(height: BentoSpacing.unidad),
+          Expanded(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Text(
                 producto.nombre,
-                maxLines: 1,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: tema.textTheme.bodyLarge,
               ),
-              Text(
-                '₡${producto.precioBase.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: BentoSpacing.unidad / 2),
+          // El precio es el dato que decide la accion: peso propio, no una
+          // etiqueta mas.
+          Text(
+            '₡${producto.precioBase.toStringAsFixed(0)}',
+            style: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }

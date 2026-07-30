@@ -68,7 +68,7 @@ class ProductoCrudScreen extends ConsumerWidget {
           // (antes el buscador vivia en el AppBar y "agregar" era un FAB
           // flotando aparte, sin relacion visual con el buscador).
           ColoredBox(
-            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            color: lacaDe(context).bandeja,
             child: SafeArea(
               top: false,
               child: Padding(
@@ -205,8 +205,8 @@ class _FilaProducto extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(BentoRadius.celda - BentoSpacing.unidad / 2),
+                color: lacaDe(context).pozoContacto,
+                borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
               ),
               child: const Icon(Icons.image_outlined, size: 22),
             ),

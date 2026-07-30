@@ -69,7 +69,7 @@ class _SeparadorConToggle extends StatelessWidget {
       width: BentoSpacing.gapGrupo,
       child: Stack(
         children: [
-          Positioned.fill(child: ColoredBox(color: scheme.surfaceContainerHigh)),
+          Positioned.fill(child: ColoredBox(color: lacaDe(context).bandeja)),
           Positioned(
             left: 0,
             right: 0,
@@ -258,8 +258,8 @@ class _FilaLineaVenta extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(BentoRadius.celda - BentoSpacing.unidad / 2),
+                color: lacaDe(context).pozoContacto,
+                borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
               ),
               child: Icon(lineaLibre ? Icons.edit_note : Icons.image_outlined, size: 22),
             ),
@@ -508,7 +508,7 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
         // Barra inferior unificada: buscador + acciones en el mismo panel
         // (antes el buscador vivia arriba, separado de estos botones).
         ColoredBox(
-          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          color: lacaDe(context).bandeja,
           child: Padding(
             padding: const EdgeInsets.all(BentoSpacing.unidad),
             child: Row(

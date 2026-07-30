@@ -183,7 +183,7 @@ class _TileConfiguracion extends StatelessWidget {
       color: seleccionado ? scheme.primaryContainer : null,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(BentoRadius.celda),
+        borderRadius: BorderRadius.circular(BentoRadius.pozo),
         child: Padding(
           padding: const EdgeInsets.all(BentoSpacing.paddingCelda),
           child: Column(
@@ -343,9 +343,9 @@ class _PanelAcento extends ConsumerWidget {
         preferenciasAsync.when(
           data: (prefs) => SegmentedButton<AcentoTinte>(
             segments: const [
-              ButtonSegment(value: AcentoTinte.grisAzulado, label: Text('Azulado')),
-              ButtonSegment(value: AcentoTinte.grisVerdoso, label: Text('Verdoso')),
-              ButtonSegment(value: AcentoTinte.grisCafe, label: Text('Café')),
+              ButtonSegment(value: AcentoTinte.verdeLaca, label: Text('Verde laca')),
+              ButtonSegment(value: AcentoTinte.negroLaca, label: Text('Negro laca')),
+              ButtonSegment(value: AcentoTinte.caoba, label: Text('Caoba')),
             ],
             selected: {prefs.acento},
             onSelectionChanged: (seleccion) =>

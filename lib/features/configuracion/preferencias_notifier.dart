@@ -15,7 +15,7 @@ const _keyModoTema = 'modo_tema';
 class Preferencias {
   const Preferencias({
     this.ordenProducto = OrdenProducto.alfabetico,
-    this.acento = AcentoTinte.grisAzulado,
+    this.acento = AcentoTinte.verdeLaca,
     this.modoTema = ModoTema.sistema,
   });
 
@@ -48,7 +48,7 @@ class PreferenciasNotifier extends AsyncNotifier<Preferencias> {
     );
     final acento = AcentoTinte.values.firstWhere(
       (a) => a.name == prefs.getString(_keyAcento),
-      orElse: () => AcentoTinte.grisAzulado,
+      orElse: () => AcentoTinte.verdeLaca,
     );
     final modoTema = ModoTema.values.firstWhere(
       (m) => m.name == prefs.getString(_keyModoTema),

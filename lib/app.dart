@@ -14,7 +14,7 @@ class VulpTiketingApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final rol = ref.watch(sesionNotifierProvider);
     final preferencias = ref.watch(preferenciasNotifierProvider).valueOrNull;
-    final acento = preferencias?.acento ?? AcentoTinte.grisAzulado;
+    final acento = preferencias?.acento ?? AcentoTinte.verdeLaca;
     final modoTema = preferencias?.modoTema ?? ModoTema.sistema;
 
     return MaterialApp(

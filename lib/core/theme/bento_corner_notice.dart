@@ -65,7 +65,7 @@ class _NotificacionEsquinaState extends State<_NotificacionEsquina>
           opacity: _opacidad,
           child: Material(
             color: Theme.of(context).colorScheme.inverseSurface,
-            borderRadius: BorderRadius.circular(BentoRadius.celda),
+            borderRadius: BorderRadius.circular(BentoRadius.pozo),
             elevation: 4,
             child: Padding(
               padding: const EdgeInsets.symmetric(

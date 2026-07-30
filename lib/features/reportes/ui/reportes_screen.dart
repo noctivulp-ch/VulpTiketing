@@ -230,7 +230,7 @@ class _TarjetaTurno extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(BentoRadius.celda),
+        borderRadius: BorderRadius.circular(BentoRadius.pozo),
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: BentoSpacing.paddingCelda,

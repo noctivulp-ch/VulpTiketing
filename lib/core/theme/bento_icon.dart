@@ -8,16 +8,21 @@ import 'package:flutter_svg/flutter_svg.dart';
 /// (`colorScheme.onSurfaceVariant`), `activo=true` usa el acento
 /// desaturado y configurable (`colorScheme.primary`, ver bento_theme.dart).
 class BentoIcon extends StatelessWidget {
-  const BentoIcon(this.nombre, {super.key, this.activo = false, this.size = 24});
+  const BentoIcon(this.nombre, {super.key, this.activo = false, this.size = 24, this.color});
 
   final String nombre;
   final bool activo;
   final double size;
 
+  /// Tinte explicito. Necesario cuando el icono va sobre la BANDEJA y no
+  /// dentro de un pozo: `onSurfaceVariant` es el gris de texto sobre pozo y
+  /// se pierde contra el material oscuro del marco.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color = activo ? scheme.primary : scheme.onSurfaceVariant;
+    final color = this.color ?? (activo ? scheme.primary : scheme.onSurfaceVariant);
     return SvgPicture.asset(
       'assets/icons/$nombre.svg',
       width: size,
