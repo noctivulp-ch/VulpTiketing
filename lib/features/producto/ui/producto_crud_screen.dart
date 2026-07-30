@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
@@ -196,53 +197,51 @@ class _FilaProducto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(BentoSpacing.unidad),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: lacaDe(context).pozoContacto,
-                borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
-              ),
-              child: const Icon(Icons.image_outlined, size: 22),
+    return BentoPozo(
+      padding: const EdgeInsets.all(BentoSpacing.unidad),
+      child: Row(
+        children: [
+          Container(
+            width: bentoMiniatura,
+            height: bentoMiniatura,
+            decoration: BoxDecoration(
+              color: lacaDe(context).pozoContacto,
+              borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
             ),
-            const SizedBox(width: BentoSpacing.unidad),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(producto.nombre, style: Theme.of(context).textTheme.bodyLarge),
-                  Text(
-                    producto.activo
-                        ? '₡${producto.precioBase.toStringAsFixed(2)}'
-                        : '₡${producto.precioBase.toStringAsFixed(2)} — descontinuado',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Editar', onPressed: onEditar),
-            if (esGerente) ...[
-              if (producto.activo)
-                IconButton(
-                  icon: const Icon(Icons.block),
-                  tooltip: 'Descontinuar',
-                  onPressed: onDescontinuar,
+            child: const Icon(Icons.image_outlined, size: 22),
+          ),
+          const SizedBox(width: BentoSpacing.unidad),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(producto.nombre, style: Theme.of(context).textTheme.bodyLarge),
+                Text(
+                  producto.activo
+                      ? '₡${producto.precioBase.toStringAsFixed(2)}'
+                      : '₡${producto.precioBase.toStringAsFixed(2)} — descontinuado',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
+              ],
+            ),
+          ),
+          IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Editar', onPressed: onEditar),
+          if (esGerente) ...[
+            if (producto.activo)
               IconButton(
-                icon: const Icon(Icons.delete_forever_outlined),
-                tooltip: sincronizado
-                    ? 'Purgar'
-                    : 'Purgar (requiere que todos los dispositivos estén sincronizados)',
-                onPressed: onPurgar,
+                icon: const Icon(Icons.block),
+                tooltip: 'Descontinuar',
+                onPressed: onDescontinuar,
               ),
-            ],
+            IconButton(
+              icon: const Icon(Icons.delete_forever_outlined),
+              tooltip: sincronizado
+                  ? 'Purgar'
+                  : 'Purgar (requiere que todos los dispositivos estén sincronizados)',
+              onPressed: onPurgar,
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

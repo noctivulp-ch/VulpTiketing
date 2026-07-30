@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_bandeja.dart';
+import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../import_export/ui/tiketback_panels.dart';
@@ -47,21 +49,16 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
   Widget build(BuildContext context) {
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
 
-    return Scaffold(
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-            child: GridView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 160,
-                mainAxisSpacing: BentoSpacing.gapCelda,
-                crossAxisSpacing: BentoSpacing.gapCelda,
-                childAspectRatio: 1,
-              ),
-              children: [
+    final ancho = BentoAncho.de(context);
+
+    // La rejilla de tiles, con cada uno ocupando 2 de las 6 columnas: 3 por
+    // fila en cualquier tamaño. Antes era un `GridView` con `shrinkWrap` y
+    // `NeverScrollableScrollPhysics` dentro de una `Column`: a 360 dp eran unos
+    // 880 dp de alto que NO scrolleaban, así que la pantalla se desbordaba y el
+    // panel de detalle se quedaba sin espacio.
+    final rejilla = BentoCuadricula(
+      hijos: [
+        for (final tile in <Widget>[
                 _TileConfiguracion(
                   icono: Icons.lock_outline,
                   etiqueta: 'Cambiar contraseña',
@@ -112,23 +109,56 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
                   seleccionado: _seleccion == _Opcion.acento,
                   onTap: () => setState(() => _seleccion = _Opcion.acento),
                 ),
-                _TileConfiguracion(
-                  icono: Icons.brightness_6_outlined,
-                  etiqueta: 'Modo de tema',
-                  seleccionado: _seleccion == _Opcion.modoTema,
-                  onTap: () => setState(() => _seleccion = _Opcion.modoTema),
-                ),
-              ],
-            ),
+          _TileConfiguracion(
+            icono: Icons.brightness_6_outlined,
+            etiqueta: 'Modo de tema',
+            seleccionado: _seleccion == _Opcion.modoTema,
+            onTap: () => setState(() => _seleccion = _Opcion.modoTema),
           ),
-          const Divider(height: 1, thickness: 1),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-              child: _panelPara(_seleccion),
-            ),
-          ),
-        ],
+        ])
+          BentoCelda(compacto: 2, medio: 2, amplio: 2, hijo: tile),
+      ],
+    );
+
+    final panel = BentoPozo(
+      padding: const EdgeInsets.all(BentoSpacing.paddingCelda),
+      child: _panelPara(_seleccion),
+    );
+
+    // En escritorio los tiles van a la izquierda y el detalle a la derecha: con
+    // 1024 dp o más, apilarlos deja media pantalla vacía y obliga a bajar la
+    // vista para leer lo que se acaba de elegir.
+    final cuerpo = ancho == BentoAncho.amplio
+        ? BentoCuadricula(
+            llenarAlto: true,
+            hijos: [
+              BentoCelda(compacto: 6, medio: 6, amplio: 2,
+                  hijo: SingleChildScrollView(child: rejilla)),
+              BentoCelda(compacto: 6, medio: 6, amplio: 4,
+                  hijo: SingleChildScrollView(child: panel)),
+            ],
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              rejilla,
+              const SizedBox(height: BentoSpacing.gapCelda),
+              panel,
+            ],
+          );
+
+    return Scaffold(
+      body: SafeArea(
+        child: ancho == BentoAncho.amplio
+            ? Padding(
+                padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+                child: cuerpo,
+              )
+            // La página entera scrollea, que es el arreglo del desborde.
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+                child: cuerpo,
+              ),
       ),
     );
   }
@@ -179,30 +209,26 @@ class _TileConfiguracion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      color: seleccionado ? scheme.primaryContainer : null,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(BentoRadius.pozo),
-        child: Padding(
-          padding: const EdgeInsets.all(BentoSpacing.paddingCelda),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icono, size: 32, color: seleccionado ? scheme.onPrimaryContainer : null),
-              const SizedBox(height: BentoSpacing.unidad),
-              Text(
-                etiqueta,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: seleccionado ? scheme.onPrimaryContainer : null,
-                    ),
-              ),
-            ],
+    // La selección la marca la CRESTA del pozo (se engorda y pasa al metal), no
+    // un relleno de `primaryContainer`. Rellenar la celda la levantaba de la
+    // bandeja y la hacía leer como un botón — el acento no se usa como fondo,
+    // solo como borde de selección y acción primaria (DESIGN.md, regla 4).
+    return BentoPozo(
+      onTap: onTap,
+      seleccionado: seleccionado,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icono, size: 32, color: seleccionado ? scheme.primary : null),
+          const SizedBox(height: BentoSpacing.unidad),
+          Text(
+            etiqueta,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
-        ),
+        ],
       ),
     );
   }

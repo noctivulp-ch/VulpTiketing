@@ -65,6 +65,14 @@ const Duration bentoFeedbackTactilDuracion = Duration(milliseconds: 200);
 /// confirmada), asi que todo lo tocable respeta esto — DESIGN.md, regla 6.
 const double bentoObjetivoTactilMin = 48;
 
+/// Lado de la miniatura de producto en una fila de lista.
+///
+/// Deliberadamente por DEBAJO de [bentoObjetivoTactilMin]: no es un objetivo
+/// tactil, es un hueco decorativo dentro de una fila que ya es tocable entera.
+/// Estaba escrito a mano como `44` en dos pantallas, y ese numero suelto invita
+/// a "corregirlo" a 48 creyendo que incumple la regla 6.
+const double bentoMiniatura = 44;
+
 /// Metal del acento. Sobre laca, el pan de metal tradicional es oro, pero
 /// cobre y peltre tambien lo son — asi que el ajuste configurable de la
 /// decision 0020 pasa a elegir el METAL, no el color de la laca.

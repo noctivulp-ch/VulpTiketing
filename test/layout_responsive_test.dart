@@ -1,0 +1,191 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:vulp_tiketing/core/db/app_database.dart';
+import 'package:vulp_tiketing/core/db/db_providers.dart';
+import 'package:vulp_tiketing/core/theme/bento_theme.dart';
+import 'package:vulp_tiketing/features/auth/login_screen.dart';
+import 'package:vulp_tiketing/features/auth/sesion_notifier.dart';
+import 'package:vulp_tiketing/features/configuracion/ui/configuracion_screen.dart';
+import 'package:vulp_tiketing/features/producto/ui/producto_crud_screen.dart';
+import 'package:vulp_tiketing/features/reportes/ui/reportes_screen.dart';
+import 'package:vulp_tiketing/features/venta/libro_ventas.dart';
+import 'package:vulp_tiketing/features/venta/ui/panel_venta_screen.dart';
+import 'package:vulp_tiketing/features/venta/ui/venta_rapida_screen.dart';
+
+/// Ninguna pantalla puede desbordar en ningún tamaño ni con ningún rol.
+///
+/// Antes de esta prueba **no existía ni un test que redimensionara la ventana**,
+/// y por eso cuatro desbordes reales llegaron hasta el aparato: la fila de 4
+/// celdas de Reportes, la barra de cobro de Panel Venta, la `Row` raíz del
+/// carrito y la rejilla de Configuración que no scrolleaba.
+///
+/// El rol importa aparte del tamaño porque **cambia el layout**: el Gerente ve
+/// 9 tiles en Configuración contra 7, y 4 segmentos de rango contra 2.
+void main() {
+  setUpAll(() {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  });
+
+  late Directory dir;
+  late Database db;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    dir = Directory.systemTemp.createTempSync('vulp-layout');
+    db = await databaseFactory.openDatabase(
+      p.join(dir.path, 'vulp_tiketing.db'),
+      options: OpenDatabaseOptions(singleInstance: false),
+    );
+    await AppDatabase.crearEsquema(db);
+    // Las ventas viven en un libro (0025); acá se aplica sobre la misma base.
+    await aplicarEsquemaLibro(db);
+
+    await db.insert('categoria', {
+      'id': 'cat',
+      'nombre': 'General',
+      'updated_at': DateTime(2026).toIso8601String(),
+    });
+    // Con datos, no vacías: juzgar y probar la composición con la base vacía ya
+    // nos hizo pasar por alto zonas que en uso real se llenan.
+    for (var i = 0; i < 12; i++) {
+      await db.insert('producto', {
+        'id': 'p$i',
+        'nombre': 'Producto de nombre largo número $i',
+        'categoria_id': 'cat',
+        'precio_base': 1000.0 + i * 250,
+        'updated_at': DateTime(2026).toIso8601String(),
+      });
+    }
+    final ahora = DateTime.now();
+    for (var i = 0; i < 5; i++) {
+      final f = DateTime(ahora.year, ahora.month, ahora.day, 8 + i * 3).toIso8601String();
+      await db.insert('venta', {
+        'id': 'v$i', 'fecha_hora': f, 'estado': 'activa', 'updated_at': f,
+      });
+      await db.insert('linea_venta', {
+        'id': 'l$i', 'venta_id': 'v$i', 'producto_id': 'p$i',
+        // Importes grandes a propósito: son los que desbordan una celda angosta.
+        'precio_aplicado': 125000.0, 'cantidad': 3, 'updated_at': f,
+      });
+    }
+  });
+
+  tearDown(() async {
+    await db.close();
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+  });
+
+  /// Los tres tamaños del sistema, con el teléfono real del negocio primero.
+  const tamanos = <String, Size>{
+    'compacto 360x800': Size(360, 800),
+    'medio 800x1280': Size(800, 1280),
+    'amplio 1440x900': Size(1440, 900),
+  };
+
+  Future<void> montar(WidgetTester tester, Widget pantalla, Size tamano, Rol rol) async {
+    tester.view.physicalSize = tamano;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        databaseProvider.overrideWith((ref) async => db),
+        libroVentasServiceProvider
+            .overrideWith((ref) async => LibroVentasService(directorio: dir.path)),
+        sesionNotifierProvider.overrideWith(() => _SesionFija(rol)),
+      ],
+      child: MaterialApp(
+        theme: buildBentoTheme(AcentoTinte.oro),
+        home: pantalla,
+      ),
+    ));
+    // `pump` con tiempo en vez de `pumpAndSettle`: hay indicadores de progreso
+    // que giran para siempre y dejarían el settle esperando indefinidamente.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+  }
+
+  final pantallas = <String, Widget Function()>{
+    'Login': () => const LoginScreen(),
+    'Venta Rápida': () => const VentaRapidaScreen(),
+    'Panel Venta': () => const PanelVentaScreen(),
+    'Productos': () => const ProductoCrudScreen(),
+    'Reportes': () => const ReportesScreen(),
+    'Configuración': () => const ConfiguracionScreen(),
+  };
+
+  for (final rol in Rol.values) {
+    for (final tamano in tamanos.entries) {
+      for (final pantalla in pantallas.entries) {
+        testWidgets('${pantalla.key} no desborda en ${tamano.key} (${rol.name})',
+            (tester) async {
+          await montar(tester, pantalla.value(), tamano.value, rol);
+
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: '${pantalla.key} desborda a ${tamano.key} con rol ${rol.name}',
+          );
+        });
+      }
+    }
+  }
+
+  testWidgets('los tiles de Configuración caen de a 3 por fila', (tester) async {
+    // La comprobación visible de que la retícula manda: cada tile ocupa 2 de 6
+    // columnas, así que son 3 por fila den 360 dp o 1440.
+    await montar(tester, const ConfiguracionScreen(), const Size(360, 800), Rol.gerente);
+
+    final primeros = ['Cambiar contraseña', 'Exportar backup', 'Restaurar backup'];
+    final ys = {
+      for (final t in primeros) tester.getTopLeft(find.text(t)).dy,
+    };
+    expect(ys, hasLength(1), reason: 'los tres primeros tiles van en la misma fila');
+
+    final cuarto = tester.getTopLeft(find.text('Catálogo (.tiketdata)')).dy;
+    expect(cuarto, greaterThan(ys.first), reason: 'el cuarto abre una fila nueva');
+  });
+
+  testWidgets('Configuración muestra el panel al lado en escritorio y debajo en teléfono',
+      (tester) async {
+    await montar(tester, const ConfiguracionScreen(), const Size(1440, 900), Rol.gerente);
+    // `.first` porque tras elegir la opción el panel repite el rótulo
+    // "Acento" en su cabecera, y el finder encontraría dos.
+    await tester.tap(find.text('Acento').first);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Dos "Acento": el tile y la cabecera del panel. La segunda ubica al panel
+    // sin depender de que sus controles ya hayan cargado de preferencias.
+    expect(find.text('Acento'), findsNWidgets(2));
+    final xTile = tester.getTopLeft(find.text('Acento').first).dx;
+    final xPanel = tester.getTopLeft(find.text('Acento').last).dx;
+    expect(xPanel, greaterThan(xTile),
+        reason: 'en escritorio el detalle va a la derecha de los tiles');
+
+    await montar(tester, const ConfiguracionScreen(), const Size(360, 800), Rol.gerente);
+    await tester.tap(find.text('Acento').first);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Acento'), findsNWidgets(2));
+    final yTile = tester.getTopLeft(find.text('Acento').first).dy;
+    final yPanel = tester.getTopLeft(find.text('Acento').last).dy;
+    expect(yPanel, greaterThan(yTile),
+        reason: 'en teléfono el detalle va debajo');
+  });
+}
+
+/// Fija el rol sin pasar por almacenamiento seguro, que no existe en un test.
+class _SesionFija extends SesionNotifier {
+  _SesionFija(this.rol);
+  final Rol rol;
+
+  @override
+  Rol? build() => rol;
+}

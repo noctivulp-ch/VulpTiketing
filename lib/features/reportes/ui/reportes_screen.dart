@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_bandeja.dart';
+import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
@@ -100,115 +102,119 @@ class _VistaGeneral extends StatelessWidget {
     final ahora = DateTime.now();
     final esHoy = fecha.year == ahora.year && fecha.month == ahora.month && fecha.day == ahora.day;
 
+    // Hero y turnos en la retícula de 6 columnas (decisión 0026). Cada uno
+    // sigue siendo su propia celda —el usuario confirmó que así se ven mejor
+    // que fusionadas con líneas divisorias internas— y las de una misma fila
+    // comparten altura, que es lo que `BentoCuadricula` garantiza.
+    //
+    // Los spans son lo que arregla el desborde: antes eran cuatro celdas en una
+    // `Row` fija, así que a 360 dp el hero quedaba en ~146 dp con un número de
+    // 40 px y cada turno en ~52 dp. Ahora en teléfono el hero toma la fila
+    // entera y los tres turnos la siguiente; en escritorio 3+1+1+1 vuelve a dar
+    // exactamente la fila de siempre.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Hero + desglose de turnos: cada uno sigue siendo su propia celda
-        // bento (Card redondeada individual — el usuario confirmo que asi
-        // se veian mejor que fusionadas con lineas divisorias internas), una
-        // al lado de la otra en una Row (como en el diseno original) — lo
-        // que estaba mal no era el orden sino que cada Card no llenaba la
-        // altura disponible. IntrinsicHeight le da al Row una altura finita
-        // real antes de repartirla con stretch (evitando el bug de altura
-        // infinita ya visto en esta pantalla, ver el commit de la Fase 5),
-        // y cada tarjeta de turno queda con `Expanded` + stretch para
-        // ocupar exactamente la misma altura que el hero.
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 3,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              _tituloRango(rango, fecha, esHoy),
-                              style: Theme.of(context).textTheme.titleMedium,
+        BentoCuadricula(
+          hijos: [
+            BentoCelda(
+              compacto: 6,
+              medio: 6,
+              amplio: 3,
+              hijo: BentoPozo(
+                  padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            _tituloRango(rango, fecha, esHoy),
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          if (esGerente && rango == RangoReporte.dia)
+                            IconButton(
+                              icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                              tooltip: 'Elegir día',
+                              onPressed: onElegirFecha,
                             ),
-                            if (esGerente && rango == RangoReporte.dia)
-                              IconButton(
-                                icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                                tooltip: 'Elegir día',
-                                onPressed: onElegirFecha,
-                              ),
-                          ],
-                        ),
-                        // El hero es el numero mas importante de la pantalla
-                        // — debe destacar claramente sobre los turnos, no
-                        // ser "casi del mismo tamano" (skill
-                        // visual-hierarchy: minimo 1.5x de diferencia).
-                        // displaySmall (40) vs bodyLarge (16) de los turnos
-                        // da 2.5x.
-                        BentoTextoTallado(
-                          '₡${reporte.total.toStringAsFixed(2)}',
-                          sobre: lacaDe(context).pozo,
-                          nivel: TalladoNivel.marcado,
-                          estilo: Theme.of(context).textTheme.displaySmall,
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                      // El hero es el numero mas importante de la pantalla
+                      // — debe destacar claramente sobre los turnos, no
+                      // ser "casi del mismo tamano" (skill
+                      // visual-hierarchy: minimo 1.5x de diferencia).
+                      // displaySmall (40) vs bodyLarge (16) de los turnos
+                      // da 2.5x.
+                      BentoTextoTallado(
+                        '₡${reporte.total.toStringAsFixed(2)}',
+                        sobre: lacaDe(context).pozo,
+                        nivel: TalladoNivel.marcado,
+                        estilo: Theme.of(context).textTheme.displaySmall,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              if (rango == RangoReporte.dia) ...[
-                const SizedBox(width: BentoSpacing.gapCelda),
-                Expanded(
-                  child: _TarjetaTurno(
-                    nombre: 'Mañana',
-                    monto: reporte.porTurno[Turno.manana]!,
-                    onTap: () => onSeleccionarTurno(Turno.manana),
+            ),
+            if (rango == RangoReporte.dia)
+              for (final (nombre, turno) in const [
+                ('Mañana', Turno.manana),
+                ('Tarde', Turno.tarde),
+                ('Noche', Turno.noche),
+              ])
+                BentoCelda(
+                  compacto: 2,
+                  medio: 2,
+                  amplio: 1,
+                  hijo: _TarjetaTurno(
+                    nombre: nombre,
+                    monto: reporte.porTurno[turno]!,
+                    onTap: () => onSeleccionarTurno(turno),
                   ),
                 ),
-                const SizedBox(width: BentoSpacing.unidad),
-                Expanded(
-                  child: _TarjetaTurno(
-                    nombre: 'Tarde',
-                    monto: reporte.porTurno[Turno.tarde]!,
-                    onTap: () => onSeleccionarTurno(Turno.tarde),
-                  ),
-                ),
-                const SizedBox(width: BentoSpacing.unidad),
-                Expanded(
-                  child: _TarjetaTurno(
-                    nombre: 'Noche',
-                    monto: reporte.porTurno[Turno.noche]!,
-                    onTap: () => onSeleccionarTurno(Turno.noche),
-                  ),
-                ),
-              ],
-            ],
-          ),
+          ],
         ),
-        const SizedBox(height: BentoSpacing.gapCelda),
+        const SizedBox(height: BentoSpacing.pared),
+        // Los rankings quedan lado a lado desde tablet y apilados en teléfono,
+        // donde dos listas de ~156 dp con nombre y cantidad no se leen.
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _Ranking(titulo: 'Más vendidos', items: reporte.masVendidos)),
-              const SizedBox(width: BentoSpacing.gapCelda),
-              Expanded(child: _Ranking(titulo: 'Menos vendidos', items: reporte.menosVendidos)),
+          child: BentoCuadricula(
+            llenarAlto: true,
+            hijos: [
+              BentoCelda(
+                compacto: 6,
+                medio: 3,
+                amplio: 3,
+                hijo: _Ranking(titulo: 'Más vendidos', items: reporte.masVendidos),
+              ),
+              BentoCelda(
+                compacto: 6,
+                medio: 3,
+                amplio: 3,
+                hijo: _Ranking(titulo: 'Menos vendidos', items: reporte.menosVendidos),
+              ),
             ],
           ),
         ),
         const SizedBox(height: BentoSpacing.unidad),
-        SegmentedButton<RangoReporte>(
-          segments: [
-            const ButtonSegment(value: RangoReporte.dia, label: Text('Día')),
-            const ButtonSegment(value: RangoReporte.semana, label: Text('Semana')),
-            if (esGerente) ...[
-              const ButtonSegment(value: RangoReporte.mes, label: Text('Mes')),
-              const ButtonSegment(value: RangoReporte.anio, label: Text('Año')),
-            ],
+        // `Wrap` porque el Gerente tiene cuatro segmentos y la Registradora
+        // dos: el ancho de este control depende del ROL, no solo del aparato.
+        Wrap(
+          children: [
+            SegmentedButton<RangoReporte>(
+              segments: [
+                const ButtonSegment(value: RangoReporte.dia, label: Text('Día')),
+                const ButtonSegment(value: RangoReporte.semana, label: Text('Semana')),
+                if (esGerente) ...[
+                  const ButtonSegment(value: RangoReporte.mes, label: Text('Mes')),
+                  const ButtonSegment(value: RangoReporte.anio, label: Text('Año')),
+                ],
+              ],
+              selected: {rango},
+              onSelectionChanged: (s) => onCambiarRango(s.first),
+            ),
           ],
-          selected: {rango},
-          onSelectionChanged: (s) => onCambiarRango(s.first),
         ),
       ],
     );
@@ -230,24 +236,19 @@ class _TarjetaTurno extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(BentoRadius.pozo),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: BentoSpacing.paddingCelda,
-            vertical: BentoSpacing.unidad,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(nombre, style: Theme.of(context).textTheme.bodyMedium),
-              Text('₡${monto.toStringAsFixed(0)}', style: Theme.of(context).textTheme.titleMedium),
-            ],
-          ),
-        ),
+    return BentoPozo(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(
+        horizontal: BentoSpacing.paddingCelda,
+        vertical: BentoSpacing.unidad,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(nombre, style: Theme.of(context).textTheme.bodyMedium),
+          Text('₡${monto.toStringAsFixed(0)}', style: Theme.of(context).textTheme.titleMedium),
+        ],
       ),
     );
   }
@@ -263,12 +264,13 @@ class _Ranking extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return BentoPozo(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(BentoSpacing.unidad * 1.5),
+            padding: const EdgeInsets.all(BentoSpacing.pared),
             child: Text(titulo, style: Theme.of(context).textTheme.titleSmall),
           ),
           Expanded(
@@ -322,21 +324,19 @@ class _VistaDrillDown extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           label: const Text('Volver'),
         ),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_nombreTurno, style: Theme.of(context).textTheme.titleMedium),
-                BentoTextoTallado(
-                  '₡${total.toStringAsFixed(2)}',
-                  sobre: lacaDe(context).pozo,
-                  nivel: TalladoNivel.marcado,
-                  estilo: Theme.of(context).textTheme.displaySmall,
-                ),
-              ],
-            ),
+        BentoPozo(
+          padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_nombreTurno, style: Theme.of(context).textTheme.titleMedium),
+              BentoTextoTallado(
+                '₡${total.toStringAsFixed(2)}',
+                sobre: lacaDe(context).pozo,
+                nivel: TalladoNivel.marcado,
+                estilo: Theme.of(context).textTheme.displaySmall,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: BentoSpacing.unidad),

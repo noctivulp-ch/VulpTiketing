@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../producto/producto_model.dart';
@@ -28,17 +30,39 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final carrito = _Carrito(onFinalizar: () => setState(() => _panelAbierto = false));
+    final costura = _SeparadorConToggle(
+      abierto: _panelAbierto,
+      onTap: () => setState(() => _panelAbierto = !_panelAbierto),
+    );
+
+    // El panel se ACOPLA AL LADO LARGO: a la derecha cuando hay ancho, abajo
+    // cuando no. Es el mismo panel persistente y el mismo botón de la costura,
+    // rotados — no un overlay, que es lo que la decisión 0023 descarta.
+    //
+    // En teléfono la fila fija de antes repartía 3:4, o sea ~144 dp de carrito:
+    // ahí no entra una línea de venta (miniatura 44 + nombre + subtotal + dos
+    // botones de 48). Apilado, cada panel usa el ancho completo.
+    if (BentoAncho.de(context).esCompacto) {
+      return Scaffold(
+        body: Column(
+          children: [
+            Expanded(flex: _panelAbierto ? 2 : 1, child: carrito),
+            costura,
+            if (_panelAbierto) Expanded(flex: 3, child: _PanelAgregarProducto()),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       body: Row(
         children: [
           Expanded(
             flex: _panelAbierto ? 3 : 5,
-            child: _Carrito(onFinalizar: () => setState(() => _panelAbierto = false)),
+            child: carrito,
           ),
-          _SeparadorConToggle(
-            abierto: _panelAbierto,
-            onTap: () => setState(() => _panelAbierto = !_panelAbierto),
-          ),
+          costura,
           if (_panelAbierto)
             Expanded(flex: 4, child: _PanelAgregarProducto()),
         ],
@@ -65,33 +89,56 @@ class _SeparadorConToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final horizontal = BentoAncho.de(context).esCompacto;
+
+    final boton = Material(
+      color: scheme.primaryContainer,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(BentoSpacing.unidad),
+          child: Icon(
+            // El icono apunta hacia donde se va el panel: a la derecha cuando
+            // la costura es vertical, hacia abajo cuando es horizontal.
+            abierto
+                ? (horizontal ? Icons.expand_more : Icons.chevron_right)
+                : Icons.add_shopping_cart,
+            size: 20,
+            color: scheme.onPrimaryContainer,
+          ),
+        ),
+      ),
+    );
+
+    final fondo = ColoredBox(color: lacaDe(context).bandeja);
+
+    // Costura horizontal: la franja cruza la pantalla y el botón va centrado.
+    // No se puede anclar cerca de un extremo como en la vertical, porque acá el
+    // extremo es un borde de pantalla y el pulgar no llega igual.
+    if (horizontal) {
+      return SizedBox(
+        height: bentoObjetivoTactilMin,
+        child: Stack(
+          children: [
+            Positioned.fill(child: fondo),
+            Center(child: boton),
+          ],
+        ),
+      );
+    }
+
     return SizedBox(
       width: BentoSpacing.gapGrupo,
       child: Stack(
         children: [
-          Positioned.fill(child: ColoredBox(color: lacaDe(context).bandeja)),
+          Positioned.fill(child: fondo),
           Positioned(
             left: 0,
             right: 0,
             bottom: BentoSpacing.gapGrupo * 3,
-            child: Center(
-              child: Material(
-                color: scheme.primaryContainer,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  onTap: onTap,
-                  customBorder: const CircleBorder(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(BentoSpacing.unidad),
-                    child: Icon(
-                      abierto ? Icons.chevron_right : Icons.add_shopping_cart,
-                      size: 20,
-                      color: scheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            child: Center(child: boton),
           ),
         ],
       ),
@@ -180,35 +227,13 @@ class _CarritoState extends ConsumerState<_Carrito> {
                   },
                 ),
         ),
-        Material(
-          elevation: 4,
-          child: Padding(
-            padding: const EdgeInsets.all(BentoSpacing.paddingCelda),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _recibidoController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Recibí', isDense: true),
-                    onChanged: (v) => _onRecibidoChanged(v, total),
-                  ),
-                ),
-                const SizedBox(width: BentoSpacing.paddingCelda),
-                Text(_cambio == null ? 'Cambio: —' : 'Cambio: ₡${_cambio!.toStringAsFixed(2)}'),
-                const Spacer(),
-                Text(
-                  '₡${total.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(width: BentoSpacing.paddingCelda),
-                FilledButton(
-                  onPressed: (ventaEnCurso.lineas.isEmpty || _finalizando) ? null : _finalizar,
-                  child: const Text('Finalizar'),
-                ),
-              ],
-            ),
-          ),
+        _BarraDeCobro(
+          controlador: _recibidoController,
+          cambio: _cambio,
+          total: total,
+          habilitado: ventaEnCurso.lineas.isNotEmpty && !_finalizando,
+          onRecibidoChanged: (v) => _onRecibidoChanged(v, total),
+          onFinalizar: _finalizar,
         ),
       ],
     );
@@ -220,6 +245,76 @@ class _CarritoState extends ConsumerState<_Carrito> {
       if (p.id == productoId) return p.nombre;
     }
     return 'Producto eliminado';
+  }
+}
+
+/// Recibí · Cambio · Total · Finalizar.
+///
+/// En teléfono va en DOS filas de la retícula (3+3 y 3+3) en vez de una sola:
+/// las cuatro piezas juntas eran el desborde más probable de la app, porque un
+/// campo de texto, dos importes en colones y un botón no entran en 360 dp.
+///
+/// Sin `Material(elevation: 4)`: la sombra levantaba la barra de la bandeja
+/// (DESIGN.md regla 1, prohibidas las sombras suaves — la escena de uso es sol
+/// directo). El escalón lo marca ahora el pozo, como el resto de la app.
+class _BarraDeCobro extends StatelessWidget {
+  const _BarraDeCobro({
+    required this.controlador,
+    required this.cambio,
+    required this.total,
+    required this.habilitado,
+    required this.onRecibidoChanged,
+    required this.onFinalizar,
+  });
+
+  final TextEditingController controlador;
+  final double? cambio;
+  final double total;
+  final bool habilitado;
+  final ValueChanged<String> onRecibidoChanged;
+  final VoidCallback onFinalizar;
+
+  @override
+  Widget build(BuildContext context) {
+    final recibido = TextField(
+      controller: controlador,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: const InputDecoration(labelText: 'Recibí', isDense: true),
+      onChanged: onRecibidoChanged,
+    );
+    final textoCambio = Align(
+      alignment: Alignment.centerLeft,
+      child: Text(cambio == null ? 'Cambio: —' : 'Cambio: ₡${cambio!.toStringAsFixed(2)}'),
+    );
+    final textoTotal = Align(
+      alignment: Alignment.centerRight,
+      child: Text(
+        '₡${total.toStringAsFixed(2)}',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    );
+    final finalizar = FilledButton(
+      onPressed: habilitado ? onFinalizar : null,
+      child: const Text('Finalizar'),
+    );
+
+    return ColoredBox(
+      color: lacaDe(context).pozo,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(BentoSpacing.paddingCelda),
+          child: BentoCuadricula(
+            hijos: [
+              BentoCelda(compacto: 3, medio: 2, amplio: 2, hijo: recibido),
+              BentoCelda(compacto: 3, medio: 2, amplio: 2, hijo: textoCambio),
+              BentoCelda(compacto: 3, medio: 1, amplio: 1, hijo: textoTotal),
+              BentoCelda(compacto: 3, medio: 1, amplio: 1, hijo: finalizar),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -249,38 +344,36 @@ class _FilaLineaVenta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(BentoSpacing.unidad),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: lacaDe(context).pozoContacto,
-                borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
-              ),
-              child: Icon(lineaLibre ? Icons.edit_note : Icons.image_outlined, size: 22),
+    return BentoPozo(
+      padding: const EdgeInsets.all(BentoSpacing.unidad),
+      child: Row(
+        children: [
+          Container(
+            width: bentoMiniatura,
+            height: bentoMiniatura,
+            decoration: BoxDecoration(
+              color: lacaDe(context).pozoContacto,
+              borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
             ),
-            const SizedBox(width: BentoSpacing.unidad),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(nombre, style: Theme.of(context).textTheme.bodyLarge),
-                  Text(
-                    'x$cantidad${nota != null && nota!.isNotEmpty ? ' · $nota' : ''}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
+            child: Icon(lineaLibre ? Icons.edit_note : Icons.image_outlined, size: 22),
+          ),
+          const SizedBox(width: BentoSpacing.unidad),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(nombre, style: Theme.of(context).textTheme.bodyLarge),
+                Text(
+                  'x$cantidad${nota != null && nota!.isNotEmpty ? ' · $nota' : ''}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
             ),
-            Text('₡${subtotal.toStringAsFixed(2)}', style: Theme.of(context).textTheme.labelLarge),
-            IconButton(icon: const Icon(Icons.edit_outlined), onPressed: onEditar),
-            IconButton(icon: const Icon(Icons.delete_outline), onPressed: onQuitar),
-          ],
-        ),
+          ),
+          Text('₡${subtotal.toStringAsFixed(2)}', style: Theme.of(context).textTheme.labelLarge),
+          IconButton(icon: const Icon(Icons.edit_outlined), onPressed: onEditar),
+          IconButton(icon: const Icon(Icons.delete_outline), onPressed: onQuitar),
+        ],
       ),
     );
   }
