@@ -150,6 +150,24 @@ es 4.65:1 (oro como texto sobre pozo verde), por encima del mínimo AA.
 
 ---
 
+## Banco de pruebas de estilo
+
+`test_driver/sandbox.dart` es una ventana **sin función**, solo para decidir
+estilo mirándolo en vez de imaginándolo. Fuera de `lib/`, no entra en
+producción ni en la navegación.
+
+```fish
+export PATH="$HOME/fvm/default/bin:$PATH"
+VULP_WINDOW_TITLE="vulpedebug — sandbox" flutter run -t test_driver/sandbox.dart -d linux
+```
+
+Trae controles en vivo (modo, metal, profundidad del tallado, cuánto se funde
+el glifo con el fondo) y muestra el **contraste medido de cada muestra**,
+porque el tallado se logra acercando el glifo al color de su superficie y eso
+baja el contraste por definición: la decisión estética conviene tomarla
+sabiendo el costo. Probar un look acá antes de tocar las pantallas reales es
+más barato y más honesto que deducirlo del código.
+
 ## Herencia
 
 Sigue vigente de [decisión 0023](docs/decisiones/0023-refinamiento-bento-post-implementacion.md):
