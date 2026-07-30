@@ -30,7 +30,7 @@ Widget _envolver(ThemeData tema) {
 
 void main() {
   for (final brillo in Brightness.values) {
-    final tema = buildBentoTheme(AcentoTinte.verdeLaca, brightness: brillo);
+    final tema = buildBentoTheme(AcentoTinte.oro, brightness: brillo);
 
     testWidgets('el titulo del login contrasta contra la bandeja en ${brillo.name}', (tester) async {
       await tester.pumpWidget(_envolver(tema));

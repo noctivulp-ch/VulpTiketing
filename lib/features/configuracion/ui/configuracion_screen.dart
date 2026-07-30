@@ -343,9 +343,9 @@ class _PanelAcento extends ConsumerWidget {
         preferenciasAsync.when(
           data: (prefs) => SegmentedButton<AcentoTinte>(
             segments: const [
-              ButtonSegment(value: AcentoTinte.verdeLaca, label: Text('Verde laca')),
-              ButtonSegment(value: AcentoTinte.negroLaca, label: Text('Negro laca')),
-              ButtonSegment(value: AcentoTinte.caoba, label: Text('Caoba')),
+              ButtonSegment(value: AcentoTinte.oro, label: Text('Oro')),
+              ButtonSegment(value: AcentoTinte.cobre, label: Text('Cobre')),
+              ButtonSegment(value: AcentoTinte.peltre, label: Text('Peltre')),
             ],
             selected: {prefs.acento},
             onSelectionChanged: (seleccion) =>

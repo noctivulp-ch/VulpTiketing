@@ -8,11 +8,13 @@ import 'bento_ink.dart';
 // hundido en pozos tallados, no una pagina de tarjetas flotando. Rechaza el
 // modelo de Material 3 donde importancia = elevacion = superficie mas clara.
 //
-// OWN-WORLD: laca oscura saturada como marco continuo — borde exterior 24,
-// paredes interiores compartidas 12, radio exterior 20 contra radio de pozo
-// 4. Cada pozo lleva cresta de pared iluminada de 1px y sombra de contacto
-// en su borde superior. Un solo acento (oro de laca) para accion primaria y
-// seleccion. Cero BoxShadow en celdas.
+// OWN-WORLD: dos lacas completas, una por modo, tomadas de la construccion
+// real de las cajas de las referencias (negras por fuera, ROJAS por dentro):
+// oscuro = marco negro + pozos rojos + metal; claro = su reflejo, marco
+// blanco + pozos verdes + metal. Marco continuo con borde exterior 24,
+// paredes compartidas 12, radio exterior 20 contra radio de pozo 4. Cada pozo
+// lleva borde de 1px y sombra de contacto arriba. El metal (oro/cobre/peltre)
+// es el unico acento y solo marca accion primaria y seleccion. Cero BoxShadow.
 //
 // STORY: la registradora distingue de un golpe que pozo es que, por tamano y
 // por hueco; el marco nunca compite con los datos.
@@ -63,16 +65,19 @@ const Duration bentoFeedbackTactilDuracion = Duration(milliseconds: 200);
 /// confirmada), asi que todo lo tocable respeta esto — DESIGN.md, regla 6.
 const double bentoObjetivoTactilMin = 48;
 
-/// Acabados de laca disponibles. Antes eran tres grises desaturados, que
-/// fueron causa directa del aspecto generico: no habia color en ninguna
-/// parte. Se conserva la intencion de la decision 0020 (pocos acentos,
-/// hardcodeados, coherentes) y se corrige el material — ahora cada opcion es
-/// un acabado de laca real, no un matiz de gris.
+/// Metal del acento. Sobre laca, el pan de metal tradicional es oro, pero
+/// cobre y peltre tambien lo son — asi que el ajuste configurable de la
+/// decision 0020 pasa a elegir el METAL, no el color de la laca.
 ///
-/// Los nombres viejos (`grisAzulado`...) ya no existen: `PreferenciasNotifier`
-/// resuelve el acento guardado con `orElse` al default, asi que una
-/// preferencia vieja cae sola al primer acabado sin migracion.
-enum AcentoTinte { verdeLaca, negroLaca, caoba }
+/// El reparto de responsabilidades es lo importante: el MODO (claro/oscuro)
+/// determina la laca completa (blanco-verde u oscuro-rojo) y el metal es
+/// ortogonal, igual en los dos modos. Antes el ajuste variaba la bandeja, lo
+/// que chocaba con que el modo tambien la variara.
+///
+/// Los nombres viejos no existen mas: `PreferenciasNotifier` resuelve el
+/// acento guardado con `orElse` al default, asi que una preferencia vieja cae
+/// sola al primer metal sin migracion.
+enum AcentoTinte { oro, cobre, peltre }
 
 /// Tokens de material que `ColorScheme` no tiene como expresar: la bandeja
 /// (el plano continuo), la cresta de pared iluminada y la sombra de contacto
@@ -161,65 +166,66 @@ BentoLaca lacaDe(BuildContext context) => Theme.of(context).extension<BentoLaca>
 // `test/contraste_laca_test.dart` recalcula estos numeros contra estas
 // mismas constantes, para que no se degraden en una edicion futura.
 
-// Bandeja y cresta por acabado. La cresta de cada acabado esta ajustada al
-// minimo que cumple 3:1 contra SU bandeja, no copiada entre acabados.
-const _bandejaClara = {
-  AcentoTinte.verdeLaca: Color(0xFF1F2A24),
-  AcentoTinte.negroLaca: Color(0xFF22201D),
-  AcentoTinte.caoba: Color(0xFF2B1D1A),
+// Dos lacas completas, una por modo. La caja bento fisica no cambia de color,
+// pero una app si — y sostener que la bandeja siguiera oscura en modo claro
+// hacia que los dos modos se vieran casi iguales (parecia un "modo contraste",
+// no un modo claro) y era la causa raiz de la mala legibilidad: todo lo que
+// caia sobre la bandeja heredaba color de texto de pozo.
+//
+// El par sale de la construccion real de las cajas de laca de las referencias
+// (docs/pantallas/referencias-visuales/): NEGRAS por fuera y ROJAS por dentro.
+// El modo claro es su reflejo: BLANCA por fuera, VERDE por dentro.
+//
+//   oscuro -> negro (marco) + rojo (pozos) + metal
+//   claro  -> blanco (marco) + verde (pozos) + metal
+
+// Marco negro, interior de laca roja.
+const _bandejaOscura = Color(0xFF14100E);
+const _pozoOscuro = Color(0xFF3A1E1B);
+const _pozoContactoOscuro = Color(0xFF2D110E);
+const _bordePozoOscuro = Color(0xFF8E675A); // 3.82:1 vs bandeja, 3.07:1 vs pozo
+const _textoEnPozoOscuro = Color(0xFFF5EAE2); // 12.85:1
+const _textoSecundarioEnPozoOscuro = Color(0xFFCBA99C); // 7.02:1
+const _textoEnBandejaOscura = Color(0xFFEDE4DC); // 15.07:1
+const _textoAtenuadoEnBandejaOscura = Color(0xFFA99C93); // 7.08:1
+
+// Marco blanco, interior de laca verde.
+const _bandejaClara = Color(0xFFF8F7F2);
+const _pozoClaro = Color(0xFFD7E1D3);
+const _pozoContactoClaro = Color(0xFFC4D2BF);
+const _bordePozoClaro = Color(0xFF5A6E58); // 5.14:1 vs bandeja, 4.10:1 vs pozo
+const _textoEnPozoClaro = Color(0xFF1E2A1C); // 11.12:1
+const _textoSecundarioEnPozoClaro = Color(0xFF495747); // 5.70:1
+const _textoEnBandejaClara = Color(0xFF232522); // 14.40:1
+const _textoAtenuadoEnBandejaClara = Color(0xFF55584F); // 6.76:1
+
+// Metal del acento, ortogonal al modo. Cada uno verificado como texto sobre
+// bandeja Y sobre pozo, y como relleno con su propio color de texto encima.
+const _metales = {
+  AcentoTinte.oro: (claro: Color(0xFF7A4F0E), oscuro: Color(0xFFD9A54A)),
+  AcentoTinte.cobre: (claro: Color(0xFF7E3F16), oscuro: Color(0xFFD98E5E)),
+  AcentoTinte.peltre: (claro: Color(0xFF4F5450), oscuro: Color(0xFFC6C4BC)),
 };
-const _crestaClara = {
-  AcentoTinte.verdeLaca: Color(0xFF647A69), // 3.20:1
-  AcentoTinte.negroLaca: Color(0xFF6E6B65), // 3.06:1
-  AcentoTinte.caoba: Color(0xFF7E665E), // 3.05:1
-};
-const _bandejaOscura = {
-  AcentoTinte.verdeLaca: Color(0xFF0C110D),
-  AcentoTinte.negroLaca: Color(0xFF0F0E0C),
-  AcentoTinte.caoba: Color(0xFF150E0C),
-};
-const _crestaOscura = {
-  AcentoTinte.verdeLaca: Color(0xFF5A6E5F), // 3.48:1
-  AcentoTinte.negroLaca: Color(0xFF646059), // 3.09:1
-  AcentoTinte.caoba: Color(0xFF745C54), // 3.09:1
+const _sobreMetalClaro = Color(0xFFFFFFFF);
+const _sobreMetalOscuro = {
+  AcentoTinte.oro: Color(0xFF241A0C),
+  AcentoTinte.cobre: Color(0xFF2A1408),
+  AcentoTinte.peltre: Color(0xFF1E1D1A),
 };
 
-// Pozo y texto: compartidos por los 3 acabados. El contenido no cambia de
-// temperatura segun el acabado de la bandeja — solo el marco lo hace.
-const _pozoClaro = Color(0xFFF4F1EA);
-const _pozoContactoClaro = Color(0xFFD8D2C4);
-const _textoEnPozoClaro = Color(0xFF221F1A); // 14.56:1
-const _textoSecundarioEnPozoClaro = Color(0xFF6B655A); // 5.12:1
+const _rojoErrorClaro = Color(0xFF9E2F1B);
+const _rojoErrorOscuro = Color(0xFFF0A08C);
+const _sobreErrorClaro = Color(0xFFFFFFFF);
+const _sobreErrorOscuro = Color(0xFF2A0D07);
 
-const _pozoOscuro = Color(0xFF2B2926);
-const _pozoContactoOscuro = Color(0xFF1B1917);
-const _textoEnPozoOscuro = Color(0xFFE8E4DA);
-const _textoSecundarioEnPozoOscuro = Color(0xFF9C968C);
-
-const _textoEnBandeja = Color(0xFFE8E4DA);
-const _textoAtenuadoEnBandejaClara = Color(0xFFA8B0A6); // 6.66:1
-const _textoAtenuadoEnBandejaOscura = Color(0xFF8C948C);
-
-// Oro de laca: el unico acento. Solo accion primaria, seleccion actual e
-// indicador de estado — nunca decoracion, nunca en estado inactivo.
-const _oroClaro = Color(0xFFC8892F); // texto #221F1A encima: 5.53:1
-const _oroOscuro = Color(0xFFD9A24A); // texto #1A1712 encima: 7.84:1
-const _sobreOroClaro = Color(0xFF221F1A);
-const _sobreOroOscuro = Color(0xFF1A1712);
-
-const _rojoClaro = Color(0xFF9E2F1B);
-const _rojoOscuro = Color(0xFFF0A08C);
-const _sobreRojoClaro = Color(0xFFFFFFFF);
-const _sobreRojoOscuro = Color(0xFF2A0D07);
-
-BentoLaca _lacaDe(AcentoTinte acento, Brightness brillo) {
+BentoLaca _lacaDe(Brightness brillo) {
   final claro = brillo == Brightness.light;
   return BentoLaca(
-    bandeja: (claro ? _bandejaClara : _bandejaOscura)[acento]!,
-    paredCresta: (claro ? _crestaClara : _crestaOscura)[acento]!,
+    bandeja: claro ? _bandejaClara : _bandejaOscura,
+    paredCresta: claro ? _bordePozoClaro : _bordePozoOscuro,
     pozo: claro ? _pozoClaro : _pozoOscuro,
     pozoContacto: claro ? _pozoContactoClaro : _pozoContactoOscuro,
-    textoEnBandeja: _textoEnBandeja,
+    textoEnBandeja: claro ? _textoEnBandejaClara : _textoEnBandejaOscura,
     textoAtenuadoEnBandeja: claro ? _textoAtenuadoEnBandejaClara : _textoAtenuadoEnBandejaOscura,
   );
 }
@@ -228,18 +234,19 @@ ColorScheme _esquemaDe(AcentoTinte acento, Brightness brillo) {
   final claro = brillo == Brightness.light;
   final pozo = claro ? _pozoClaro : _pozoOscuro;
   final textoEnPozo = claro ? _textoEnPozoClaro : _textoEnPozoOscuro;
-  final oro = claro ? _oroClaro : _oroOscuro;
+  final metal = claro ? _metales[acento]!.claro : _metales[acento]!.oscuro;
+  final sobreMetal = claro ? _sobreMetalClaro : _sobreMetalOscuro[acento]!;
 
   return ColorScheme(
     brightness: brillo,
-    primary: oro,
-    onPrimary: claro ? _sobreOroClaro : _sobreOroOscuro,
-    primaryContainer: oro,
-    onPrimaryContainer: claro ? _sobreOroClaro : _sobreOroOscuro,
-    secondary: (claro ? _crestaClara : _crestaOscura)[acento]!,
-    onSecondary: _textoEnBandeja,
-    error: claro ? _rojoClaro : _rojoOscuro,
-    onError: claro ? _sobreRojoClaro : _sobreRojoOscuro,
+    primary: metal,
+    onPrimary: sobreMetal,
+    primaryContainer: metal,
+    onPrimaryContainer: sobreMetal,
+    secondary: claro ? _bordePozoClaro : _bordePozoOscuro,
+    onSecondary: claro ? _bandejaClara : _textoEnBandejaOscura,
+    error: claro ? _rojoErrorClaro : _rojoErrorOscuro,
+    onError: claro ? _sobreErrorClaro : _sobreErrorOscuro,
     // `surface` es el POZO, no la bandeja: asi el texto por defecto de
     // cualquier widget cae legible sobre el fondo de contenido.
     surface: pozo,
@@ -254,7 +261,7 @@ ColorScheme _esquemaDe(AcentoTinte acento, Brightness brillo) {
     surfaceContainerHigh: pozo,
     surfaceContainerHighest: pozo,
     // La cresta es literalmente el contorno del pozo.
-    outline: (claro ? _crestaClara : _crestaOscura)[acento]!,
+    outline: claro ? _bordePozoClaro : _bordePozoOscuro,
     outlineVariant: claro ? _pozoContactoClaro : _pozoContactoOscuro,
   );
 }
@@ -280,7 +287,7 @@ TextTheme _escalaTipografica(TextTheme base) {
 
 ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightness.light}) {
   final scheme = _esquemaDe(acento, brightness);
-  final laca = _lacaDe(acento, brightness);
+  final laca = _lacaDe(brightness);
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
 
   return base.copyWith(

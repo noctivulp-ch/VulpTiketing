@@ -23,11 +23,19 @@ hundido en pozos tallados — no una página de tarjetas flotando sobre un
 fondo. Rechaza explícitamente el modelo de Material 3 donde importancia =
 elevación = superficie más clara.
 
-**OWN-WORLD.** Laca oscura saturada como marco continuo: borde exterior
-grueso (24), paredes interiores compartidas (12), radio exterior 20 contra
-radio de pozo 4. Cada pozo lleva una cresta de pared iluminada de 1px y una
-sombra de contacto en su borde superior. Un solo acento (oro de laca) para
-acción primaria y selección. Cero `BoxShadow` en celdas.
+**OWN-WORLD.** Dos lacas completas, una por modo, tomadas de la construcción
+real de las cajas de las referencias — **negras por fuera, rojas por dentro**:
+
+| | Marco (bandeja) | Interior (pozos) | Acento |
+|---|---|---|---|
+| Oscuro | negro `#14100E` | rojo `#3A1E1B` | metal |
+| Claro | blanco `#F8F7F2` | verde `#D7E1D3` | metal |
+
+Marco continuo con borde exterior grueso (24), paredes interiores compartidas
+(12), radio exterior 20 contra radio de pozo 4. Cada pozo lleva un borde de
+1px y una sombra de contacto en su borde superior. El metal
+(oro / cobre / peltre) es el único acento y solo marca acción primaria y
+selección. Cero `BoxShadow` en celdas.
 
 **STORY.** La registradora distingue de un golpe qué pozo es qué por su
 tamaño y su hueco; el marco nunca compite con los datos.
@@ -81,16 +89,27 @@ Lo anterior tenía todo en 12 uniforme (cards, inputs, botones, list tiles,
 diálogos), que es el rectángulo redondeado genérico. En una bandeja real el
 exterior es suave y los compartimentos son rectilíneos.
 
-### 4. Un solo acento, y es material
+### 4. El modo define la laca; el metal es ortogonal
 
-El acento es el oro de la laca. Se usa **solo** para acción primaria,
-selección actual e indicador de estado — nunca decoración, nunca en estados
-inactivos.
+**El modo (claro/oscuro) determina la paleta completa**, no un ajuste del
+usuario. Una caja bento física no cambia de color, pero una app sí — y
+sostener lo contrario (bandeja oscura en los dos modos) tuvo dos costos
+reales: los modos se veían casi iguales (parecía un "modo contraste", no un
+modo claro) y todo lo que caía sobre la bandeja heredaba color de texto de
+pozo, quedando ilegible.
 
-Los 3 tintes configurables (decisión 0020) dejan de ser tres grises
-desaturados —causa directa del aspecto genérico— y pasan a ser tres acabados
-de laca reales. Se conserva la intención de 0020 (pocos, hardcodeados,
-coherentes); se corrige que no había color en ninguna parte.
+Con una laca por modo, bandeja y pozo tienen **la misma polaridad** dentro de
+cada modo, así que un texto mal asignado sigue siendo legible. Eso elimina
+toda una clase de bug por construcción, en vez de tener que parchear pantalla
+por pantalla.
+
+El ajuste configurable de la [decisión 0020](docs/decisiones/0020-iconografia-vectorial-propia.md)
+pasa a elegir el **metal del acento** (oro / cobre / peltre) — el pan de metal
+sobre laca, que es tradicionalmente oro pero también cobre y peltre. Se
+conserva la intención de 0020 (pocos, hardcodeados, coherentes) y se le da un
+trabajo que no choca con el modo. El acento se usa **solo** para acción
+primaria, selección actual e indicador de estado — nunca decoración, nunca en
+estados inactivos.
 
 ### 5. Nada de `ColorScheme.fromSeed`
 
@@ -118,11 +137,16 @@ sesión; texto ≥4.5:1, bordes de superficie ≥3:1 por WCAG 1.4.11).
 
 | Par | Claro | Oscuro |
 |---|---|---|
-| Texto principal en pozo | 14.56:1 | 10.52:1 |
-| Texto secundario en pozo | 5.12:1 | 4.99:1 |
-| Texto sobre bandeja | 11.69:1 | 15.02:1 |
-| Texto sobre acento | 5.53:1 | 7.84:1 |
-| Cresta vs bandeja (borde) | 3.20:1 | 3.48:1 |
+| Texto principal en pozo | 11.12:1 | 12.85:1 |
+| Texto secundario en pozo | 5.70:1 | 7.02:1 |
+| Texto sobre bandeja | 14.40:1 | 15.07:1 |
+| Texto atenuado sobre bandeja | 6.76:1 | 7.08:1 |
+| Borde del pozo vs bandeja | 5.14:1 | 3.82:1 |
+| Borde del pozo vs su fondo | 4.10:1 | 3.07:1 |
+
+Los 3 metales, cada uno como texto sobre bandeja, como texto sobre pozo y
+como relleno con su propio color encima: **18 pares, 0 fallas**. El peor caso
+es 4.65:1 (oro como texto sobre pozo verde), por encima del mínimo AA.
 
 ---
 

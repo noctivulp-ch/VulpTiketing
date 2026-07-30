@@ -42,14 +42,29 @@ static void my_application_activate(GApplication* application) {
     }
   }
 #endif
+  // Titulo de ventana sobreescribible por entorno (VULP_WINDOW_TITLE). Sirve
+  // para que el compositor pueda distinguir la instancia de desarrollo del
+  // binario normal: el harness del MCP se lanza con "vulpedebug" en el
+  // titulo, y una regla de ventana de niri lo abre en otra pantalla sin robar
+  // el foco, para poder seguir usando la maquina mientras corre.
+  //
+  // Sin la variable el titulo es el de siempre, asi que produccion no cambia.
+  const gchar* titulo_entorno = g_getenv("VULP_WINDOW_TITLE");
+  const gchar* titulo = (titulo_entorno != nullptr && *titulo_entorno != '\0')
+                            ? titulo_entorno
+                            : "vulp_tiketing";
+
+  // Se fija en la ventana SIEMPRE (no solo en la barra de encabezado): el
+  // titulo que ve el compositor es el del toplevel, y es contra ese que
+  // matchea la regla de niri.
+  gtk_window_set_title(window, titulo);
+
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "vulp_tiketing");
+    gtk_header_bar_set_title(header_bar, titulo);
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
-  } else {
-    gtk_window_set_title(window, "vulp_tiketing");
   }
 
   gtk_window_set_default_size(window, 1280, 720);

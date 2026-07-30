@@ -89,6 +89,18 @@ Future<Response> _router(Request request) async {
         });
         return _json({'ok': true});
 
+      case 'GET screenshot':
+        // Captura renderizada por el MOTOR de la app, no por el compositor.
+        // Es la unica forma robusta en este entorno: no depende del foco, ni
+        // de en que monitor esta la ventana, ni de que este visible — con
+        // `grim` la captura fallaba cuando niri dejaba la ventana desplazada
+        // fuera del viewport por compartir workspace con otra.
+        final png = await driver.runUnsynchronized(() => driver.screenshot());
+        return Response.ok(
+          png,
+          headers: {'content-type': 'image/png'},
+        );
+
       case 'GET get_text':
         final body = request.url.queryParameters;
         final texto = await driver.runUnsynchronized(

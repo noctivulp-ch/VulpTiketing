@@ -132,6 +132,10 @@ class _BandaNavegacion extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.all(BentoSpacing.unidad / 2),
           child: _Destino(
+            // Key explicita: los destinos son solo iconos, sin texto ni
+            // tooltip, asi que sin esto el harness del MCP no puede navegar
+            // entre ventanas (find.text/byTooltip no tienen a que agarrarse).
+            key: ValueKey('nav_${iconos[i]}'),
             nombre: iconos[i],
             seleccionado: i == indice,
             onTap: () => onSeleccion(i),
@@ -155,7 +159,12 @@ class _BandaNavegacion extends StatelessWidget {
 }
 
 class _Destino extends StatelessWidget {
-  const _Destino({required this.nombre, required this.seleccionado, required this.onTap});
+  const _Destino({
+    super.key,
+    required this.nombre,
+    required this.seleccionado,
+    required this.onTap,
+  });
 
   final String nombre;
   final bool seleccionado;
