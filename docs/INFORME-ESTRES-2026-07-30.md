@@ -97,6 +97,28 @@ forma de saber qué filas — un merge a medias es peor que uno que no ocurrió.
 cada sentencia era su propio commit con fsync: cientos de miles de commits al
 disco en un sync grande.
 
+Resultado: **152 µs/fila, constante entre niveles**. Y verificado que un archivo
+`.tiketdata` corrupto ya no deja el catálogo a medias.
+
+### Backup: el pico de memoria bajó 4,3×
+`lib/features/import_export/tiketback_service.dart`
+
+| Medición (base de 360 MB) | Antes | Después |
+|---|---|---|
+| Exportar — pico de RSS | **+6.343 MB** | **+1.463 MB** |
+| Exportar — tiempo | 44.147 ms | 35.541 ms |
+| Restaurar — pico de RSS | — | +1.093 MB |
+
+La causa era una línea: `writeAsBytes([...salt, ...cipherText, ...mac])`. Ese
+literal con spreads construye una `List<int>` genérica, y en Dart **cada elemento
+de una `List<int>` ocupa 8 bytes** en el arreglo interno, no 1 — más el realojado
+al crecer. Para 360 MB eran ~2,9 GB solo en esa lista, y con la duplicación al
+crecer llegaba a 6,3 GB.
+
+Reemplazado por `BytesBuilder`, que acumula en `Uint8List` (un byte por byte) y
+que además ya se usaba en `_empaquetar` unas líneas más abajo — la inconsistencia
+estaba dentro del mismo archivo.
+
 ---
 
 ## 3. La suite de estrés
@@ -133,18 +155,30 @@ alcanzable de verdad.
 | Grupo | Archivo | Estado |
 |---|---|---|
 | A — acumulación de ventas | `ventas_volumen_test.dart` | ✅ 6/6 en realista |
-| C — sincronización | `sync_volumen_test.dart` | ⏳ corriendo al cerrar |
-| D — backup `.tiketback` | `backup_volumen_test.dart` | escrito, sin correr |
+| B — catálogo grande | `catalogo_volumen_test.dart` | ✅ incluido en B/E |
+| C — sincronización | `sync_volumen_test.dart` | ✅ 8/8 en realista + alto |
+| D — backup `.tiketback` | `backup_volumen_test.dart` | ⚠️ falla a propósito en nivel alto |
+| E — catálogo `.tiketdata` | `catalogo_volumen_test.dart` | ✅ 7/7 |
 | F — tensión y concurrencia | `tension_test.dart` | ✅ 5/5 |
-| B — catálogo grande | pendiente | no escrito |
-| E — catálogo `.tiketdata` | pendiente | no escrito |
 
-**Grupo F**, resultados: 1.000 ventas seguidas a 0,85 ms cada una sin
-degradación; 200 ciclos de invalidación de providers sin romper nada; 20
-lecturas de reporte concurrentes con escrituras, todas internamente coherentes.
-Ese grupo existe porque los dos bugs más graves del proyecto salieron de ahí y
-los dos tenían la misma causa (Riverpod reutiliza la instancia del Notifier), y
-ninguna prueba los veía porque ninguna **repetía** la operación.
+**Grupo F** — 1.000 ventas seguidas a 0,85 ms cada una **sin degradación**; 200
+ciclos de invalidación de providers sin romper nada; 20 lecturas de reporte
+concurrentes con escrituras, todas internamente coherentes. Ese grupo existe
+porque los dos bugs más graves del proyecto salieron de ahí y los dos tenían la
+misma causa (Riverpod reutiliza la instancia del Notifier), y ninguna prueba los
+veía porque ninguna **repetía** la operación.
+
+**Grupos B y E** — el catálogo no es un problema a ninguna escala razonable:
+
+| Caso | Filtrar por tecla (p90) | Importar `.tiketdata` |
+|---|---|---|
+| 40 productos (el real) | 0 ms | — |
+| 500 productos | 0 ms | 107 ms (85 KB) |
+| 5.000 productos | 1 ms | 849 ms (853 KB) |
+
+Verificado además que un `.tiketdata` **corrupto no deja el catálogo a medias**,
+lo que confirma que la transacción que agregué a `RowUpserter` revierte bien; y
+que reimportar el mismo archivo no duplica productos.
 
 ### Dos decisiones de método que valen
 
@@ -156,6 +190,20 @@ ninguna prueba los veía porque ninguna **repetía** la operación.
   a `/tmp`. En Linux `/tmp` es tmpfs, o sea RAM: medir I/O ahí habría dado
   números irrealmente buenos, justo al revés del objetivo, que es una tablet con
   almacenamiento lento.
+
+---
+
+## 3.bis Las dos pruebas que quedan en rojo, y por qué está bien
+
+No las dejé pasando a la fuerza. Son las dos señales que quiero que veas:
+
+1. **`ventas_volumen_test` — reporte del día en nivel realista.** Ya cumple
+   (38 ms contra 100 ms de presupuesto), así que esta pasa. ✅
+2. **`backup_volumen_test` — exportar en nivel alto.** Falla por superar el umbral
+   de catástrofe de 30 s: tarda 35 s con una base de 360 MB. Es correcto que
+   falle — **respaldar cinco años de datos no es viable en una tablet**, ni en
+   tiempo ni en memoria (1,5 GB de pico). Aflojar el umbral escondería el
+   problema; la salida real es el archivado anual.
 
 ---
 
@@ -210,12 +258,81 @@ agregar después si resulta que sí querés mirar años viejos con frecuencia.
 Hay una pregunta que solo vos podés contestar y que decide entre 1 y 2:
 **¿con qué frecuencia vas a querer mirar reportes de años anteriores?**
 
-### c) Sync incremental
+#### Lo que las mediciones le agregan a tu idea
 
-`SyncServer` serializa las 4 tablas **completas** en un solo JSON en memoria, en
-cada sync. La decisión 0022 ya lo previó como extensión futura. El grupo C está
-midiendo cuánto pesa; con el resultado se decide si urge pasar a incremental por
-`updated_at`.
+Tu intuición apunta a algo que los números confirman: **el archivado no es solo
+por espacio, es lo que mantiene sano al sync.** Un año de datos ya genera un
+payload de sync de 55 MB; cinco años, 435 MB. Si la base viva nunca pasa de un
+año, ese precipicio no llega nunca — el archivado resuelve el problema de sync
+de refilón, sin tocar el protocolo.
+
+Eso cambia mi recomendación de "conviene" a "es el camino". Y sugiere un detalle
+de diseño: el archivado debería **correr antes** de que el año cierre del todo,
+no justo el 31 de diciembre, porque el 31 es el día con menos ganas de que la app
+haga algo raro.
+
+#### Cómo lo propondría concretamente
+
+- **Cuándo avisa:** al abrir la app, si hay ventas de un año anterior al
+  corriente. No al llegar a una fecha: si el negocio no abrió la app en enero, el
+  aviso lo espera.
+- **Qué hace, en orden:** exporta un `.tiketback` del período → **verifica que
+  se puede restaurar** (el backup no sirve si no se comprobó) → recién entonces
+  borra las filas de ese período → deja registro de qué se archivó y dónde.
+- **Qué NO hace:** borrar sin confirmación explícita, ni borrar sin que el
+  archivo esté en un destino que el usuario eligió. Es la operación más
+  destructiva de la app; aplica la convención del proyecto de que nada
+  irreversible ocurre con un solo toque.
+- **El catálogo no se archiva nunca:** productos y categorías se quedan. Solo
+  `venta` y `linea_venta`.
+- **Un riesgo real a resolver antes:** el archivado borra filas que otros
+  dispositivos todavía podrían tener. Con el sync actual (volcado completo y LWW
+  por `updated_at`), el otro dispositivo **volvería a insertar** las ventas
+  archivadas en el próximo sync, deshaciendo el vaciado. Así que el archivado
+  necesita coordinarse con el sync — probablemente archivar solo cuando todos los
+  dispositivos conocidos ya sincronizaron ese período, que es exactamente la
+  señal que la decisión 0015 ya definió para la purga de productos y que hoy
+  devuelve siempre `false`.
+
+Ese último punto es importante: **el archivado y el sync no son independientes**,
+y conviene decidirlos juntos.
+
+### c) Sync incremental — el próximo precipicio, y es de memoria
+
+Esto es lo más urgente después de lo ya corregido. Medido:
+
+| Nivel | Payload | Serializar | Pico de RSS |
+|---|---|---|---|
+| Realista (1 año) | 55,2 MB | 516 ms | **+247 MB** |
+| Alto (5 años) | **434,9 MB** | 3.598 ms | **+1.688 MB** |
+
+`SyncServer` serializa las 4 tablas **completas** en un solo string JSON en
+memoria, en cada sync. A 5 años eso es un string de 435 MB y un pico de 1,7 GB.
+En una tablet de gama baja con 2–3 GB de RAM total, **eso es un cierre por falta
+de memoria**, no una lentitud.
+
+Y no se arregla del lado del servidor solamente: el cliente hace `jsonDecode` de
+todo el cuerpo, así que el dispositivo que *recibe* tiene el mismo pico. Los dos
+extremos de un sync son tablets.
+
+Lo bueno: `RowUpserter.aplicar` quedó en **152 µs/fila constante** entre niveles,
+lo que confirma que la transacción que agregué funciona. Aplicar un dataset
+completo de 5 años serían ~7 minutos, aceptable para el único caso en que ocurre
+(un dispositivo nuevo entrando al grupo por primera vez).
+
+**Por qué no lo implementé anoche.** La decisión 0022 ya previó el sync
+incremental como extensión, pero hacerlo bien necesita algo que hoy no existe:
+una marca de agua por par (*"de este dispositivo ya tengo todo hasta tal
+`updated_at`"*), que hay que decidir dónde vive y cómo se comporta cuando un par
+se reinstala. Es un cambio de protocolo entre dispositivos, no un refactor
+interno.
+
+Consideré un arreglo a medias —que el servidor emita la respuesta en streaming
+en vez de armar el string completo— y lo descarté a propósito: solo cubre la
+mitad del problema (el cliente sigue igual), y armar el JSON a mano por trozos en
+el área de código donde un error de comas o de escapado **corrompe datos de
+sync** no es algo para hacer a las 2 de la mañana sin poder consultarte. Preferí
+medirlo bien y dejártelo documentado.
 
 ---
 

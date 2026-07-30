@@ -12,6 +12,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:vulp_tiketing/features/import_export/tiketback_service.dart';
 
@@ -24,6 +25,12 @@ void _anotar(String nivel, String medicion, String valor, [String extra = '']) =
 
 void main() {
   setUpAll(() {
+    // `TiketbackService` empaqueta las preferencias junto a la base, asi que
+    // necesita el binding de Flutter y SharedPreferences mockeado — si no,
+    // falla con "Binding has not yet been initialized" antes de cifrar nada.
+    TestWidgetsFlutterBinding.ensureInitialized();
+    // ignore: invalid_use_of_visible_for_testing_member
+    SharedPreferences.setMockInitialValues({});
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   });

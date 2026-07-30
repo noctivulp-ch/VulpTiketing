@@ -60,12 +60,20 @@ class TiketbackService {
       nonce: _bytesAleatorios(_nonceLength),
     );
 
-    await File(rutaDestino).writeAsBytes([
-      ...salt,
-      ...secretBox.nonce,
-      ...secretBox.cipherText,
-      ...secretBox.mac.bytes,
-    ]);
+    // OJO: esto era un literal con spreads (`[...salt, ...cipherText, ...]`) y
+    // costaba GIGABYTES. Un literal así construye una `List<int>` genérica, y en
+    // Dart cada elemento de una `List<int>` ocupa 8 bytes en el arreglo interno,
+    // no 1 — mas el realojado al crecer. Medido con una base de 360 MB: el pico
+    // de RSS era de +6.343 MB (17,6x el tamaño de la base) y exportar tardaba
+    // 44 s.
+    //
+    // `BytesBuilder` acumula en `Uint8List`, o sea un byte por byte.
+    final salida = BytesBuilder(copy: false)
+      ..add(salt)
+      ..add(secretBox.nonce)
+      ..add(secretBox.cipherText)
+      ..add(secretBox.mac.bytes);
+    await File(rutaDestino).writeAsBytes(salida.takeBytes(), flush: true);
   }
 
   /// Lanza [SecretBoxAuthenticationError] (de package:cryptography) si la

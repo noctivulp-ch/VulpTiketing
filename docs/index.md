@@ -33,6 +33,10 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 
 - [Índice de decisiones (ADRs)](decisiones/index.md)
 
+## Informes
+
+- [**Informe de pruebas de estrés — 30/07/2026**](INFORME-ESTRES-2026-07-30.md) — la app se volvía inusable con un año de uso real; qué se corrigió, qué se midió y qué queda pendiente de decisión
+
 ## Datos reales
 
 - [Menú — la soda](menu-de-ejemplo.md) (transcripción del menú físico, fuente del catálogo inicial en `seed/catalogo-inicial.tiketdata`)
