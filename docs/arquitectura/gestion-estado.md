@@ -89,6 +89,39 @@ tres Notifiers. Regresión cubierta en `test/producto_notifier_test.dart`
 Si un campo realmente necesita ser inmutable, se asigna en el constructor,
 no en `build()`.
 
+### La misma causa, con el síntoma invertido (2026-07-30)
+
+`VentaEnCursoNotifier` tenía `final String ventaIdBorrador = _uuid.v4();`
+como **inicializador de campo**, con un comentario que afirmaba que
+`ref.invalidateSelf()` lo regeneraba. No lo regenera: como Riverpod reutiliza
+la instancia, un inicializador de campo corre **una sola vez en la vida del
+provider**.
+
+Consecuencia: el id de venta nunca cambiaba y **solo se podía guardar una
+venta por sesión** — la segunda moría con `UNIQUE constraint failed:
+venta.id`. En una app de punto de venta, la caja dejaba de funcionar después
+del primer cobro.
+
+Es la misma causa raíz que el `LateInitializationError` de arriba, con el
+síntoma al revés: allá el problema era una reasignación que explotaba, acá una
+asignación que **nunca ocurría**. Por eso el primer caso se detectó rápido y
+este sobrevivió: no lanza nada, solo hace lo incorrecto en silencio.
+
+Fix: `late String` (sin `final`) asignado dentro de `build()`, que sí se
+vuelve a ejecutar en cada invalidación. Regresión en
+`test/venta_en_curso_notifier_test.dart` — guarda tres ventas seguidas y exige
+tres ids distintos y tres filas persistidas.
+
+**Regla derivada 2:** un Notifier **nunca** usa inicializadores de campo para
+valores que deban renovarse por ciclo (ids, timestamps, borradores). Van en
+`build()`. Un inicializador de campo en un Notifier solo sirve para
+dependencias inmutables que viven tanto como el provider (por ejemplo un
+servicio sin estado).
+
+Y una lección de prueba: ninguna prueba hacía **dos** ventas seguidas, que es
+el caso más normal del negocio. Cuando una operación se repite en uso real,
+probarla una sola vez no la cubre.
+
 ## Ejemplo concreto de lo que NO hacer
 
 ```dart

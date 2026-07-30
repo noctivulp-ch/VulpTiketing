@@ -28,6 +28,8 @@ import 'package:vulp_tiketing/features/import_export/tiketdata_service.dart';
 import 'package:vulp_tiketing/features/producto/categoria_notifier.dart';
 import 'package:vulp_tiketing/features/producto/categoria_model.dart';
 import 'package:vulp_tiketing/features/producto/producto_notifier.dart';
+import 'package:vulp_tiketing/features/venta/venta_en_curso_notifier.dart';
+import 'package:vulp_tiketing/features/venta/venta_notifier.dart';
 import 'package:vulp_tiketing/features/producto/producto_model.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
 
@@ -138,6 +140,28 @@ Future<dynamic> _ejecutar(
             ),
           );
       return {'id': id};
+
+    case 'seed_venta':
+      // Siembra una venta real pasando por VentaEnCursoNotifier, el mismo
+      // camino que la UI — nunca por SQLite a mano, para no inventar un
+      // segundo camino de logica de negocio (decision 0009).
+      //
+      // Existe porque juzgar la COMPOSICION de las pantallas con la base vacia
+      // lleva a rediseñar zonas que en uso real se llenan: el carrito, los
+      // rankings de Reportes, el panel de Configuracion. Sin ventas, Reportes
+      // se evalua siempre en su estado vacio.
+      final carrito = container.read(ventaEnCursoNotifierProvider.notifier);
+      final lineas = (args['lineas'] as List).cast<Map>();
+      for (final linea in lineas) {
+        carrito.agregarLineaDeCatalogo(
+          productoId: linea['productoId'] as String,
+          precioAplicado: (linea['precio'] as num).toDouble(),
+          cantidad: (linea['cantidad'] as num?)?.toInt() ?? 1,
+        );
+      }
+      await carrito.guardar();
+      container.invalidate(ventaNotifierProvider);
+      return {'lineas': lineas.length};
 
     case 'listar_productos':
       final productos = await container.read(productoNotifierProvider.future);

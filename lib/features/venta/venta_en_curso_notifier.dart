@@ -29,14 +29,23 @@ class VentaEnCurso {
 /// El "carrito" de una venta en construccion (decision 0019) — nunca se usa
 /// para editar/borrar una venta ya guardada, eso es VentaNotifier.revertir().
 class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
-  // OJO: se regenera cada vez que este Notifier se reconstruye. guardar()
-  // llama ref.invalidateSelf() al final justamente para forzar una
-  // reconstruccion y así obtener un id nuevo para la siguiente venta — sin
-  // eso, dos ventas seguidas terminarían compartiendo el mismo id.
-  final String ventaIdBorrador = _uuid.v4();
+  // `late` sin `final`, y asignado DENTRO de build(): Riverpod reutiliza esta
+  // misma instancia de Notifier entre reconstrucciones — `invalidateSelf()` no
+  // crea un objeto nuevo, solo vuelve a llamar build(). Un inicializador de
+  // campo (`final String x = _uuid.v4();`) corre UNA sola vez en la vida del
+  // provider, asi que el id nunca cambiaba y solo se podia guardar UNA venta
+  // por sesion: la segunda moria con UNIQUE constraint failed en venta.id.
+  //
+  // Es el mismo gotcha que el LateInitializationError de Producto/Categoria/
+  // Venta (docs/arquitectura/gestion-estado.md), en otra forma: ahi el sintoma
+  // era una excepcion al reasignar, aca es una asignacion que nunca ocurre.
+  late String ventaIdBorrador;
 
   @override
-  VentaEnCurso build() => const VentaEnCurso();
+  VentaEnCurso build() {
+    ventaIdBorrador = _uuid.v4();
+    return const VentaEnCurso();
+  }
 
   void agregarLineaDeCatalogo({
     required String productoId,
