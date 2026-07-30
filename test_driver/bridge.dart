@@ -72,9 +72,21 @@ Future<Response> _router(Request request) async {
         final body = await _body(request);
         // enter_text escribe en el campo con foco actual — hay que tocarlo
         // (POST /tap) antes, es el mismo flujo que un usuario real.
-        await driver.runUnsynchronized(
-          () => driver.enterText(body['text'] as String),
-        );
+        //
+        // La emulacion de texto se enciende SOLO para este instante y se
+        // apaga siempre despues, incluso si falla. Mientras esta encendida,
+        // `TestTextInput` reemplaza la entrada de texto del sistema y el
+        // teclado fisico deja de escribir en la app: dejarla encendida (el
+        // default de `enableFlutterDriverExtension`) hacia imposible usar la
+        // app a mano. Ver el comentario largo en test_driver/app.dart.
+        await driver.runUnsynchronized(() async {
+          await driver.setTextEntryEmulation(enabled: true);
+          try {
+            await driver.enterText(body['text'] as String);
+          } finally {
+            await driver.setTextEntryEmulation(enabled: false);
+          }
+        });
         return _json({'ok': true});
 
       case 'GET get_text':

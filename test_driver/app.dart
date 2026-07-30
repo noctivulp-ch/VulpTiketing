@@ -40,8 +40,21 @@ void main() {
   // crear un segundo container.
   final container = ProviderContainer();
 
+  // `enableTextEntryEmulation: false` NO es un detalle: por defecto
+  // `enableFlutterDriverExtension` llama a `TestTextInput.register()`, que
+  // REEMPLAZA la entrada de texto del sistema por un mock. Con el default,
+  // el teclado fisico deja de escribir en la app por completo — los eventos
+  // de tecla siguen llegando (Tab mueve el foco, el cursor parpadea) pero los
+  // caracteres se van al canal mockeado y se descartan. Es decir: la app
+  // instrumentada quedaba imposible de usar a mano, que es justo lo contrario
+  // del requisito ("el MCP debe permitir el uso completo de la app").
+  //
+  // Con esto el teclado humano manda siempre. El bridge enciende la emulacion
+  // solo durante el instante en que necesita escribir y la vuelve a apagar
+  // (ver `POST /enter_text` en bridge.dart).
   enableFlutterDriverExtension(
     handler: (mensaje) => _manejarComandoDirecto(container, mensaje),
+    enableTextEntryEmulation: false,
   );
 
   runApp(

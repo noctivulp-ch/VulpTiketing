@@ -84,6 +84,32 @@ importa los 39 productos/8 categorías y el grid de Venta Rápida se
 actualiza en vivo sin reiniciar la app — el mismo flujo que antes
 crasheaba por la UI con el bug de [gestión de estado](../arquitectura/gestion-estado.md#gotcha-real--late-final-en-un-campo-asignado-dentro-de-build) (`LateInitializationError`).
 
+## Gotcha encontrado en uso (2026-07-29)
+
+El harness, tal como quedó la primera versión, **hacía imposible usar la app
+con el teclado físico**. `enableFlutterDriverExtension()` trae
+`enableTextEntryEmulation: true` por defecto, que registra un
+`TestTextInput` reemplazando la entrada de texto del sistema por un mock: los
+eventos de tecla seguían llegando (Tab movía el foco, el cursor parpadeaba)
+pero los caracteres se descartaban.
+
+Lo insidioso es que la automatización quedaba **verde**: `driver.enterText()`
+escribe directo en el mock, así que el login por el bridge funcionaba
+perfecto mientras un humano no podía escribir una sola letra. Se descubrió
+solo porque el usuario intentó auditar la app a mano.
+
+Corregido invirtiendo la prioridad: la app pasa
+`enableTextEntryEmulation: false` (el teclado humano manda siempre) y el
+bridge enciende la emulación solo durante el instante en que escribe,
+apagándola en un `finally`. Verificado que ambas coexisten en la misma
+instancia: login completo por el bridge, y después escritura real con teclado
+que filtra el grid.
+
+Lección de método, más allá de este bug: un harness de automatización puede
+degradar el uso manual de la app sin que ninguna prueba lo note, porque las
+pruebas usan justamente el camino que el harness sustituye. Cualquier cosa que
+el harness intercepte hay que verificarla también por la ruta humana.
+
 ## Consecuencias
 
 - Requiere levantar 2 procesos externos a mano antes de que las
