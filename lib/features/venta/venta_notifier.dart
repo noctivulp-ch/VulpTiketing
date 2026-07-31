@@ -39,5 +39,4 @@ class VentaNotifier extends AsyncNotifier<List<Venta>> {
   }
 }
 
-final ventaNotifierProvider =
-    AsyncNotifierProvider<VentaNotifier, List<Venta>>(VentaNotifier.new);
+final ventaNotifierProvider = AsyncNotifierProvider<VentaNotifier, List<Venta>>(VentaNotifier.new);

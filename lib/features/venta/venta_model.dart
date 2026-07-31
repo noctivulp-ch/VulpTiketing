@@ -28,9 +28,7 @@ class Venta {
       id: map['id'] as String,
       fechaHora: DateTime.parse(map['fecha_hora'] as String),
       detalle: map['detalle'] as String?,
-      estado: (map['estado'] as String) == 'revertida'
-          ? EstadoVenta.revertida
-          : EstadoVenta.activa,
+      estado: (map['estado'] as String) == 'revertida' ? EstadoVenta.revertida : EstadoVenta.activa,
       motivoReversion: map['motivo_reversion'] as String?,
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );

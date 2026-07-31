@@ -35,12 +35,7 @@ class ProductoDao {
   }
 
   Future<void> actualizar(Producto producto) {
-    return _db.update(
-      'producto',
-      producto.toMap(),
-      where: 'id = ?',
-      whereArgs: [producto.id],
-    );
+    return _db.update('producto', producto.toMap(), where: 'id = ?', whereArgs: [producto.id]);
   }
 
   /// Deshace un descontinuado. El producto vuelve al catálogo con su historial

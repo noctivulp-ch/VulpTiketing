@@ -29,10 +29,7 @@ class TiketdataService {
     await File(rutaDestino).writeAsString(json);
   }
 
-  Future<void> importarCatalogo({
-    required String rutaOrigen,
-    required ModoImportacion modo,
-  }) async {
+  Future<void> importarCatalogo({required String rutaOrigen, required ModoImportacion modo}) async {
     final contenido = jsonDecode(await File(rutaOrigen).readAsString()) as Map<String, dynamic>;
     final categoriasIncoming = _comoFilas(contenido['categorias']);
     final productosIncoming = _comoFilas(contenido['productos']);

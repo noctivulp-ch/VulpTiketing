@@ -26,8 +26,7 @@ class ProductoNotifier extends AsyncNotifier<List<Producto>> {
   /// arreglaron caso por caso; este quita la causa, porque sin campo cacheado
   /// no hay nada que pueda quedar viejo. Construir el DAO es envolver una
   /// referencia a la conexion: no cuesta nada.
-  Future<ProductoDao> get _dao async =>
-      ProductoDao(await ref.read(databaseProvider.future));
+  Future<ProductoDao> get _dao async => ProductoDao(await ref.read(databaseProvider.future));
 
   @override
   Future<List<Producto>> build() async {
@@ -87,7 +86,6 @@ class ProductoNotifier extends AsyncNotifier<List<Producto>> {
   }
 }
 
-final productoNotifierProvider =
-    AsyncNotifierProvider<ProductoNotifier, List<Producto>>(
+final productoNotifierProvider = AsyncNotifierProvider<ProductoNotifier, List<Producto>>(
   ProductoNotifier.new,
 );

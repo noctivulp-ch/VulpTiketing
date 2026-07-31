@@ -13,9 +13,9 @@ class LineaVenta {
     this.cantidad = 1,
     this.nota,
   }) : assert(
-          (productoId != null) != (nombreLibre != null),
-          'Exactamente uno de productoId o nombreLibre debe estar presente (decision 0016)',
-        );
+         (productoId != null) != (nombreLibre != null),
+         'Exactamente uno de productoId o nombreLibre debe estar presente (decision 0016)',
+       );
 
   final String id;
   final String ventaId;

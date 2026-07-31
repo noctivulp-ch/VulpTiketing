@@ -15,19 +15,14 @@ import 'sesion_notifier.dart';
 /// logueado, desde Configuracion.
 class CredencialesService {
   CredencialesService({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 
   // Parametros interactivos recomendados por OWASP para Argon2id (~19 MiB,
   // 2 iteraciones) — suficiente para una contrasena de dispositivo local,
   // no una API expuesta a internet.
-  static final _algoritmo = Argon2id(
-    parallelism: 1,
-    memory: 19456,
-    iterations: 2,
-    hashLength: 32,
-  );
+  static final _algoritmo = Argon2id(parallelism: 1, memory: 19456, iterations: 2, hashLength: 32);
 
   // TODO: reemplazar por una contrasena de fabrica distinta y mas segura
   // por rol antes de cualquier release real — "1359" es un placeholder
@@ -62,10 +57,7 @@ class CredencialesService {
   }
 
   Future<List<int>> _derivar(String contrasena, List<int> salt) async {
-    final secretKey = await _algoritmo.deriveKeyFromPassword(
-      password: contrasena,
-      nonce: salt,
-    );
+    final secretKey = await _algoritmo.deriveKeyFromPassword(password: contrasena, nonce: salt);
     return secretKey.extractBytes();
   }
 

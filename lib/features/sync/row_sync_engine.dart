@@ -23,14 +23,11 @@ class RowSyncEngine {
     required List<Map<String, Object?>> locales,
     required List<Map<String, Object?>> remotas,
   }) {
-    final porId = {
-      for (final fila in locales) fila['id'] as String: fila,
-    };
+    final porId = {for (final fila in locales) fila['id'] as String: fila};
     for (final remota in remotas) {
       final id = remota['id'] as String;
       final local = porId[id];
-      porId[id] =
-          local == null ? remota : resolver(local: local, remota: remota);
+      porId[id] = local == null ? remota : resolver(local: local, remota: remota);
     }
     return porId.values.toList();
   }

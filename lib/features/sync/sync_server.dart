@@ -97,11 +97,7 @@ class SyncServer {
     });
 
     return Response.ok(
-      jsonEncode({
-        'version': versionProtocoloSync,
-        'esquema': esquemaSync,
-        'tablas': tablas,
-      }),
+      jsonEncode({'version': versionProtocoloSync, 'esquema': esquemaSync, 'tablas': tablas}),
       headers: {'content-type': 'application/json'},
     );
   }
@@ -114,8 +110,7 @@ class SyncServer {
   /// detectar. De paso funciona igual con las ventas en `main`, que es como
   /// están las bases de las pruebas de volumen.
   Future<bool> _existeTablaDeVentas(DatabaseExecutor db) async {
-    final esquemas = (await db.rawQuery('PRAGMA database_list'))
-        .map((f) => f['name'] as String);
+    final esquemas = (await db.rawQuery('PRAGMA database_list')).map((f) => f['name'] as String);
     for (final esquema in esquemas) {
       final r = await db.rawQuery(
         "SELECT COUNT(*) c FROM $esquema.sqlite_master WHERE type='table' AND name='venta'",

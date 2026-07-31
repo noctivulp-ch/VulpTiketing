@@ -17,8 +17,7 @@ class SyncGroupCoordinator {
     required String miDeviceId,
     required List<PeerVisible> paresVisiblesDelMismoRol,
   }) {
-    final ids = [miDeviceId, ...paresVisiblesDelMismoRol.map((p) => p.deviceId)]
-      ..sort();
+    final ids = [miDeviceId, ...paresVisiblesDelMismoRol.map((p) => p.deviceId)]..sort();
     return ids.first;
   }
 

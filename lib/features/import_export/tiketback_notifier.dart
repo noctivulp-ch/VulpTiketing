@@ -50,9 +50,7 @@ class TiketbackNotifier extends Notifier<void> {
     String contrasenaExportacion, {
     AlcanceRestauracion alcance = AlcanceRestauracion.todo,
   }) async {
-    final resultado = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Elegir backup a restaurar',
-    );
+    final resultado = await FilePicker.platform.pickFiles(dialogTitle: 'Elegir backup a restaurar');
     final ruta = resultado?.files.single.path;
     if (ruta == null) return ResultadoTiketback.cancelado;
 

@@ -79,9 +79,7 @@ class SyncClient {
     }
     final esquema = sobre['esquema'];
     if (esquema != esquemaSync) {
-      throw SyncIncompatible(
-        'esquema $esquema de ${peer.deviceId}, esta app usa $esquemaSync',
-      );
+      throw SyncIncompatible('esquema $esquema de ${peer.deviceId}, esta app usa $esquemaSync');
     }
     return sobre['tablas'] as Map<String, dynamic>;
   }

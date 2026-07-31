@@ -42,11 +42,9 @@ class _PanelCambiarContrasenaState extends ConsumerState<PanelCambiarContrasena>
       _guardando = true;
       _error = null;
     });
-    final ok = await ref.read(sesionNotifierProvider.notifier).cambiarContrasena(
-          rol,
-          _actualController.text,
-          _nuevaController.text,
-        );
+    final ok = await ref
+        .read(sesionNotifierProvider.notifier)
+        .cambiarContrasena(rol, _actualController.text, _nuevaController.text);
     if (!mounted) return;
     if (!ok) {
       setState(() {

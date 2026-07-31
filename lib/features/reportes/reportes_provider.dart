@@ -33,7 +33,8 @@ class ReportesParametros {
       other.fechaReferencia.day == fechaReferencia.day;
 
   @override
-  int get hashCode => Object.hash(rango, fechaReferencia.year, fechaReferencia.month, fechaReferencia.day);
+  int get hashCode =>
+      Object.hash(rango, fechaReferencia.year, fechaReferencia.month, fechaReferencia.day);
 }
 
 class VentaConLineas {
@@ -104,14 +105,13 @@ const _sqlTurno = '''
     ELSE 'noche'
   END''';
 
-const _sqlRangoActivo =
-    "v.estado = 'activa' AND v.fecha_hora >= ? AND v.fecha_hora < ?";
+const _sqlRangoActivo = "v.estado = 'activa' AND v.fecha_hora >= ? AND v.fecha_hora < ?";
 
 Turno _turnoDeNombre(String nombre) => switch (nombre) {
-      'manana' => Turno.manana,
-      'tarde' => Turno.tarde,
-      _ => Turno.noche,
-    };
+  'manana' => Turno.manana,
+  'tarde' => Turno.tarde,
+  _ => Turno.noche,
+};
 
 /// Agrega en SQL, no en Dart.
 ///
@@ -123,8 +123,10 @@ Turno _turnoDeNombre(String nombre) => switch (nombre) {
 ///
 /// Ahora son tres consultas agregadas de tamaño fijo, más el drill-down solo
 /// cuando hace falta.
-final reportesProvider =
-    FutureProvider.family<ReporteResultado, ReportesParametros>((ref, params) async {
+final reportesProvider = FutureProvider.family<ReporteResultado, ReportesParametros>((
+  ref,
+  params,
+) async {
   final db = await ref.watch(databaseProvider.future);
 
   final (desde, hasta) = rangoDeFechas(params.rango, params.fechaReferencia);
@@ -143,8 +145,7 @@ final reportesProvider =
 
   final porTurno = {for (final t in Turno.values) t: 0.0};
   for (final row in totalesRows) {
-    porTurno[_turnoDeNombre(row['turno'] as String)] =
-        (row['total'] as num?)?.toDouble() ?? 0;
+    porTurno[_turnoDeNombre(row['turno'] as String)] = (row['total'] as num?)?.toDouble() ?? 0;
   }
   final total = porTurno.values.fold(0.0, (a, b) => a + b);
 
@@ -169,10 +170,9 @@ final reportesProvider =
   final idsEnMas = <String>{};
   for (final row in rankingRows.take(limiteRanking)) {
     idsEnMas.add(row['id'] as String);
-    masVendidos.add(RankingItem(
-      nombre: row['nombre'] as String,
-      cantidad: (row['cantidad'] as num).toInt(),
-    ));
+    masVendidos.add(
+      RankingItem(nombre: row['nombre'] as String, cantidad: (row['cantidad'] as num).toInt()),
+    );
   }
 
   // Los menos vendidos se toman desde la cola, excluyendo lo que ya está en
@@ -182,10 +182,9 @@ final reportesProvider =
   for (final row in rankingRows.reversed) {
     if (menosVendidos.length >= limiteRanking) break;
     if (idsEnMas.contains(row['id'] as String)) continue;
-    menosVendidos.add(RankingItem(
-      nombre: row['nombre'] as String,
-      cantidad: (row['cantidad'] as num).toInt(),
-    ));
+    menosVendidos.add(
+      RankingItem(nombre: row['nombre'] as String, cantidad: (row['cantidad'] as num).toInt()),
+    );
   }
 
   // 3. Drill-down: SOLO para el rango de día, como ya decía la documentación
@@ -208,16 +207,12 @@ final reportesProvider =
 
     final lineasPorVenta = <String, List<LineaVenta>>{};
     for (final row in lineasRows) {
-      (lineasPorVenta[row['venta_id'] as String] ??= [])
-          .add(LineaVenta.fromMap(row));
+      (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaVenta.fromMap(row));
     }
 
     for (final row in ventasRows) {
       final venta = Venta.fromMap(row);
-      final vc = VentaConLineas(
-        venta: venta,
-        lineas: lineasPorVenta[venta.id] ?? const [],
-      );
+      final vc = VentaConLineas(venta: venta, lineas: lineasPorVenta[venta.id] ?? const []);
       ventasPorTurno[turnoDe(venta.fechaHora)]!.add(vc);
     }
   }
@@ -256,16 +251,15 @@ class DetalleRango {
 /// Provider APARTE de `reportesProvider` a propósito: se resuelve solo cuando
 /// alguien entra al detalle. Meterlo en el reporte general habría hecho que
 /// abrir Reportes cargara el año entero aunque nadie mirara la lista.
-final detalleRangoProvider =
-    FutureProvider.family<DetalleRango, ReportesParametros>((ref, params) async {
+final detalleRangoProvider = FutureProvider.family<DetalleRango, ReportesParametros>((
+  ref,
+  params,
+) async {
   final db = await ref.watch(databaseProvider.future);
   final (desde, hasta) = rangoDeFechas(params.rango, params.fechaReferencia);
   final args = [desde.toIso8601String(), hasta.toIso8601String()];
 
-  final cuenta = await db.rawQuery(
-    'SELECT COUNT(*) c FROM venta v WHERE $_sqlRangoActivo',
-    args,
-  );
+  final cuenta = await db.rawQuery('SELECT COUNT(*) c FROM venta v WHERE $_sqlRangoActivo', args);
   final total = (cuenta.first['c'] as num).toInt();
 
   final ventasRows = await db.rawQuery(
@@ -279,9 +273,7 @@ final detalleRangoProvider =
 
   // Las líneas de ESAS ventas en una sola consulta, no una por venta.
   final ids = ventasRows.map((r) => "'${r['id']}'").join(',');
-  final lineasRows = await db.rawQuery(
-    'SELECT * FROM linea_venta WHERE venta_id IN ($ids)',
-  );
+  final lineasRows = await db.rawQuery('SELECT * FROM linea_venta WHERE venta_id IN ($ids)');
   final lineasPorVenta = <String, List<LineaVenta>>{};
   for (final row in lineasRows) {
     (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaVenta.fromMap(row));

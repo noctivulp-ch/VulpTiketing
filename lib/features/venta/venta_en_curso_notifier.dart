@@ -16,14 +16,10 @@ class VentaEnCurso {
   final List<LineaVenta> lineas;
   final String? detalle;
 
-  double get total =>
-      lineas.fold(0, (suma, l) => suma + l.precioAplicado * l.cantidad);
+  double get total => lineas.fold(0, (suma, l) => suma + l.precioAplicado * l.cantidad);
 
   VentaEnCurso copyWith({List<LineaVenta>? lineas, String? detalle}) {
-    return VentaEnCurso(
-      lineas: lineas ?? this.lineas,
-      detalle: detalle ?? this.detalle,
-    );
+    return VentaEnCurso(lineas: lineas ?? this.lineas, detalle: detalle ?? this.detalle);
   }
 }
 
@@ -54,15 +50,17 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
     int cantidad = 1,
     String? nota,
   }) {
-    _agregarLinea(LineaVenta(
-      id: _uuid.v4(),
-      ventaId: ventaIdBorrador,
-      productoId: productoId,
-      precioAplicado: precioAplicado,
-      cantidad: cantidad,
-      nota: nota,
-      updatedAt: DateTime.now(),
-    ));
+    _agregarLinea(
+      LineaVenta(
+        id: _uuid.v4(),
+        ventaId: ventaIdBorrador,
+        productoId: productoId,
+        precioAplicado: precioAplicado,
+        cantidad: cantidad,
+        nota: nota,
+        updatedAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Linea sin Producto de catalogo (decision 0016).
@@ -72,15 +70,17 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
     int cantidad = 1,
     String? nota,
   }) {
-    _agregarLinea(LineaVenta(
-      id: _uuid.v4(),
-      ventaId: ventaIdBorrador,
-      nombreLibre: nombreLibre,
-      precioAplicado: precio,
-      cantidad: cantidad,
-      nota: nota,
-      updatedAt: DateTime.now(),
-    ));
+    _agregarLinea(
+      LineaVenta(
+        id: _uuid.v4(),
+        ventaId: ventaIdBorrador,
+        nombreLibre: nombreLibre,
+        precioAplicado: precio,
+        cantidad: cantidad,
+        nota: nota,
+        updatedAt: DateTime.now(),
+      ),
+    );
   }
 
   void _agregarLinea(LineaVenta linea) {
@@ -88,17 +88,10 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
   }
 
   void quitarLinea(String lineaId) {
-    state = state.copyWith(
-      lineas: state.lineas.where((l) => l.id != lineaId).toList(),
-    );
+    state = state.copyWith(lineas: state.lineas.where((l) => l.id != lineaId).toList());
   }
 
-  void editarLinea(
-    String lineaId, {
-    double? precioAplicado,
-    int? cantidad,
-    String? nota,
-  }) {
+  void editarLinea(String lineaId, {double? precioAplicado, int? cantidad, String? nota}) {
     state = state.copyWith(
       lineas: [
         for (final l in state.lineas)
@@ -151,7 +144,6 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
   }
 }
 
-final ventaEnCursoNotifierProvider =
-    NotifierProvider<VentaEnCursoNotifier, VentaEnCurso>(
+final ventaEnCursoNotifierProvider = NotifierProvider<VentaEnCursoNotifier, VentaEnCurso>(
   VentaEnCursoNotifier.new,
 );

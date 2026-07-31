@@ -18,12 +18,7 @@ class CategoriaDao {
   }
 
   Future<void> actualizar(Categoria categoria) {
-    return _db.update(
-      'categoria',
-      categoria.toMap(),
-      where: 'id = ?',
-      whereArgs: [categoria.id],
-    );
+    return _db.update('categoria', categoria.toMap(), where: 'id = ?', whereArgs: [categoria.id]);
   }
 
   Future<void> descontinuar(String id, DateTime cuando) {

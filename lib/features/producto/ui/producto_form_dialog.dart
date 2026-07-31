@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/bento_theme.dart';
+import '../../../core/ui/bento_falla.dart';
 import '../categoria_model.dart';
 import '../categoria_notifier.dart';
 import '../producto_model.dart';
@@ -63,10 +64,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
         title: const Text('Nueva categoría'),
         content: TextField(controller: controller, autofocus: true),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
             child: const Text('Crear'),
@@ -90,27 +88,31 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
     final precio = double.parse(_precioController.text);
 
     if (_esEdicion) {
-      await notifier.actualizar(Producto(
-        id: widget.producto!.id,
-        nombre: _nombreController.text.trim(),
-        imagen: widget.producto!.imagen,
-        categoriaId: _categoriaId,
-        precioBase: precio,
-        updatedAt: ahora,
-        // Preserva deletedAt tal cual estaba — editar un producto NO debe
-        // reactivar uno descontinuado por accidente (no existe una acción
-        // explícita de "reactivar" todavía, esto habría sido una puerta
-        // trasera silenciosa para hacerlo).
-        deletedAt: widget.producto!.deletedAt,
-      ));
+      await notifier.actualizar(
+        Producto(
+          id: widget.producto!.id,
+          nombre: _nombreController.text.trim(),
+          imagen: widget.producto!.imagen,
+          categoriaId: _categoriaId,
+          precioBase: precio,
+          updatedAt: ahora,
+          // Preserva deletedAt tal cual estaba — editar un producto NO debe
+          // reactivar uno descontinuado por accidente (no existe una acción
+          // explícita de "reactivar" todavía, esto habría sido una puerta
+          // trasera silenciosa para hacerlo).
+          deletedAt: widget.producto!.deletedAt,
+        ),
+      );
     } else {
-      await notifier.crear(Producto(
-        id: _uuid.v4(),
-        nombre: _nombreController.text.trim(),
-        categoriaId: _categoriaId,
-        precioBase: precio,
-        updatedAt: ahora,
-      ));
+      await notifier.crear(
+        Producto(
+          id: _uuid.v4(),
+          nombre: _nombreController.text.trim(),
+          categoriaId: _categoriaId,
+          precioBase: precio,
+          updatedAt: ahora,
+        ),
+      );
     }
     if (mounted) Navigator.of(context).pop(true);
   }
@@ -168,7 +170,11 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: LinearProgressIndicator(),
               ),
-              error: (e, st) => Text('Error cargando categorías: $e'),
+              error: (e, st) => BentoFalla(
+                mensaje: 'No se pudieron cargar las categorías.',
+                error: e,
+                onReintentar: () => ref.invalidate(categoriaNotifierProvider),
+              ),
             ),
           ],
         ),

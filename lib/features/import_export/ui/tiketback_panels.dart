@@ -84,15 +84,14 @@ class _PanelExportarBackupState extends ConsumerState<PanelExportarBackup> {
 /// El aviso nombra lo que se va a pisar en vez de decir "irreversible" a secas:
 /// advertir de más ante una restauración acotada entrena a ignorar el aviso, y
 /// entonces no protege el día que sí importa.
-({String titulo, String detalle, String advertencia}) _textoDe(
-  AlcanceRestauracion alcance,
-) {
+({String titulo, String detalle, String advertencia}) _textoDe(AlcanceRestauracion alcance) {
   switch (alcance) {
     case AlcanceRestauracion.todo:
       return (
         titulo: 'Todo',
         detalle: 'Menú y ventas',
-        advertencia: 'Se reemplazan TODOS los datos del dispositivo —el menú y '
+        advertencia:
+            'Se reemplazan TODOS los datos del dispositivo —el menú y '
             'todas las ventas— por los del backup. Las ventas registradas '
             'después de ese backup se pierden.',
       );
@@ -100,14 +99,16 @@ class _PanelExportarBackupState extends ConsumerState<PanelExportarBackup> {
       return (
         titulo: 'Solo el menú',
         detalle: 'Productos y categorías',
-        advertencia: 'Se reemplaza el menú por el del backup. Las ventas no se '
+        advertencia:
+            'Se reemplaza el menú por el del backup. Las ventas no se '
             'tocan: siguen todas donde están.',
       );
     case AlcanceRestauracion.soloVentas:
       return (
         titulo: 'Solo las ventas',
         detalle: 'El historial de ventas',
-        advertencia: 'Se reemplazan las ventas por las del backup. El menú '
+        advertencia:
+            'Se reemplazan las ventas por las del backup. El menú '
             'actual no se toca. Las ventas registradas después de ese backup '
             'se pierden.',
       );
@@ -197,8 +198,7 @@ class _PanelRestaurarBackupState extends ConsumerState<PanelRestaurarBackup> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Restaurar: ${texto.titulo}',
-            style: Theme.of(context).textTheme.titleMedium),
+        Text('Restaurar: ${texto.titulo}', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: BentoSpacing.unidad),
         Text(texto.advertencia),
         const SizedBox(height: BentoSpacing.gapCelda),
@@ -225,8 +225,10 @@ class _PanelRestaurarBackupState extends ConsumerState<PanelRestaurarBackup> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Restaurar: ${_textoDe(_alcance).titulo}',
-            style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          'Restaurar: ${_textoDe(_alcance).titulo}',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: BentoSpacing.gapCelda),
         TextField(
           controller: _contrasenaController,
@@ -279,8 +281,7 @@ class _BotonAlcance extends StatelessWidget {
               Text(texto.titulo, style: tema.textTheme.titleSmall),
               Text(
                 texto.detalle,
-                style: tema.textTheme.bodySmall
-                    ?.copyWith(color: tema.colorScheme.onSurfaceVariant),
+                style: tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant),
               ),
             ],
           ),

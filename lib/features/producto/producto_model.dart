@@ -31,9 +31,7 @@ class Producto {
       categoriaId: map['categoria_id'] as String?,
       precioBase: (map['precio_base'] as num).toDouble(),
       updatedAt: DateTime.parse(map['updated_at'] as String),
-      deletedAt: map['deleted_at'] == null
-          ? null
-          : DateTime.parse(map['deleted_at'] as String),
+      deletedAt: map['deleted_at'] == null ? null : DateTime.parse(map['deleted_at'] as String),
     );
   }
 

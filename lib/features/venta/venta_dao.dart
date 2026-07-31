@@ -14,11 +14,7 @@ class VentaDao {
   }
 
   Future<List<LineaVenta>> lineasDe(String ventaId) async {
-    final rows = await _db.query(
-      'linea_venta',
-      where: 'venta_id = ?',
-      whereArgs: [ventaId],
-    );
+    final rows = await _db.query('linea_venta', where: 'venta_id = ?', whereArgs: [ventaId]);
     return rows.map(LineaVenta.fromMap).toList();
   }
 
@@ -34,11 +30,7 @@ class VentaDao {
   }
 
   /// Unica transicion permitida sobre una Venta ya guardada (decision 0009).
-  Future<void> revertir(
-    String id,
-    String motivoReversionJson,
-    DateTime cuando,
-  ) {
+  Future<void> revertir(String id, String motivoReversionJson, DateTime cuando) {
     return _db.update(
       'venta',
       {

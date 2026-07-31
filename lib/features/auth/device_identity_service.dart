@@ -6,7 +6,7 @@ import 'package:uuid/uuid.dart';
 /// CredencialesService/SesionNotifier.
 class DeviceIdentityService {
   DeviceIdentityService({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
   static const _key = 'device_id';

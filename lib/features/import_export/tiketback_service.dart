@@ -37,10 +37,10 @@ class _EntradaManifiesto {
   _EntradaManifiesto(this.tipo, this.nombre, this.largo);
 
   factory _EntradaManifiesto.deJson(Map<String, dynamic> j) => _EntradaManifiesto(
-        _TipoPieza.values.byName(j['tipo'] as String),
-        j['nombre'] as String,
-        j['largo'] as int,
-      );
+    _TipoPieza.values.byName(j['tipo'] as String),
+    j['nombre'] as String,
+    j['largo'] as int,
+  );
 
   final _TipoPieza tipo;
 
@@ -48,8 +48,7 @@ class _EntradaManifiesto {
   final String nombre;
   final int largo;
 
-  Map<String, Object?> aJson() =>
-      {'tipo': tipo.name, 'nombre': nombre, 'largo': largo};
+  Map<String, Object?> aJson() => {'tipo': tipo.name, 'nombre': nombre, 'largo': largo};
 }
 
 /// Exportar/restaurar el backup completo cifrado (.tiketback — decisiones
@@ -126,10 +125,12 @@ class TiketbackService {
     required String rutaDestino,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final preferenciasJson = utf8.encode(jsonEncode({
-      _keyOrdenProducto: prefs.getString(_keyOrdenProducto),
-      _keyAcentoTinte: prefs.getString(_keyAcentoTinte),
-    }));
+    final preferenciasJson = utf8.encode(
+      jsonEncode({
+        _keyOrdenProducto: prefs.getString(_keyOrdenProducto),
+        _keyAcentoTinte: prefs.getString(_keyAcentoTinte),
+      }),
+    );
 
     final principal = File(p.join(directorioDatos, nombreBasePrincipal));
     final libros = <File>[];
@@ -162,11 +163,8 @@ class TiketbackService {
       // Marco 0: el manifiesto. Va cifrado como todo lo demás — los nombres de
       // archivo delatan en qué fechas hubo actividad.
       var indice = 0;
-      final manifiestoBytes = utf8.encode(jsonEncode(
-        [for (final e in manifiesto) e.aJson()],
-      ));
-      await _escribirMarco(destino, clave, nonceBase, indice++, manifiestoBytes,
-          ultimo: false);
+      final manifiestoBytes = utf8.encode(jsonEncode([for (final e in manifiesto) e.aJson()]));
+      await _escribirMarco(destino, clave, nonceBase, indice++, manifiestoBytes, ultimo: false);
 
       // Marcos 1..N: las piezas, una tras otra, cortadas cada _tamanoTrozo.
       //
@@ -179,7 +177,11 @@ class TiketbackService {
       final buffer = BytesBuilder();
       Future<void> vaciar({required bool ultimo}) async {
         await _escribirMarco(
-          destino, clave, nonceBase, indice++, buffer.takeBytes(),
+          destino,
+          clave,
+          nonceBase,
+          indice++,
+          buffer.takeBytes(),
           ultimo: ultimo,
         );
       }
@@ -260,11 +262,7 @@ class TiketbackService {
 
         case AlcanceRestauracion.soloVentas:
           _moverLibros(librosDePaso, directorioDatos);
-          await _reemplazarTablas(
-            rutaPrincipal,
-            principalDePaso,
-            const ['libro_ventas'],
-          );
+          await _reemplazarTablas(rutaPrincipal, principalDePaso, const ['libro_ventas']);
           await _borrarLibrosFueraDelIndice(directorioDatos, rutaPrincipal);
       }
     } finally {
@@ -283,10 +281,7 @@ class TiketbackService {
   /// Sin esto, un libro que el backup no traía queda en la carpeta y, si su
   /// nombre coincidiera con uno futuro, aportaría ventas fantasma a los
   /// reportes. El índice manda: lo que no está en él no es un libro.
-  Future<void> _borrarLibrosFueraDelIndice(
-    String directorio,
-    String rutaPrincipal,
-  ) async {
+  Future<void> _borrarLibrosFueraDelIndice(String directorio, String rutaPrincipal) async {
     final db = await databaseFactory.openDatabase(
       rutaPrincipal,
       options: OpenDatabaseOptions(singleInstance: false),
@@ -294,9 +289,11 @@ class TiketbackService {
     // Un backup de formato 1 trae una base v2, sin índice de libros todavía:
     // sus ventas están dentro del archivo principal y la migración a v3 las
     // moverá al abrir. No hay nada que barrer.
-    final tieneIndice = (await db.rawQuery(
-      "SELECT COUNT(*) c FROM sqlite_master WHERE type='table' AND name='libro_ventas'",
-    )).first['c'] == 1;
+    final tieneIndice =
+        (await db.rawQuery(
+          "SELECT COUNT(*) c FROM sqlite_master WHERE type='table' AND name='libro_ventas'",
+        )).first['c'] ==
+        1;
     final filas = tieneIndice
         ? await db.query('libro_ventas', columns: ['archivo'])
         : const <Map<String, Object?>>[];
@@ -398,11 +395,9 @@ class TiketbackService {
     await destino.writeFrom(caja.mac.bytes);
   }
 
-  static List<int> _nonceDe(List<int> base, int indice) =>
-      [...base, ..._uint32(indice)];
+  static List<int> _nonceDe(List<int> base, int indice) => [...base, ..._uint32(indice)];
 
-  static List<int> _aad(int indice, bool ultimo) =>
-      [..._uint32(indice), ultimo ? 1 : 0];
+  static List<int> _aad(int indice, bool ultimo) => [..._uint32(indice), ultimo ? 1 : 0];
 
   /// Descifra el backup a [paso], marco por marco, y devuelve dónde quedó cada
   /// pieza. En ningún momento hay más de un trozo en memoria.
@@ -412,11 +407,7 @@ class TiketbackService {
   /// de v2 viajaba DENTRO del cifrado, así que los dos son indistinguibles
   /// hasta descifrarlos. De ahí que los formatos viejos compartan un camino: se
   /// descifra el bloque entero y recién entonces se mira si trae manifiesto.
-  Future<_PiezasDePaso> _descifrarA(
-    Directory paso,
-    String rutaOrigen,
-    String contrasena,
-  ) async {
+  Future<_PiezasDePaso> _descifrarA(Directory paso, String rutaOrigen, String contrasena) async {
     // Nada que hacer de a marcos si no es v3: los formatos viejos se cifraban
     // como un solo bloque, que es el problema que v3 resuelve.
     if (!await _empiezaConMagic(rutaOrigen)) {
@@ -428,9 +419,7 @@ class TiketbackService {
       await _leerExacto(origen, _magic.length);
       final version = _leerUint16(await _leerExacto(origen, 2));
       if (version != _versionFormato) {
-        throw FormatException(
-          'Backup de formato $version, esta app lee hasta $_versionFormato',
-        );
+        throw FormatException('Backup de formato $version, esta app lee hasta $_versionFormato');
       }
 
       // El tamaño de trozo del encabezado no hace falta para leer: los marcos
@@ -443,12 +432,12 @@ class TiketbackService {
       final clave = await _derivarClave(contrasena, salt);
 
       var indice = 0;
-      final manifiesto = (jsonDecode(utf8.decode(
-        await _leerMarco(origen, clave, nonceBase, indice++),
-      )) as List<dynamic>)
-          .cast<Map<String, dynamic>>()
-          .map(_EntradaManifiesto.deJson)
-          .toList();
+      final manifiesto =
+          (jsonDecode(utf8.decode(await _leerMarco(origen, clave, nonceBase, indice++)))
+                  as List<dynamic>)
+              .cast<Map<String, dynamic>>()
+              .map(_EntradaManifiesto.deJson)
+              .toList();
 
       // `await` explícito, no `return future`: con `return` el `finally` cierra
       // el archivo antes de que la lectura termine.
@@ -546,11 +535,13 @@ class TiketbackService {
     final largo = _leerUint32(await _leerExacto(origen, 4));
     final cipherText = await _leerExacto(origen, largo);
     final mac = await _leerExacto(origen, _macLength);
-    return Uint8List.fromList(await _algoritmoCifrado.decrypt(
-      SecretBox(cipherText, nonce: _nonceDe(nonceBase, indice), mac: Mac(mac)),
-      secretKey: clave,
-      aad: _aad(indice, ultimo),
-    ));
+    return Uint8List.fromList(
+      await _algoritmoCifrado.decrypt(
+        SecretBox(cipherText, nonce: _nonceDe(nonceBase, indice), mac: Mac(mac)),
+        secretKey: clave,
+        aad: _aad(indice, ultimo),
+      ),
+    );
   }
 
   Future<Uint8List> _leerExacto(RandomAccessFile origen, int cuantos) async {
@@ -575,8 +566,7 @@ class TiketbackService {
     String contrasena,
   ) async {
     final bundle = await _descifrarBloqueEntero(rutaOrigen, contrasena, 12);
-    if (utf8.decode(bundle.sublist(0, _magic.length), allowMalformed: true) !=
-        _magic) {
+    if (utf8.decode(bundle.sublist(0, _magic.length), allowMalformed: true) != _magic) {
       return _formatoUno(paso, bundle);
     }
 
@@ -584,12 +574,11 @@ class TiketbackService {
     var offset = _magic.length + 2;
     final largoManifiesto = data.getUint32(offset, Endian.big);
     offset += 4;
-    final manifiesto = (jsonDecode(
-      utf8.decode(bundle.sublist(offset, offset + largoManifiesto)),
-    ) as List<dynamic>)
-        .cast<Map<String, dynamic>>()
-        .map(_EntradaManifiesto.deJson)
-        .toList();
+    final manifiesto =
+        (jsonDecode(utf8.decode(bundle.sublist(offset, offset + largoManifiesto))) as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .map(_EntradaManifiesto.deJson)
+            .toList();
     offset += largoManifiesto;
 
     final piezas = _PiezasDePaso();
@@ -624,8 +613,7 @@ class TiketbackService {
     final piezas = _PiezasDePaso()
       ..rutaPrincipal = p.join(paso.path, 'principal.db')
       ..preferencias = bundle.sublist(8 + largoDb, 8 + largoDb + largoPrefs);
-    File(piezas.rutaPrincipal)
-        .writeAsBytesSync(bundle.sublist(4, 4 + largoDb), flush: true);
+    File(piezas.rutaPrincipal).writeAsBytesSync(bundle.sublist(4, 4 + largoDb), flush: true);
     return piezas;
   }
 
@@ -639,14 +627,16 @@ class TiketbackService {
     final nonce = contenido.sublist(_saltLength, _saltLength + largoNonce);
     final resto = contenido.sublist(_saltLength + largoNonce);
     final clave = await _derivarClave(contrasena, salt);
-    return Uint8List.fromList(await _algoritmoCifrado.decrypt(
-      SecretBox(
-        resto.sublist(0, resto.length - _macLength),
-        nonce: nonce,
-        mac: Mac(resto.sublist(resto.length - _macLength)),
+    return Uint8List.fromList(
+      await _algoritmoCifrado.decrypt(
+        SecretBox(
+          resto.sublist(0, resto.length - _macLength),
+          nonce: nonce,
+          mac: Mac(resto.sublist(resto.length - _macLength)),
+        ),
+        secretKey: clave,
       ),
-      secretKey: clave,
-    ));
+    );
   }
 
   static Uint8List _uint16(int v) =>
@@ -655,11 +645,9 @@ class TiketbackService {
   static Uint8List _uint32(int v) =>
       (ByteData(4)..setUint32(0, v, Endian.big)).buffer.asUint8List();
 
-  static int _leerUint16(Uint8List b) =>
-      ByteData.sublistView(b).getUint16(0, Endian.big);
+  static int _leerUint16(Uint8List b) => ByteData.sublistView(b).getUint16(0, Endian.big);
 
-  static int _leerUint32(Uint8List b) =>
-      ByteData.sublistView(b).getUint32(0, Endian.big);
+  static int _leerUint32(Uint8List b) => ByteData.sublistView(b).getUint32(0, Endian.big);
 }
 
 /// Dónde quedó cada pieza tras descifrar, antes de aplicarla.

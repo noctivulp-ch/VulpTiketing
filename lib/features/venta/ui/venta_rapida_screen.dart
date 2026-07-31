@@ -9,7 +9,9 @@ import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
+import '../../../core/ui/bento_falla.dart';
 import '../../producto/producto_model.dart';
+import '../../producto/producto_notifier.dart';
 import '../../producto/producto_query_provider.dart';
 import '../venta_en_curso_notifier.dart';
 
@@ -74,7 +76,11 @@ class VentaRapidaScreen extends ConsumerWidget {
                         },
                       ),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, st) => Center(child: Text('Error: $e')),
+                error: (e, st) => BentoFalla(
+                  mensaje: 'No se pudo cargar el catálogo.',
+                  error: e,
+                  onReintentar: () => ref.invalidate(productoNotifierProvider),
+                ),
               ),
             ),
             // El buscador va ABAJO, al alcance del pulgar y en el mismo sitio
@@ -106,11 +112,7 @@ class VentaRapidaScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _abrirCobroRapido(
-    BuildContext context,
-    WidgetRef ref,
-    Producto producto,
-  ) async {
+  Future<void> _abrirCobroRapido(BuildContext context, WidgetRef ref, Producto producto) async {
     final completado = await showDialog<bool>(
       context: context,
       builder: (_) => _OverlayCobroRapido(producto: producto),
@@ -141,9 +143,9 @@ class _SinProductos extends StatelessWidget {
           Text(
             'Agregá productos en Catálogo, o importá el menú desde Configuración.',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: laca.textoAtenuadoEnBandeja,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: laca.textoAtenuadoEnBandeja),
           ),
         ],
       ),
@@ -184,9 +186,7 @@ class _TarjetaProducto extends StatelessWidget {
                   color: laca.pozoContacto,
                   borderRadius: BorderRadius.circular(BentoRadius.pozo / 2),
                 ),
-                child: Center(
-                  child: Icon(Icons.image_outlined, size: 32, color: laca.paredCresta),
-                ),
+                child: Center(child: Icon(Icons.image_outlined, size: 32, color: laca.paredCresta)),
               ),
             ),
           if (tieneImagen) const SizedBox(height: BentoSpacing.unidad),
@@ -242,8 +242,7 @@ class _OverlayCobroRapidoState extends ConsumerState<_OverlayCobroRapido> {
   @override
   void initState() {
     super.initState();
-    _precioController =
-        TextEditingController(text: widget.producto.precioBase.toStringAsFixed(2));
+    _precioController = TextEditingController(text: widget.producto.precioBase.toStringAsFixed(2));
   }
 
   @override
@@ -267,7 +266,9 @@ class _OverlayCobroRapidoState extends ConsumerState<_OverlayCobroRapido> {
 
   Future<void> _completar() async {
     final precio = double.tryParse(_precioController.text) ?? widget.producto.precioBase;
-    ref.read(ventaEnCursoNotifierProvider.notifier).agregarLineaDeCatalogo(
+    ref
+        .read(ventaEnCursoNotifierProvider.notifier)
+        .agregarLineaDeCatalogo(
           productoId: widget.producto.id,
           precioAplicado: precio,
           cantidad: _cantidad,
@@ -343,9 +344,7 @@ class _OverlayCobroRapidoState extends ConsumerState<_OverlayCobroRapido> {
                 BentoCelda.fija(
                   3,
                   hijo: BentoPozo(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: BentoSpacing.paddingCelda,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
                     child: TextField(
                       controller: _precioController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -379,9 +378,7 @@ class _OverlayCobroRapidoState extends ConsumerState<_OverlayCobroRapido> {
                 BentoCelda.fija(
                   3,
                   hijo: BentoPozo(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: BentoSpacing.paddingCelda,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
                     child: TextField(
                       controller: _recibidoController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -405,10 +402,7 @@ class _OverlayCobroRapidoState extends ConsumerState<_OverlayCobroRapido> {
                 ),
                 BentoCelda.fija(
                   3,
-                  hijo: FilledButton(
-                    onPressed: _completar,
-                    child: const Text('Completado'),
-                  ),
+                  hijo: FilledButton(onPressed: _completar, child: const Text('Completado')),
                 ),
               ],
             ),

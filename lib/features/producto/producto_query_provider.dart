@@ -31,34 +31,30 @@ final productoCatalogoProvider = _query(incluirDescontinuados: true);
 
 Provider<AsyncValue<List<Producto>>> _query({required bool incluirDescontinuados}) {
   return Provider<AsyncValue<List<Producto>>>((ref) {
-  final productosAsync = ref.watch(productoNotifierProvider);
-  final ordenAsync = ref.watch(preferenciasNotifierProvider);
-  final termino = ref.watch(productoBusquedaProvider).trim().toLowerCase();
+    final productosAsync = ref.watch(productoNotifierProvider);
+    final ordenAsync = ref.watch(preferenciasNotifierProvider);
+    final termino = ref.watch(productoBusquedaProvider).trim().toLowerCase();
 
-  return productosAsync.whenData((productos) {
-    final orden = ordenAsync.valueOrNull?.ordenProducto ?? OrdenProducto.alfabetico;
+    return productosAsync.whenData((productos) {
+      final orden = ordenAsync.valueOrNull?.ordenProducto ?? OrdenProducto.alfabetico;
 
-    var lista = List<Producto>.from(productos);
-    if (!incluirDescontinuados) {
-      lista = lista.where((p) => p.activo).toList();
-    }
-    if (termino.isNotEmpty) {
-      lista = lista
-          .where((p) => p.nombre.toLowerCase().contains(termino))
-          .toList();
-    }
+      var lista = List<Producto>.from(productos);
+      if (!incluirDescontinuados) {
+        lista = lista.where((p) => p.activo).toList();
+      }
+      if (termino.isNotEmpty) {
+        lista = lista.where((p) => p.nombre.toLowerCase().contains(termino)).toList();
+      }
 
-    switch (orden) {
-      case OrdenProducto.alfabetico:
-        lista.sort((a, b) => a.nombre.compareTo(b.nombre));
-      case OrdenProducto.precio:
-        lista.sort((a, b) => a.precioBase.compareTo(b.precioBase));
-      case OrdenProducto.categoria:
-        lista.sort(
-          (a, b) => (a.categoriaId ?? '').compareTo(b.categoriaId ?? ''),
-        );
-    }
-    return lista;
-  });
+      switch (orden) {
+        case OrdenProducto.alfabetico:
+          lista.sort((a, b) => a.nombre.compareTo(b.nombre));
+        case OrdenProducto.precio:
+          lista.sort((a, b) => a.precioBase.compareTo(b.precioBase));
+        case OrdenProducto.categoria:
+          lista.sort((a, b) => (a.categoriaId ?? '').compareTo(b.categoriaId ?? ''));
+      }
+      return lista;
+    });
   });
 }

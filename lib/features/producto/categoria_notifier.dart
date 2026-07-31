@@ -11,8 +11,7 @@ import 'categoria_model.dart';
 class CategoriaNotifier extends AsyncNotifier<List<Categoria>> {
   /// Ver el comentario equivalente en ProductoNotifier: el DAO se resuelve en
   /// cada llamada, nunca se guarda en un campo.
-  Future<CategoriaDao> get _dao async =>
-      CategoriaDao(await ref.read(databaseProvider.future));
+  Future<CategoriaDao> get _dao async => CategoriaDao(await ref.read(databaseProvider.future));
 
   @override
   Future<List<Categoria>> build() async {
@@ -39,7 +38,6 @@ class CategoriaNotifier extends AsyncNotifier<List<Categoria>> {
   }
 }
 
-final categoriaNotifierProvider =
-    AsyncNotifierProvider<CategoriaNotifier, List<Categoria>>(
+final categoriaNotifierProvider = AsyncNotifierProvider<CategoriaNotifier, List<Categoria>>(
   CategoriaNotifier.new,
 );

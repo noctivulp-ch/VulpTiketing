@@ -8,9 +8,11 @@ import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_theme.dart';
+import '../../../core/ui/bento_falla.dart';
 import '../../../core/theme/bento_velo.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../producto/producto_model.dart';
+import '../../producto/producto_notifier.dart';
 import '../../producto/producto_query_provider.dart';
 import '../../producto/ui/producto_form_dialog.dart';
 import '../linea_venta_model.dart';
@@ -690,7 +692,11 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
               },
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Error: $e')),
+            error: (e, st) => BentoFalla(
+              mensaje: 'No se pudo cargar el catálogo.',
+              error: e,
+              onReintentar: () => ref.invalidate(productoNotifierProvider),
+            ),
           ),
         ),
         if (_modoSeleccion)

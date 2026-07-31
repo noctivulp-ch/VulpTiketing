@@ -72,22 +72,19 @@ class SyncNotifier extends Notifier<EstadoSync> {
     await _discovery.anunciar(deviceId: miDeviceId, rol: rol.name, puerto: puerto);
 
     final cliente = SyncClient(db, libros: await ref.read(libroVentasServiceProvider.future));
-    _discovery.descubrirPares().listen(
-      (pares) async {
-        _paresDelMismoRol = pares.where((p) => p.rol == rol.name).toList();
-        for (final par in _paresDelMismoRol) {
-          try {
-            await cliente.sincronizarCon(par);
-          } catch (_) {
-            // Un peer que se desconecta a mitad de sync no debe tumbar toda
-            // la sesión — se reintenta solo en el próximo ciclo de
-            // descubrimiento (mismo principio de robustez best-effort de
-            // 0007: el peor caso es una sync redundante, no una caída).
-          }
+    _discovery.descubrirPares().listen((pares) async {
+      _paresDelMismoRol = pares.where((p) => p.rol == rol.name).toList();
+      for (final par in _paresDelMismoRol) {
+        try {
+          await cliente.sincronizarCon(par);
+        } catch (_) {
+          // Un peer que se desconecta a mitad de sync no debe tumbar toda
+          // la sesión — se reintenta solo en el próximo ciclo de
+          // descubrimiento (mismo principio de robustez best-effort de
+          // 0007: el peor caso es una sync redundante, no una caída).
         }
-      },
-      onError: (_) => state = EstadoSync.error,
-    );
+      }
+    }, onError: (_) => state = EstadoSync.error);
   }
 
   Future<void> detenerSync() async {

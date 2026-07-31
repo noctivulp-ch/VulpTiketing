@@ -10,6 +10,7 @@ import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
+import '../../../core/ui/bento_falla.dart';
 import '../reportes_provider.dart';
 
 /// Ventana 4 — ver docs/pantallas/flujo-descripcion.md#ventana-4--reportes
@@ -95,7 +96,11 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                           },
                         ),
                   loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, st) => Center(child: Text('Error: $e')),
+                  error: (e, st) => BentoFalla(
+                    mensaje: 'No se pudieron cargar las ventas del período.',
+                    error: e,
+                    onReintentar: () => ref.invalidate(reportesProvider(params)),
+                  ),
                 ),
         ),
       ),
@@ -138,7 +143,11 @@ class _DetalleDelRango extends ConsumerWidget {
                 : null,
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, st) => Center(child: Text('Error: $e')),
+          error: (e, st) => BentoFalla(
+            mensaje: 'No se pudo cargar el detalle de las ventas.',
+            error: e,
+            onReintentar: () => ref.invalidate(detalleRangoProvider(params)),
+          ),
         );
   }
 }

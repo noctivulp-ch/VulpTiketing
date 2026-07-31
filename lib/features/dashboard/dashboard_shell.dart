@@ -195,10 +195,7 @@ class _Destino extends StatelessWidget {
     final acento = Theme.of(context).colorScheme.primary;
 
     final icono = Center(
-      child: BentoIcon(
-        nombre,
-        color: seleccionado ? acento : laca.textoAtenuadoEnBandeja,
-      ),
+      child: BentoIcon(nombre, color: seleccionado ? acento : laca.textoAtenuadoEnBandeja),
     );
 
     if (!seleccionado) {
@@ -219,12 +216,7 @@ class _Destino extends StatelessWidget {
     return SizedBox(
       width: bentoObjetivoTactilMin,
       height: bentoObjetivoTactilMin,
-      child: BentoPozo(
-        onTap: onTap,
-        seleccionado: true,
-        padding: EdgeInsets.zero,
-        child: icono,
-      ),
+      child: BentoPozo(onTap: onTap, seleccionado: true, padding: EdgeInsets.zero, child: icono),
     );
   }
 }

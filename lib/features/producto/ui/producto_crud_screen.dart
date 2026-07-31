@@ -6,6 +6,7 @@ import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
+import '../../../core/ui/bento_falla.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../sync/sync_notifier.dart';
 import '../producto_model.dart';
@@ -26,8 +27,7 @@ class ProductoCrudScreen extends ConsumerWidget {
     // El catálogo del Gerente SÍ muestra los descontinuados: es la única
     // pantalla desde la que se puede recontinuarlos.
     final productosAsync = ref.watch(productoCatalogoProvider);
-    final sincronizado =
-        ref.watch(syncNotifierProvider.notifier).todosLosDispositivosSincronizados;
+    final sincronizado = ref.watch(syncNotifierProvider.notifier).todosLosDispositivosSincronizados;
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
 
     return Scaffold(
@@ -98,7 +98,11 @@ class ProductoCrudScreen extends ConsumerWidget {
                       },
                     ),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, st) => Center(child: Text('Error: $e')),
+              error: (e, st) => BentoFalla(
+                mensaje: 'No se pudo cargar el catálogo.',
+                error: e,
+                onReintentar: () => ref.invalidate(productoNotifierProvider),
+              ),
             ),
           ),
           // Barra inferior unificada: buscador + agregar en el mismo panel
@@ -172,9 +176,7 @@ class ProductoCrudScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('¿Purgar este producto?'),
-        content: Text(
-          'Esto borra "${producto.nombre}" de forma permanente. No se puede deshacer.',
-        ),
+        content: Text('Esto borra "${producto.nombre}" de forma permanente. No se puede deshacer.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -189,10 +191,9 @@ class ProductoCrudScreen extends ConsumerWidget {
     );
     if (confirmado != true || !context.mounted) return;
 
-    final resultado = await ref.read(productoNotifierProvider.notifier).purgar(
-          producto.id,
-          todosLosDispositivosSincronizados: sincronizado,
-        );
+    final resultado = await ref
+        .read(productoNotifierProvider.notifier)
+        .purgar(producto.id, todosLosDispositivosSincronizados: sincronizado);
     if (context.mounted) {
       mostrarNotificacionEsquina(context, _mensaje(resultado));
     }
@@ -271,13 +272,11 @@ class _FilaProducto extends StatelessWidget {
                       ? '₡${producto.precioBase.toStringAsFixed(2)}'
                       : 'Fuera de la carta · ₡${producto.precioBase.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        // Atenuado, no translúcido: bajar la opacidad se
-                        // llevaría el contraste por debajo del mínimo AA, y el
-                        // dato tiene que seguir leyéndose.
-                        color: producto.activo
-                            ? null
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    // Atenuado, no translúcido: bajar la opacidad se
+                    // llevaría el contraste por debajo del mínimo AA, y el
+                    // dato tiene que seguir leyéndose.
+                    color: producto.activo ? null : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

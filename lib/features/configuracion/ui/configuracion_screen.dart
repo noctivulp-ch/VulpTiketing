@@ -11,6 +11,7 @@ import '../../import_export/ui/tiketback_panels.dart';
 import '../../import_export/ui/tiketdata_panel.dart';
 import '../../sync/sync_notifier.dart';
 import '../../../core/theme/bento_efectos.dart';
+import '../../../core/ui/bento_falla.dart';
 import '../preferencias_notifier.dart';
 import 'cambiar_contrasena_panel.dart';
 
@@ -420,7 +421,11 @@ class _PanelOrdenProducto extends ConsumerWidget {
                 ref.read(preferenciasNotifierProvider.notifier).cambiarOrden(seleccion.first),
           ),
           loading: () => const CircularProgressIndicator(),
-          error: (e, st) => Text('Error: $e'),
+          error: (e, st) => BentoFalla(
+            mensaje: 'No se pudieron cargar las preferencias.',
+            error: e,
+            onReintentar: () => ref.invalidate(preferenciasNotifierProvider),
+          ),
         ),
       ],
     );

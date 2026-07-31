@@ -20,9 +20,7 @@ class Categoria {
       id: map['id'] as String,
       nombre: map['nombre'] as String,
       updatedAt: DateTime.parse(map['updated_at'] as String),
-      deletedAt: map['deleted_at'] == null
-          ? null
-          : DateTime.parse(map['deleted_at'] as String),
+      deletedAt: map['deleted_at'] == null ? null : DateTime.parse(map['deleted_at'] as String),
     );
   }
 
