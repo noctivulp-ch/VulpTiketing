@@ -1,5 +1,7 @@
 import 'package:cryptography/cryptography.dart';
 import 'package:file_picker/file_picker.dart';
+
+import 'carpeta_exportacion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
@@ -19,14 +21,19 @@ class TiketbackNotifier extends Notifier<void> {
   @override
   void build() {}
 
-  Future<ResultadoTiketback> exportar(String contrasenaExportacion) async {
-    final ruta = await FilePicker.platform.saveFile(
-      dialogTitle: 'Guardar backup',
-      fileName: 'vulptiketing.tiketback',
-    );
-    if (ruta == null) return ResultadoTiketback.cancelado;
-
+  /// Escribe en la carpeta de exportación, sin pasar por el selector.
+  ///
+  /// El selector no sirve para esto en Android: `saveFile` exige los bytes por
+  /// adelantado y un backup de la soda puede pesar más que la memoria libre —
+  /// justo lo que el escritor por trozos existe para evitar.
+  ///
+  /// Devuelve la ruta escrita para poder decirle al usuario dónde quedó.
+  Future<(ResultadoTiketback, String?)> exportar(String contrasenaExportacion) async {
     try {
+      final destino = await const CarpetaExportacion().archivoPara(
+        'vulptiketing-${DateTime.now().toIso8601String().split('T').first}.tiketback',
+      );
+      final ruta = destino.path;
       final db = await ref.read(databaseProvider.future);
       final libros = await ref.read(libroVentasServiceProvider.future);
       await _service.exportar(
@@ -38,9 +45,9 @@ class TiketbackNotifier extends Notifier<void> {
         archivosDeLibro: (await libros.todos(db)).map((l) => l.archivo).toList(),
         rutaDestino: ruta,
       );
-      return ResultadoTiketback.ok;
+      return (ResultadoTiketback.ok, ruta);
     } catch (_) {
-      return ResultadoTiketback.error;
+      return (ResultadoTiketback.error, null);
     }
   }
 

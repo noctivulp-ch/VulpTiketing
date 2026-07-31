@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+
+import 'carpeta_exportacion_control.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/bento_aviso.dart';
@@ -44,11 +47,17 @@ class _PanelExportarBackupState extends ConsumerState<PanelExportarBackup> {
     final contrasena = _contrasenaController.text;
     if (contrasena.isEmpty) return;
     setState(() => _exportando = true);
-    final resultado = await ref.read(tiketbackNotifierProvider.notifier).exportar(contrasena);
+    final (resultado, ruta) = await ref
+        .read(tiketbackNotifierProvider.notifier)
+        .exportar(contrasena);
     if (!mounted) return;
     setState(() => _exportando = false);
     _contrasenaController.clear();
-    final mensaje = _mensaje(resultado, accion: 'exportar');
+    // Con la ruta en el aviso: ya no hay selector, así que si no se dice dónde
+    // quedó el archivo, nadie lo encuentra.
+    final mensaje = resultado == ResultadoTiketback.ok && ruta != null
+        ? '✓ Backup en ${p.basename(ruta)}'
+        : _mensaje(resultado, accion: 'exportar');
     if (mensaje != null) mostrarAviso(context, mensaje);
   }
 
@@ -58,6 +67,8 @@ class _PanelExportarBackupState extends ConsumerState<PanelExportarBackup> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        const CarpetaExportacionControl(),
+        const SizedBox(height: BentoSpacing.unidad),
         Text('Exportar backup', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: BentoSpacing.gapCelda),
         TextField(

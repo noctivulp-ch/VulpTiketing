@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
@@ -22,11 +23,21 @@ class TiketdataService {
 
   /// Solo categorías/productos activos — un catálogo compartido no debería
   /// incluir ítems ya descontinuados en el negocio de origen.
-  Future<void> exportarCatalogo(String rutaDestino) async {
+  /// El catálogo ya serializado, en memoria.
+  ///
+  /// Se devuelve en bytes porque en Android el selector de archivos EXIGE los
+  /// bytes —`saveFile` lanza `ArgumentError` sin ellos— y así exportar no
+  /// llegaba ni a abrir el selector. Un catálogo son unas decenas de KB.
+  Future<Uint8List> generarCatalogo() async {
     final categorias = await _db.query('categoria', where: 'deleted_at IS NULL');
     final productos = await _db.query('producto', where: 'deleted_at IS NULL');
-    final json = jsonEncode({'categorias': categorias, 'productos': productos});
-    await File(rutaDestino).writeAsString(json);
+    return Uint8List.fromList(
+      utf8.encode(jsonEncode({'categorias': categorias, 'productos': productos})),
+    );
+  }
+
+  Future<void> exportarCatalogo(String rutaDestino) async {
+    await File(rutaDestino).writeAsBytes(await generarCatalogo());
   }
 
   Future<void> importarCatalogo({required String rutaOrigen, required ModoImportacion modo}) async {

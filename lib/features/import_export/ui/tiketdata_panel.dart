@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/bento_aviso.dart';
@@ -39,10 +40,12 @@ class _PanelCatalogoState extends ConsumerState<PanelCatalogo> {
 
   Future<void> _exportar() async {
     setState(() => _procesando = true);
-    final resultado = await ref.read(tiketdataNotifierProvider.notifier).exportarCatalogo();
+    final (resultado, ruta) = await ref.read(tiketdataNotifierProvider.notifier).exportarCatalogo();
     if (!mounted) return;
     setState(() => _procesando = false);
-    final mensaje = _mensaje(resultado, importando: false);
+    final mensaje = resultado == ResultadoTiketdata.ok && ruta != null
+        ? '✓ Catálogo en ${p.basename(ruta)}'
+        : _mensaje(resultado, importando: false);
     if (mensaje != null) mostrarAviso(context, mensaje);
   }
 

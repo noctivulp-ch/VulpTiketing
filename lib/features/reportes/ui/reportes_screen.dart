@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
 import '../../../core/nav/retroceso.dart';
 import '../../../core/ui/bento_aviso.dart';
@@ -13,6 +13,7 @@ import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../../core/ui/bento_falla.dart';
+import '../../import_export/carpeta_exportacion.dart';
 import '../reporte_export_service.dart';
 import '../reportes_provider.dart';
 import 'elegir_periodo.dart';
@@ -100,17 +101,8 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     if (!mounted) return;
 
     final (desde, _) = rangoDeFechas(_rango, _fecha);
-    final ruta = await FilePicker.platform.saveFile(
-      dialogTitle: 'Guardar reporte',
-      fileName:
-          'reporte-$sufijoArchivo-${desde.toIso8601String().split('T').first}'
-          '.${formato.extension}',
-    );
-    if (ruta == null || !mounted) return;
-
     try {
-      await const ReporteExportService().exportar(
-        rutaDestino: ruta,
+      final bytes = await const ReporteExportService().generar(
         formato: formato,
         titulo: titulo,
         total: total,
@@ -118,9 +110,18 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         ventas: ventas,
         nota: nota,
       );
-      if (mounted) mostrarAviso(context, '✓ Reporte guardado');
+      // A la carpeta de exportación, sin selector: se elige una vez desde
+      // Configuración y de ahí en adelante exportar es un toque.
+      final destino = await const CarpetaExportacion().archivoPara(
+        'reporte-$sufijoArchivo-${desde.toIso8601String().split('T').first}'
+        '.${formato.extension}',
+      );
+      await destino.writeAsBytes(bytes);
+      // Con el nombre en el aviso: sin selector, si no se dice dónde quedó,
+      // nadie lo encuentra.
+      if (mounted) mostrarAviso(context, '✓ ${p.basename(destino.path)}');
     } catch (_) {
-      if (mounted) mostrarAviso(context, '✗ No se pudo guardar');
+      if (mounted) mostrarAviso(context, '✗ No se pudo guardar el reporte');
     }
   }
 

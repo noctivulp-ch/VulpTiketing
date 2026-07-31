@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
@@ -30,8 +32,40 @@ enum FormatoReporte {
 class ReporteExportService {
   const ReporteExportService();
 
+  /// El archivo ya armado, en memoria.
+  ///
+  /// Se devuelve en bytes y no se escribe acá porque en Android el selector de
+  /// archivos EXIGE los bytes: `saveFile` lanza `ArgumentError` si no se le
+  /// pasan, y sin ellos exportar no llegaba ni a abrir el selector. Un reporte
+  /// pesa unos pocos cientos de KB, así que tenerlo entero en memoria no es
+  /// problema — a diferencia del backup, que por eso va por otro camino.
+  ///
   /// [porTurno] solo cuando el período los tiene: exportando UN turno, una
   /// tabla de turnos con dos ceros y su propio total repetido no informa nada.
+  Future<Uint8List> generar({
+    required FormatoReporte formato,
+    required String titulo,
+    required double total,
+    required List<VentaConLineas> ventas,
+    Map<Turno, double>? porTurno,
+    String? nota,
+  }) async {
+    switch (formato) {
+      case FormatoReporte.csv:
+        return Uint8List.fromList(
+          utf8.encode(
+            _csv(titulo: titulo, total: total, porTurno: porTurno, ventas: ventas, nota: nota),
+          ),
+        );
+      case FormatoReporte.pdf:
+        return Uint8List.fromList(
+          await _pdf(titulo: titulo, total: total, porTurno: porTurno, ventas: ventas, nota: nota),
+        );
+    }
+  }
+
+  /// Escribe el archivo en una ruta. Lo usan las pruebas y el escritorio, donde
+  /// el selector sí devuelve una ruta escribible.
   Future<void> exportar({
     required String rutaDestino,
     required FormatoReporte formato,
@@ -41,17 +75,16 @@ class ReporteExportService {
     Map<Turno, double>? porTurno,
     String? nota,
   }) async {
-    final archivo = File(rutaDestino);
-    switch (formato) {
-      case FormatoReporte.csv:
-        await archivo.writeAsString(
-          _csv(titulo: titulo, total: total, porTurno: porTurno, ventas: ventas, nota: nota),
-        );
-      case FormatoReporte.pdf:
-        await archivo.writeAsBytes(
-          await _pdf(titulo: titulo, total: total, porTurno: porTurno, ventas: ventas, nota: nota),
-        );
-    }
+    await File(rutaDestino).writeAsBytes(
+      await generar(
+        formato: formato,
+        titulo: titulo,
+        total: total,
+        ventas: ventas,
+        porTurno: porTurno,
+        nota: nota,
+      ),
+    );
   }
 
   String _csv({
