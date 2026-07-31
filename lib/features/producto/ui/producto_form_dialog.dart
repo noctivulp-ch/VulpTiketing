@@ -190,6 +190,10 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
               decoration: const InputDecoration(labelText: 'Nombre'),
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
             ),
+            // Los campos con contorno necesitan aire entre sí: la etiqueta
+            // flotante se dibuja SOBRE el borde superior, y pegados, "Precio
+            // base" caía encima de la línea de abajo del campo Nombre.
+            const SizedBox(height: BentoSpacing.unidad),
             TextFormField(
               controller: _precioController,
               decoration: const InputDecoration(labelText: 'Precio base (₡)'),
@@ -273,29 +277,79 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
           ],
         ),
       ),
+      // Cuadrícula, no una fila que se apila sola: con cuatro acciones el
+      // `AlertDialog` las pone una debajo de otra en cuanto no caben, y cuatro
+      // botones en columna se leen como una lista de opciones, no como las
+      // salidas del formulario.
+      //
+      // Dos columnas con significados distintos: a la izquierda lo que le pasa
+      // AL PRODUCTO (volver a la carta, borrarlo), a la derecha lo que le pasa
+      // A ESTE FORMULARIO (salir, guardar).
       actions: [
-        // Un producto fuera de la carta se edita para volverlo a poner o para
-        // sacarlo del todo, así que las dos salidas viven acá. Antes había que
-        // cerrar el formulario y buscar los botones en la fila de la lista:
-        // llegar a editarlo y no encontrar cómo reactivarlo es un callejón.
-        if (_esEdicion && !widget.producto!.activo) ...[
-          TextButton(onPressed: _guardando ? null : _reactivar, child: const Text('Reactivar')),
-          TextButton(onPressed: _guardando ? null : _eliminar, child: const Text('Eliminar')),
-        ],
-        TextButton(
-          onPressed: _guardando ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
+        _Acciones(
+          alProducto: _esEdicion && !widget.producto!.activo
+              ? [
+                  TextButton(
+                    onPressed: _guardando ? null : _reactivar,
+                    child: const Text('Reactivar'),
+                  ),
+                  TextButton(
+                    onPressed: _guardando ? null : _eliminar,
+                    child: const Text('Eliminar'),
+                  ),
+                ]
+              : const [],
+          alFormulario: [
+            TextButton(
+              onPressed: _guardando ? null : () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: _guardando ? null : _guardar,
+              child: _guardando
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Guardar'),
+            ),
+          ],
         ),
-        FilledButton(
-          onPressed: _guardando ? null : _guardar,
-          child: _guardando
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Guardar'),
-        ),
+      ],
+    );
+  }
+}
+
+/// Las acciones del formulario en dos columnas: producto a la izquierda,
+/// formulario a la derecha.
+///
+/// Fila por fila y no una `Row` con los cuatro: en 360 dp no entran de ancho, y
+/// dejar que el diálogo los apile solo los alinea a todos a la derecha —
+/// perdiendo justamente la distinción entre las dos columnas.
+class _Acciones extends StatelessWidget {
+  const _Acciones({required this.alProducto, required this.alFormulario});
+
+  /// Lo que le pasa al producto. Vacío cuando está en la carta: no hay nada que
+  /// reactivar ni conviene ofrecer borrar algo que se está usando.
+  final List<Widget> alProducto;
+
+  /// Lo que le pasa a este formulario. Siempre hay dos: salir y guardar.
+  final List<Widget> alFormulario;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < alFormulario.length; i++)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              if (i < alProducto.length) alProducto[i] else const SizedBox.shrink(),
+              alFormulario[i],
+            ],
+          ),
       ],
     );
   }
