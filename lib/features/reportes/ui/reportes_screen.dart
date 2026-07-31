@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/nav/retroceso.dart';
-import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
@@ -118,9 +118,9 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         ventas: ventas,
         nota: nota,
       );
-      if (mounted) mostrarNotificacionEsquina(context, '✓ Reporte guardado');
+      if (mounted) mostrarAviso(context, '✓ Reporte guardado');
     } catch (_) {
-      if (mounted) mostrarNotificacionEsquina(context, '✗ No se pudo guardar');
+      if (mounted) mostrarAviso(context, '✗ No se pudo guardar');
     }
   }
 

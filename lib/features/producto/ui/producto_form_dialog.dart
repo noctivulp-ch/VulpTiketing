@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_falla.dart';
 import '../../sync/sync_notifier.dart';
@@ -107,9 +107,9 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
       case PurgarResultado.ok:
         Navigator.of(context).pop();
       case PurgarResultado.tieneVentasAsociadas:
-        mostrarNotificacionEsquina(context, '✗ Tiene ventas: no se puede borrar');
+        mostrarAviso(context, '✗ Tiene ventas: no se puede borrar');
       case PurgarResultado.faltaSincronizar:
-        mostrarNotificacionEsquina(context, '✗ Falta sincronizar los otros aparatos');
+        mostrarAviso(context, '✗ Falta sincronizar los otros aparatos');
     }
   }
 

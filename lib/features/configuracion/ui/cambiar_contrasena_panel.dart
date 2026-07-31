@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 
@@ -57,7 +57,7 @@ class _PanelCambiarContrasenaState extends ConsumerState<PanelCambiarContrasena>
     _nuevaController.clear();
     _confirmarController.clear();
     setState(() => _guardando = false);
-    mostrarNotificacionEsquina(context, '✓ Contraseña actualizada');
+    mostrarAviso(context, '✓ Contraseña actualizada');
   }
 
   @override

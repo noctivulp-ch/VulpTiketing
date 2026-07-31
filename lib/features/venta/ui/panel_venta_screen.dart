@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/nav/retroceso.dart';
 import '../../../core/theme/bento_bandeja.dart';
-import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_falla.dart';
@@ -66,7 +66,7 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
         _finalizando = false;
         _panelAbierto = false;
       });
-      mostrarNotificacionEsquina(context, '✓ Venta OK');
+      mostrarAviso(context, '✓ Venta OK');
     }
   }
 

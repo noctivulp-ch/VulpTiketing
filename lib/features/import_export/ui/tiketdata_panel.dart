@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../tiketdata_notifier.dart';
 import '../tiketdata_service.dart';
@@ -43,7 +43,7 @@ class _PanelCatalogoState extends ConsumerState<PanelCatalogo> {
     if (!mounted) return;
     setState(() => _procesando = false);
     final mensaje = _mensaje(resultado, importando: false);
-    if (mensaje != null) mostrarNotificacionEsquina(context, mensaje);
+    if (mensaje != null) mostrarAviso(context, mensaje);
   }
 
   Future<void> _importar(ModoImportacion modo) async {
@@ -52,7 +52,7 @@ class _PanelCatalogoState extends ConsumerState<PanelCatalogo> {
     if (!mounted) return;
     setState(() => _procesando = false);
     final mensaje = _mensaje(resultado, importando: true);
-    if (mensaje != null) mostrarNotificacionEsquina(context, mensaje);
+    if (mensaje != null) mostrarAviso(context, mensaje);
     _reiniciar();
   }
 

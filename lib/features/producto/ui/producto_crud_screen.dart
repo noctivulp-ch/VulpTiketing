@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
-import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
@@ -84,7 +84,7 @@ class ProductoCrudScreen extends ConsumerWidget {
                               await notifier.recontinuar(producto.id);
                             }
                             if (context.mounted) {
-                              mostrarNotificacionEsquina(
+                              mostrarAviso(
                                 context,
                                 producto.activo
                                     ? '✓ Producto descontinuado'
@@ -150,7 +150,7 @@ class ProductoCrudScreen extends ConsumerWidget {
       builder: (_) => ProductoFormDialog(producto: producto),
     );
     if (guardado == true && context.mounted) {
-      mostrarNotificacionEsquina(context, '✓ Producto actualizado');
+      mostrarAviso(context, '✓ Producto actualizado');
     }
   }
 
@@ -160,7 +160,7 @@ class ProductoCrudScreen extends ConsumerWidget {
       builder: (_) => const ProductoFormDialog(),
     );
     if (guardado == true && context.mounted) {
-      mostrarNotificacionEsquina(context, '✓ Producto creado');
+      mostrarAviso(context, '✓ Producto creado');
     }
   }
 
@@ -195,7 +195,7 @@ class ProductoCrudScreen extends ConsumerWidget {
         .read(productoNotifierProvider.notifier)
         .purgar(producto.id, todosLosDispositivosSincronizados: sincronizado);
     if (context.mounted) {
-      mostrarNotificacionEsquina(context, _mensaje(resultado));
+      mostrarAviso(context, _mensaje(resultado));
     }
   }
 

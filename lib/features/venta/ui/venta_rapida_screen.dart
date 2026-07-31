@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
-import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_velo.dart';
@@ -127,7 +127,7 @@ class VentaRapidaScreen extends ConsumerWidget {
       builder: (_) => _OverlayCobroRapido(producto: producto),
     );
     if (completado == true && context.mounted) {
-      mostrarNotificacionEsquina(context, '✓ Venta OK');
+      mostrarAviso(context, '✓ Venta OK');
     }
   }
 }

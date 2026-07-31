@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/bento_corner_notice.dart';
+import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../tiketback_notifier.dart';
 import '../tiketback_service.dart';
@@ -49,7 +49,7 @@ class _PanelExportarBackupState extends ConsumerState<PanelExportarBackup> {
     setState(() => _exportando = false);
     _contrasenaController.clear();
     final mensaje = _mensaje(resultado, accion: 'exportar');
-    if (mensaje != null) mostrarNotificacionEsquina(context, mensaje);
+    if (mensaje != null) mostrarAviso(context, mensaje);
   }
 
   @override
@@ -154,7 +154,7 @@ class _PanelRestaurarBackupState extends ConsumerState<PanelRestaurarBackup> {
     });
     _contrasenaController.clear();
     final mensaje = _mensaje(resultado, accion: 'restaurar');
-    if (mensaje != null) mostrarNotificacionEsquina(context, mensaje);
+    if (mensaje != null) mostrarAviso(context, mensaje);
   }
 
   @override

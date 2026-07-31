@@ -106,8 +106,7 @@ class AppDatabase {
 
     // El libro abierto se adjunta aca: desde este momento `SELECT * FROM venta`
     // resuelve contra el, sin que el resto del codigo tenga que calificar nada.
-    await LibroVentasService(directorio: p.dirname(await ruta()))
-        .adjuntarAbierto(db);
+    await LibroVentasService(directorio: p.dirname(await ruta())).adjuntarAbierto(db);
 
     // `_instance` se asigna al FINAL, con la base ya usable. Asignarla antes
     // dejaba una ventana donde otro lector se la llevaba a medio preparar, sin
@@ -129,11 +128,7 @@ class AppDatabase {
   /// lo que hace que funcione — SQLite resuelve los nombres sin calificar
   /// contra las bases adjuntas, asi que `SELECT * FROM venta` va solo al libro
   /// abierto y el resto del codigo no tuvo que cambiar.
-  static const esquema = [
-    _createCategoria,
-    _createProducto,
-    _createLibroVentas,
-  ];
+  static const esquema = [_createCategoria, _createProducto, _createLibroVentas];
 
   /// Indices de la base principal. Desde v3 los de `venta`/`linea_venta` no
   /// estan aca: se aplican a cada libro (ver `esquemaLibro`), porque es ahi
@@ -240,10 +235,7 @@ class AppDatabase {
     }
 
     // Dias distintos con ventas, que es la unidad con la que se mide un libro.
-    final dias = ventas
-        .map((v) => (v['fecha_hora'] as String).split('T').first)
-        .toSet()
-        .length;
+    final dias = ventas.map((v) => (v['fecha_hora'] as String).split('T').first).toSet().length;
 
     await db.insert('libro_ventas', {
       'id': const Uuid().v4(),
@@ -296,5 +288,4 @@ class AppDatabase {
       cerrado          INTEGER NOT NULL DEFAULT 0
     );
   ''';
-
 }
