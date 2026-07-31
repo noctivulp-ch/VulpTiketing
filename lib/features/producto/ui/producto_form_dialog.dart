@@ -13,6 +13,10 @@ import '../producto_notifier.dart';
 
 const _uuid = Uuid();
 
+/// Por debajo de este alto la pantalla se considera acostada — el mismo umbral
+/// que usa Reportes.
+const _altoAcostado = 520.0;
+
 /// Formulario de crear/editar Producto — Ventana 3
 /// (docs/pantallas/flujo-descripcion.md#ventana-3--crud-de-producto).
 ///
@@ -178,146 +182,153 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
   @override
   Widget build(BuildContext context) {
     final categoriasAsync = ref.watch(categoriaNotifierProvider);
+    // Acostado el alto es el recurso escaso: los campos ya se lo comen y las
+    // acciones abajo desbordaban 95 px. Se van al costado, que es donde SÍ
+    // sobra espacio.
+    final acostado = MediaQuery.sizeOf(context).height < _altoAcostado;
+
+    final formulario = Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            controller: _nombreController,
+            decoration: const InputDecoration(labelText: 'Nombre'),
+            validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+          ),
+          // Los campos con contorno necesitan aire entre sí: la etiqueta
+          // flotante se dibuja SOBRE el borde superior, y pegados, "Precio
+          // base" caía encima de la línea de abajo del campo Nombre.
+          const SizedBox(height: BentoSpacing.unidad),
+          TextFormField(
+            controller: _precioController,
+            decoration: const InputDecoration(labelText: 'Precio base (₡)'),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Requerido';
+              if (double.tryParse(v) == null) return 'Número inválido';
+              return null;
+            },
+          ),
+          const SizedBox(height: BentoSpacing.unidad),
+          categoriasAsync.when(
+            data: (categorias) {
+              // El producto puede apuntar a una categoría que ya no está —
+              // pasa tras importar un catálogo con reemplazo, o cuando la
+              // sincronización trae un borrado. Sin esta entrada extra, el
+              // `DropdownButton` REVIENTA la pantalla entera con un assert
+              // ("exactly one item with value X"), y editar el producto para
+              // arreglarlo se vuelve imposible: justo lo que hace falta.
+              //
+              // Se muestra en vez de caer a "Sin categoría" en silencio: que
+              // el dato esté roto tiene que verse, y elegir otra categoría lo
+              // corrige al guardar.
+              final huerfana = _categoriaId != null && !categorias.any((c) => c.id == _categoriaId);
+              return Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String?>(
+                      initialValue: _categoriaId,
+                      // El desplegable ocupa el ancho que le den y recorta lo
+                      // que sobre. Sin esto se dimensiona por su etiqueta más
+                      // larga y se sale de la caja: "(categoría eliminada)"
+                      // ya desbordaba 4,4 px, y un nombre de categoría largo
+                      // haría lo mismo.
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Categoría'),
+                      // Con elipsis, no cortado en seco: `isExpanded` recorta
+                      // por el ancho disponible y sin esto un nombre largo
+                      // termina a mitad de palabra, sin señal de que sigue.
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('Sin categoría', overflow: TextOverflow.ellipsis),
+                        ),
+                        for (final c in categorias)
+                          DropdownMenuItem(
+                            value: c.id,
+                            child: Text(c.nombre, overflow: TextOverflow.ellipsis),
+                          ),
+                        if (huerfana)
+                          DropdownMenuItem(
+                            value: _categoriaId,
+                            child: const Text(
+                              'Categoría eliminada',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _categoriaId = v),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    tooltip: 'Nueva categoría',
+                    onPressed: _crearCategoria,
+                  ),
+                ],
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: LinearProgressIndicator(),
+            ),
+            error: (e, st) => BentoFalla(
+              mensaje: 'No se pudieron cargar las categorías.',
+              error: e,
+              onReintentar: () => ref.invalidate(categoriaNotifierProvider),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final acciones = _Acciones(
+      alProducto: _esEdicion && !widget.producto!.activo
+          ? [
+              TextButton(onPressed: _guardando ? null : _reactivar, child: const Text('Reactivar')),
+              TextButton(onPressed: _guardando ? null : _eliminar, child: const Text('Eliminar')),
+            ]
+          : const [],
+      alFormulario: [
+        TextButton(
+          onPressed: _guardando ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _guardando ? null : _guardar,
+          child: _guardando
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Guardar'),
+        ),
+      ],
+      enColumna: acostado,
+    );
 
     return AlertDialog(
       title: Text(_esEdicion ? 'Editar producto' : 'Nuevo producto'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _nombreController,
-              decoration: const InputDecoration(labelText: 'Nombre'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-            ),
-            // Los campos con contorno necesitan aire entre sí: la etiqueta
-            // flotante se dibuja SOBRE el borde superior, y pegados, "Precio
-            // base" caía encima de la línea de abajo del campo Nombre.
-            const SizedBox(height: BentoSpacing.unidad),
-            TextFormField(
-              controller: _precioController,
-              decoration: const InputDecoration(labelText: 'Precio base (₡)'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Requerido';
-                if (double.tryParse(v) == null) return 'Número inválido';
-                return null;
-              },
-            ),
-            const SizedBox(height: BentoSpacing.unidad),
-            categoriasAsync.when(
-              data: (categorias) {
-                // El producto puede apuntar a una categoría que ya no está —
-                // pasa tras importar un catálogo con reemplazo, o cuando la
-                // sincronización trae un borrado. Sin esta entrada extra, el
-                // `DropdownButton` REVIENTA la pantalla entera con un assert
-                // ("exactly one item with value X"), y editar el producto para
-                // arreglarlo se vuelve imposible: justo lo que hace falta.
-                //
-                // Se muestra en vez de caer a "Sin categoría" en silencio: que
-                // el dato esté roto tiene que verse, y elegir otra categoría lo
-                // corrige al guardar.
-                final huerfana =
-                    _categoriaId != null && !categorias.any((c) => c.id == _categoriaId);
-                return Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String?>(
-                        initialValue: _categoriaId,
-                        // El desplegable ocupa el ancho que le den y recorta lo
-                        // que sobre. Sin esto se dimensiona por su etiqueta más
-                        // larga y se sale de la caja: "(categoría eliminada)"
-                        // ya desbordaba 4,4 px, y un nombre de categoría largo
-                        // haría lo mismo.
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Categoría'),
-                        // Con elipsis, no cortado en seco: `isExpanded` recorta
-                        // por el ancho disponible y sin esto un nombre largo
-                        // termina a mitad de palabra, sin señal de que sigue.
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('Sin categoría', overflow: TextOverflow.ellipsis),
-                          ),
-                          for (final c in categorias)
-                            DropdownMenuItem(
-                              value: c.id,
-                              child: Text(c.nombre, overflow: TextOverflow.ellipsis),
-                            ),
-                          if (huerfana)
-                            DropdownMenuItem(
-                              value: _categoriaId,
-                              child: const Text(
-                                'Categoría eliminada',
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                        onChanged: (v) => setState(() => _categoriaId = v),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      tooltip: 'Nueva categoría',
-                      onPressed: _crearCategoria,
-                    ),
-                  ],
-                );
-              },
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: LinearProgressIndicator(),
+      content: acostado
+          // Acostado: campos a la izquierda y acciones apiladas a la derecha,
+          // todo dentro del contenido. Dejarlas en `actions` las mandaría
+          // debajo, que es lo que no entra.
+          ? SizedBox(
+              width: 560,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: SingleChildScrollView(child: formulario)),
+                  const SizedBox(width: BentoSpacing.pared),
+                  acciones,
+                ],
               ),
-              error: (e, st) => BentoFalla(
-                mensaje: 'No se pudieron cargar las categorías.',
-                error: e,
-                onReintentar: () => ref.invalidate(categoriaNotifierProvider),
-              ),
-            ),
-          ],
-        ),
-      ),
-      // Cuadrícula, no una fila que se apila sola: con cuatro acciones el
-      // `AlertDialog` las pone una debajo de otra en cuanto no caben, y cuatro
-      // botones en columna se leen como una lista de opciones, no como las
-      // salidas del formulario.
-      //
-      // Dos columnas con significados distintos: a la izquierda lo que le pasa
-      // AL PRODUCTO (volver a la carta, borrarlo), a la derecha lo que le pasa
-      // A ESTE FORMULARIO (salir, guardar).
-      actions: [
-        _Acciones(
-          alProducto: _esEdicion && !widget.producto!.activo
-              ? [
-                  TextButton(
-                    onPressed: _guardando ? null : _reactivar,
-                    child: const Text('Reactivar'),
-                  ),
-                  TextButton(
-                    onPressed: _guardando ? null : _eliminar,
-                    child: const Text('Eliminar'),
-                  ),
-                ]
-              : const [],
-          alFormulario: [
-            TextButton(
-              onPressed: _guardando ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: _guardando ? null : _guardar,
-              child: _guardando
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Guardar'),
-            ),
-          ],
-        ),
-      ],
+            )
+          : formulario,
+      actions: acostado ? null : [acciones],
     );
   }
 }
@@ -329,7 +340,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
 /// dejar que el diálogo los apile solo los alinea a todos a la derecha —
 /// perdiendo justamente la distinción entre las dos columnas.
 class _Acciones extends StatelessWidget {
-  const _Acciones({required this.alProducto, required this.alFormulario});
+  const _Acciones({required this.alProducto, required this.alFormulario, this.enColumna = false});
 
   /// Lo que le pasa al producto. Vacío cuando está en la carta: no hay nada que
   /// reactivar ni conviene ofrecer borrar algo que se está usando.
@@ -338,8 +349,29 @@ class _Acciones extends StatelessWidget {
   /// Lo que le pasa a este formulario. Siempre hay dos: salir y guardar.
   final List<Widget> alFormulario;
 
+  /// Todo en una sola columna, para cuando las acciones van al costado del
+  /// formulario en vez de debajo.
+  final bool enColumna;
+
   @override
   Widget build(BuildContext context) {
+    if (enColumna) {
+      // `IntrinsicWidth`: los botones se estiran al ancho del más ancho, que es
+      // lo que los alinea como columna. Sin él, `stretch` dentro de una fila
+      // pide ancho infinito y el diálogo no llega ni a dibujarse.
+      return IntrinsicWidth(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // El mismo orden que en la cuadrícula: primero lo del producto,
+            // después lo del formulario.
+            ...alProducto,
+            ...alFormulario,
+          ],
+        ),
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

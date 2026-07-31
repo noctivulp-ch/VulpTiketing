@@ -23,7 +23,12 @@ void main() {
     updatedAt: DateTime(2026),
   );
 
-  Future<void> montar(WidgetTester tester, Producto p) async {
+  Future<void> montar(WidgetTester tester, Producto p, {Size? tamano}) async {
+    if (tamano != null) {
+      tester.view.physicalSize = tamano;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+    }
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -63,6 +68,20 @@ void main() {
 
     expect(find.text('Reactivar'), findsOneWidget);
     expect(find.text('Eliminar'), findsOneWidget);
+  });
+
+  testWidgets('acostado no desborda: las acciones se van al costado', (tester) async {
+    // Acostado el alto es el recurso escaso, y con las cuatro acciones debajo
+    // el diálogo desbordaba 95 px en el aparato.
+    await montar(
+      tester,
+      producto(activo: false, categoriaId: 'cat-viva'),
+      tamano: const Size(800, 360),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Reactivar'), findsOneWidget);
+    expect(find.text('Guardar'), findsOneWidget);
   });
 
   testWidgets('uno activo no ofrece ninguna de las dos', (tester) async {

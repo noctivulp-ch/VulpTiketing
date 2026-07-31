@@ -281,7 +281,16 @@ class _SeparadorConToggle extends StatelessWidget {
         alignment: Alignment.bottomCenter,
         child: Padding(
           padding: const EdgeInsets.only(bottom: BentoSpacing.unidad),
-          child: boton,
+          // `OverflowBox`: la costura mide 24 y el botón 36, así que el ancho
+          // de la costura lo APLASTABA — el círculo se recortaba a 24 y el
+          // icono, que sigue midiendo 20 más su padding, terminaba corrido y
+          // saliéndose por la derecha. Con esto el botón toma su tamaño natural
+          // y queda centrado sobre la pared.
+          child: OverflowBox(
+            maxWidth: bentoObjetivoTactilMin,
+            alignment: Alignment.center,
+            child: boton,
+          ),
         ),
       ),
     );
