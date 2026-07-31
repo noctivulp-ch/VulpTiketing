@@ -13,7 +13,8 @@ void mostrarNotificacionEsquina(BuildContext context, String mensaje) {
   final overlay = Overlay.of(context);
   late final OverlayEntry entrada;
   entrada = OverlayEntry(
-    builder: (context) => _NotificacionEsquina(mensaje: mensaje, onTerminar: () => entrada.remove()),
+    builder: (context) =>
+        _NotificacionEsquina(mensaje: mensaje, onTerminar: () => entrada.remove()),
   );
   overlay.insert(entrada);
 }

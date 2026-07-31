@@ -25,8 +25,7 @@ enum BentoAncho {
   static const double _corteMedio = 600;
   static const double _corteAmplio = 1024;
 
-  static BentoAncho de(BuildContext context) =>
-      deAncho(MediaQuery.sizeOf(context).width);
+  static BentoAncho de(BuildContext context) => deAncho(MediaQuery.sizeOf(context).width);
 
   /// Separado de [de] para poder decidir a partir del ancho de una caja y no
   /// del de la ventana: un panel lateral angosto dentro de un escritorio ancho
@@ -82,13 +81,13 @@ class BentoCelda {
     required this.medio,
     required this.amplio,
     required this.hijo,
-  })  : assert(compacto >= 1 && compacto <= bentoColumnas),
-        assert(medio >= 1 && medio <= bentoColumnas),
-        assert(amplio >= 1 && amplio <= bentoColumnas);
+  }) : assert(compacto >= 1 && compacto <= bentoColumnas),
+       assert(medio >= 1 && medio <= bentoColumnas),
+       assert(amplio >= 1 && amplio <= bentoColumnas);
 
   /// Ocupa lo mismo en los tres tamaños.
   const BentoCelda.fija(int columnas, {required Widget hijo})
-      : this(compacto: columnas, medio: columnas, amplio: columnas, hijo: hijo);
+    : this(compacto: columnas, medio: columnas, amplio: columnas, hijo: hijo);
 
   final int compacto;
   final int medio;
@@ -96,10 +95,10 @@ class BentoCelda {
   final Widget hijo;
 
   int columnasEn(BentoAncho ancho) => switch (ancho) {
-        BentoAncho.compacto => compacto,
-        BentoAncho.medio => medio,
-        BentoAncho.amplio => amplio,
-      };
+    BentoAncho.compacto => compacto,
+    BentoAncho.medio => medio,
+    BentoAncho.amplio => amplio,
+  };
 }
 
 /// La retícula bento: reparte sus celdas en filas de [bentoColumnas] columnas.
@@ -160,10 +159,7 @@ class BentoCuadricula extends StatelessWidget {
           children: [
             for (var i = 0; i < filas.length; i++) ...[
               if (i > 0) SizedBox(height: separacion),
-              if (llenarAlto)
-                Expanded(child: _fila(filas[i], ancho))
-              else
-                _fila(filas[i], ancho),
+              if (llenarAlto) Expanded(child: _fila(filas[i], ancho)) else _fila(filas[i], ancho),
             ],
           ],
         );
@@ -193,19 +189,15 @@ class BentoCuadricula extends StatelessWidget {
   }
 
   Widget _fila(List<BentoCelda> celdas, BentoAncho ancho) {
-    final ocupadas =
-        celdas.fold<int>(0, (suma, c) => suma + c.columnasEn(ancho));
+    final ocupadas = celdas.fold<int>(0, (suma, c) => suma + c.columnasEn(ancho));
 
     final fila = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-          for (var i = 0; i < celdas.length; i++) ...[
-            if (i > 0) SizedBox(width: separacion),
-            Expanded(
-              flex: celdas[i].columnasEn(ancho),
-              child: celdas[i].hijo,
-            ),
-          ],
+        for (var i = 0; i < celdas.length; i++) ...[
+          if (i > 0) SizedBox(width: separacion),
+          Expanded(flex: celdas[i].columnasEn(ancho), child: celdas[i].hijo),
+        ],
         // Una fila a medio llenar mantiene el ancho de sus celdas en vez de
         // estirarlas: si la última fila tuviera celdas más anchas que las de
         // arriba, la retícula dejaría de leerse como una retícula.

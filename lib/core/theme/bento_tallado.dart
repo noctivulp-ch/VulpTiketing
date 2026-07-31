@@ -89,20 +89,11 @@ class BentoTallado extends StatelessWidget {
     Widget capa(Color color, double dy) {
       return Transform.translate(
         offset: Offset(0, dy),
-        child: ColorFiltered(
-          colorFilter: ColorFilter.mode(color, BlendMode.srcATop),
-          child: child,
-        ),
+        child: ColorFiltered(colorFilter: ColorFilter.mode(color, BlendMode.srcATop), child: child),
       );
     }
 
-    return Stack(
-      children: [
-        capa(sombra, -profundidad),
-        capa(luz, profundidad),
-        child,
-      ],
-    );
+    return Stack(children: [capa(sombra, -profundidad), capa(luz, profundidad), child]);
   }
 }
 

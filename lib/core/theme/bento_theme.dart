@@ -59,7 +59,12 @@ class BentoRadius {
 }
 
 /// Duracion del feedback tactil (onda al presionar).
-const Duration bentoFeedbackTactilDuracion = Duration(milliseconds: 200);
+///
+/// 240 y no 200: a 200 el toque no llegaba a leerse — la onda crecia y se
+/// apagaba antes de que la pantalla reaccionara, asi que el elemento tocado
+/// nunca se veia lleno. Con esto crece en 240, se sostiene un tercio del
+/// desvanecido y recien ahi se apaga.
+const Duration bentoFeedbackTactilDuracion = Duration(milliseconds: 240);
 
 /// Objetivo tactil minimo. Corre en tablet en el mostrador (escena de uso
 /// confirmada), asi que todo lo tocable respeta esto — DESIGN.md, regla 6.
@@ -322,7 +327,13 @@ ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightnes
     textTheme: _escalaTipografica(base.textTheme),
     // La bandeja es el plano de fondo de toda pantalla.
     scaffoldBackgroundColor: laca.bandeja,
-    splashFactory: BentoGrainSplash.splashFactory,
+    // El toque se pinta con el material del elemento, no con blanco: relleno
+    // con el pozo en contacto —el mismo tono que ya usa un pozo presionado— y
+    // el frente de la onda con la cresta, que es literalmente su borde.
+    splashFactory: BentoGrainSplash.factoriaDe(
+      relleno: laca.pozoContacto,
+      cresta: laca.paredCresta,
+    ),
     // Sin elevacion ni sombra: la profundidad la da la cresta, no una sombra
     // proyectada (DESIGN.md, regla 1).
     cardTheme: CardThemeData(
@@ -365,9 +376,7 @@ ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightnes
       ),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
-      style: SegmentedButton.styleFrom(
-        side: BorderSide(color: scheme.primary),
-      ),
+      style: SegmentedButton.styleFrom(side: BorderSide(color: scheme.primary)),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(

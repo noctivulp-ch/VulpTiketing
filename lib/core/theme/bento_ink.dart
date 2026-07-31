@@ -20,6 +20,7 @@ class BentoGrainSplash extends InteractiveInkFeature {
     required super.referenceBox,
     required Offset position,
     required Color color,
+    required this.colorCresta,
     required TextDirection textDirection,
     bool containedInkWell = false,
     RectCallback? rectCallback,
@@ -34,7 +35,8 @@ class BentoGrainSplash extends InteractiveInkFeature {
        _clipCallback = containedInkWell
            ? (rectCallback ?? (() => Offset.zero & referenceBox.size))
            : null,
-       _targetRadius = radius ?? _radioObjetivo(referenceBox, containedInkWell, rectCallback, position),
+       _targetRadius =
+           radius ?? _radioObjetivo(referenceBox, containedInkWell, rectCallback, position),
        super(controller: controller, color: color) {
     _radioControlador =
         AnimationController(duration: bentoFeedbackTactilDuracion, vsync: controller.vsync)
@@ -53,10 +55,20 @@ class BentoGrainSplash extends InteractiveInkFeature {
     _radio = _radioControlador.drive(
       Tween<double>(begin: 0, end: _targetRadius).chain(CurveTween(curve: Curves.easeOut)),
     );
-    _alfaControlador =
-        AnimationController(duration: bentoFeedbackTactilDuracion ~/ 2, vsync: controller.vsync)
-          ..addStatusListener(_alTerminarFade);
-    _alfa = _alfaControlador.drive(IntTween(begin: (color.a * 255.0).round(), end: 0));
+    _alfaControlador = AnimationController(
+      duration: bentoFeedbackTactilDuracion,
+      vsync: controller.vsync,
+    )..addStatusListener(_alTerminarFade);
+    // `Interval`: el primer tercio del desvanecido mantiene la opacidad. Es la
+    // PAUSA que pidió el usuario — el elemento tocado termina de llenarse y se
+    // deja ver lleno antes de apagarse. Sin ella el toque parecía un parpadeo.
+    // Curva primero y tween después, siempre (ver el comentario del radio).
+    _alfa = _alfaControlador.drive(
+      IntTween(
+        begin: (color.a * 255.0).round(),
+        end: 0,
+      ).chain(CurveTween(curve: const Interval(0.35, 1, curve: Curves.easeIn))),
+    );
     _radioControlador.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         _alfaControlador
@@ -66,6 +78,9 @@ class BentoGrainSplash extends InteractiveInkFeature {
     });
     controller.addInkFeature(this);
   }
+
+  /// El metal que ribetea el borde del elemento tocado.
+  final Color colorCresta;
 
   final Offset _position;
   final BorderRadius _borderRadius;
@@ -78,7 +93,11 @@ class BentoGrainSplash extends InteractiveInkFeature {
   late final AnimationController _alfaControlador;
   late final Animation<int> _alfa;
 
-  static const InteractiveInkFeatureFactory splashFactory = _BentoGrainSplashFactory();
+  /// La fábrica lleva los colores porque `create` no recibe un `BuildContext`
+  /// y la laca vive en una extensión de tema. Se arma una vez, al construir el
+  /// tema, donde la laca sí está a mano.
+  static InteractiveInkFeatureFactory factoriaDe({required Color relleno, required Color cresta}) =>
+      _BentoGrainSplashFactory(relleno: relleno, cresta: cresta);
 
   static double _radioObjetivo(
     RenderBox referenceBox,
@@ -131,13 +150,15 @@ class BentoGrainSplash extends InteractiveInkFeature {
       if (customBorder != null) {
         canvas.clipPath(customBorder!.getOuterPath(rect, textDirection: _textDirection));
       } else if (_borderRadius != BorderRadius.zero) {
-        canvas.clipRRect(RRect.fromRectAndCorners(
-          rect,
-          topLeft: _borderRadius.topLeft,
-          topRight: _borderRadius.topRight,
-          bottomLeft: _borderRadius.bottomLeft,
-          bottomRight: _borderRadius.bottomRight,
-        ));
+        canvas.clipRRect(
+          RRect.fromRectAndCorners(
+            rect,
+            topLeft: _borderRadius.topLeft,
+            topRight: _borderRadius.topRight,
+            bottomLeft: _borderRadius.bottomLeft,
+            bottomRight: _borderRadius.bottomRight,
+          ),
+        );
       } else {
         canvas.clipRect(rect);
       }
@@ -146,13 +167,28 @@ class BentoGrainSplash extends InteractiveInkFeature {
     canvas.save();
     canvas.clipPath(Path()..addOval(Rect.fromCircle(center: _position, radius: radio)));
     final colorConAlfa = color.withAlpha(_alfa.value);
-    canvas.drawCircle(_position, radio, Paint()..color = colorConAlfa.withAlpha((_alfa.value * 0.35).round()));
+    canvas.drawCircle(
+      _position,
+      radio,
+      Paint()..color = colorConAlfa.withAlpha((_alfa.value * 0.35).round()),
+    );
     final granoPaint = Paint()..color = colorConAlfa;
     for (final grano in _granos) {
       final centro = _position + Offset(grano.dx, grano.dy) * radio;
       granoPaint.color = colorConAlfa.withAlpha((_alfa.value * grano.intensidad).round());
       canvas.drawCircle(centro, grano.tamano * radio, granoPaint);
     }
+    // El frente de la onda lleva LA CRESTA del elemento, el mismo metal que
+    // ribetea su borde. Es lo que hace que el toque se lea como parte de la
+    // pieza y no como una capa blanca encima.
+    canvas.drawCircle(
+      _position,
+      radio,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = colorCresta.withAlpha((_alfa.value * 0.9).round()),
+    );
     canvas.restore();
     canvas.restore();
   }
@@ -181,7 +217,12 @@ class BentoGrainSplash extends InteractiveInkFeature {
 }
 
 class _Grano {
-  const _Grano({required this.dx, required this.dy, required this.tamano, required this.intensidad});
+  const _Grano({
+    required this.dx,
+    required this.dy,
+    required this.tamano,
+    required this.intensidad,
+  });
 
   final double dx;
   final double dy;
@@ -190,7 +231,10 @@ class _Grano {
 }
 
 class _BentoGrainSplashFactory extends InteractiveInkFeatureFactory {
-  const _BentoGrainSplashFactory();
+  const _BentoGrainSplashFactory({required this.relleno, required this.cresta});
+
+  final Color relleno;
+  final Color cresta;
 
   @override
   InteractiveInkFeature create({
@@ -210,7 +254,10 @@ class _BentoGrainSplashFactory extends InteractiveInkFeatureFactory {
       controller: controller,
       referenceBox: referenceBox,
       position: position,
-      color: color,
+      // El color del tema manda sobre el que pida cada widget: el toque es un
+      // material de la app, no un detalle de cada botón.
+      color: relleno,
+      colorCresta: cresta,
       textDirection: textDirection,
       containedInkWell: containedInkWell,
       rectCallback: rectCallback,
