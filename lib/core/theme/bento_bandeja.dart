@@ -45,6 +45,7 @@ class BentoPozo extends StatelessWidget {
     super.key,
     required this.child,
     this.onTap,
+    this.onLongPress,
     this.seleccionado = false,
     this.padding = const EdgeInsets.all(BentoSpacing.paddingCelda),
     this.radio = BentoRadius.pozo,
@@ -52,6 +53,10 @@ class BentoPozo extends StatelessWidget {
 
   final Widget child;
   final VoidCallback? onTap;
+
+  /// Acción secundaria del compartimento. Se usa para lo que no debe competir
+  /// con el toque simple — exportar un reporte, por ejemplo.
+  final VoidCallback? onLongPress;
 
   /// Seleccion actual: la cresta pasa al oro de laca y engorda. El acento
   /// nunca se usa decorativamente, solo para esto y para accion primaria.
@@ -68,11 +73,12 @@ class BentoPozo extends StatelessWidget {
 
     Widget contenido = Padding(padding: padding, child: child);
 
-    if (onTap != null) {
+    if (onTap != null || onLongPress != null) {
       contenido = Material(
         type: MaterialType.transparency,
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: borde,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: bentoObjetivoTactilMin),

@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/nav/retroceso.dart';
+import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
@@ -11,7 +13,9 @@ import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../../core/ui/bento_falla.dart';
+import '../reporte_export_service.dart';
 import '../reportes_provider.dart';
+import 'elegir_periodo.dart';
 
 /// Ventana 4 — ver docs/pantallas/flujo-descripcion.md#ventana-4--reportes
 /// y docs/pantallas/prototipos-ascii.md. Reporte unificado con drill-down
@@ -39,6 +43,62 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     _turnoSeleccionado = null;
     _detalleDelRango = false;
   });
+
+  /// Exporta lo que se está mirando: el mismo período, el mismo total.
+  ///
+  /// Las ventas se piden aparte porque el reporte de pantalla trae solo los
+  /// agregados — el detalle se carga bajo demanda para no traer el año entero
+  /// cada vez que se abre Reportes.
+  Future<void> _exportar(ReporteResultado reporte) async {
+    final formato = await showDialog<FormatoReporte>(
+      context: context,
+      builder: (_) => const _ElegirFormato(),
+    );
+    if (formato == null || !mounted) return;
+
+    final params = ReportesParametros(rango: _rango, fechaReferencia: _fecha);
+    final titulo = '${_tituloDelRango()} · ${_tituloPeriodo()}';
+    final detalle = await ref.read(detalleRangoProvider(params).future);
+    if (!mounted) return;
+
+    final ruta = await FilePicker.platform.saveFile(
+      dialogTitle: 'Guardar reporte',
+      fileName: '${_nombreArchivo()}.${formato.extension}',
+    );
+    if (ruta == null || !mounted) return;
+
+    try {
+      await const ReporteExportService().exportar(
+        rutaDestino: ruta,
+        formato: formato,
+        titulo: titulo,
+        reporte: reporte,
+        ventas: detalle.ventas,
+        // Si la lista venía recortada hay que decirlo EN el archivo: un reporte
+        // que omite ventas sin avisar es peor que no exportar nada.
+        nota: detalle.truncado
+            ? 'Incluye las ${detalle.ventas.length} ventas más recientes de '
+                  '${detalle.totalVentas}.'
+            : null,
+      );
+      if (mounted) mostrarNotificacionEsquina(context, '✓ Reporte guardado');
+    } catch (_) {
+      if (mounted) mostrarNotificacionEsquina(context, '✗ No se pudo guardar');
+    }
+  }
+
+  String _tituloPeriodo() {
+    final (desde, hasta) = rangoDeFechas(_rango, _fecha);
+    final fin = hasta.subtract(const Duration(days: 1));
+    String d(DateTime x) => '${x.day}/${x.month}/${x.year}';
+    return desde == fin ? d(desde) : '${d(desde)} a ${d(fin)}';
+  }
+
+  String _nombreArchivo() {
+    final (desde, _) = rangoDeFechas(_rango, _fecha);
+    final iso = desde.toIso8601String().split('T').first;
+    return 'reporte-${_rango.name}-$iso';
+  }
 
   String _tituloDelRango() => switch (_rango) {
     RangoReporte.dia => 'Ventas del día',
@@ -85,12 +145,12 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                           onCambiarRango: (r) => setState(() => _rango = r),
                           onSeleccionarTurno: (t) => setState(() => _turnoSeleccionado = t),
                           onVerDetalle: () => setState(() => _detalleDelRango = true),
+                          onExportar: () => _exportar(reporte),
                           onElegirFecha: () async {
-                            final elegida = await showDatePicker(
-                              context: context,
-                              initialDate: _fecha,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime.now(),
+                            final elegida = await elegirPeriodo(
+                              context,
+                              rango: _rango,
+                              actual: _fecha,
                             );
                             if (elegida != null) setState(() => _fecha = elegida);
                           },
@@ -161,6 +221,7 @@ class _VistaGeneral extends StatelessWidget {
     required this.onCambiarRango,
     required this.onSeleccionarTurno,
     required this.onVerDetalle,
+    required this.onExportar,
     required this.onElegirFecha,
   });
 
@@ -176,20 +237,47 @@ class _VistaGeneral extends StatelessWidget {
   /// ventas componían el total de una semana, un mes o un año.
   final VoidCallback onVerDetalle;
 
+  /// Mantener presionado el total exporta el período que se está mirando.
+  final VoidCallback onExportar;
+
   final VoidCallback onElegirFecha;
 
+  /// Dice QUÉ período se está mirando, no solo de qué tipo es.
+  ///
+  /// Con "Este mes" fijo, mirar marzo y mirar abril se veían idénticos salvo
+  /// por los números: nada en pantalla decía cuál de los dos era.
   String _tituloRango(RangoReporte r, DateTime f, bool esHoy) {
+    final ahora = DateTime.now();
     switch (r) {
       case RangoReporte.dia:
         return esHoy ? 'Hoy' : '${f.day}/${f.month}/${f.year}';
       case RangoReporte.semana:
-        return 'Esta semana';
+        final (inicio, _) = rangoDeFechas(r, f);
+        final (inicioActual, _) = rangoDeFechas(r, ahora);
+        return inicio == inicioActual ? 'Esta semana' : 'Semana del ${inicio.day}/${inicio.month}';
       case RangoReporte.mes:
-        return 'Este mes';
+        return f.year == ahora.year && f.month == ahora.month
+            ? 'Este mes'
+            : '${_nombreMes(f.month)} ${f.year}';
       case RangoReporte.anio:
-        return 'Este año';
+        return f.year == ahora.year ? 'Este año' : '${f.year}';
     }
   }
+
+  static String _nombreMes(int mes) => const [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Setiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ][mes - 1];
 
   /// Lo mínimo para que un ranking siga siendo legible: su título más un par
   /// de filas.
@@ -326,6 +414,10 @@ class _VistaGeneral extends StatelessWidget {
   Widget _hero(BuildContext context, bool esHoy) {
     return BentoPozo(
       onTap: onVerDetalle,
+      // Mantener presionado exporta. Va acá y no en un botón siempre visible
+      // porque exportar es de fin de mes, no de cada rato: un botón fijo
+      // competiría por atención con el número, que es lo que se viene a ver.
+      onLongPress: onExportar,
       padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,10 +429,19 @@ class _VistaGeneral extends StatelessWidget {
                 _tituloRango(rango, fecha, esHoy),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              if (esGerente && rango == RangoReporte.dia)
+              // El calendario vale para los CUATRO rangos: antes solo el día se
+              // podía cambiar, así que semana, mes y año eran siempre los
+              // actuales y no había forma de mirar el mes pasado — que es justo
+              // lo que se hace al cerrar cuentas.
+              if (esGerente)
                 IconButton(
                   icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                  tooltip: 'Elegir día',
+                  tooltip: switch (rango) {
+                    RangoReporte.dia => 'Elegir día',
+                    RangoReporte.semana => 'Elegir semana',
+                    RangoReporte.mes => 'Elegir mes',
+                    RangoReporte.anio => 'Elegir año',
+                  },
                   onPressed: onElegirFecha,
                 ),
             ],
@@ -611,4 +712,30 @@ class _VistaDrillDown extends StatelessWidget {
 
   /// Lo mínimo para que la lista de ventas siga sirviendo.
   static const double _altoMinimoLista = 140;
+}
+
+/// Elegir en qué se exporta. Dos opciones y cada una dice para qué sirve: la
+/// diferencia entre PDF y CSV no es obvia para quien atiende una soda.
+class _ElegirFormato extends StatelessWidget {
+  const _ElegirFormato();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Exportar reporte'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final formato in FormatoReporte.values)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(formato.etiqueta),
+              subtitle: Text(formato.explicacion),
+              onTap: () => Navigator.pop(context, formato),
+            ),
+        ],
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))],
+    );
+  }
 }
