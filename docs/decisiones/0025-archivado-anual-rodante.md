@@ -287,3 +287,19 @@ ADR propio.
   siempre después. Cuanto antes se haga, menos datos hay que mover una única vez.
 - La marca `archivado_hasta` conviene que exista en el esquema antes de que haya
   varios dispositivos en producción, para no migrar con datos repartidos.
+
+## Addendum (2026-07-31) — el libro se crea al abrir la app, no con la primera venta
+
+Como estaba, el primer libro nacía al cobrar la primera venta. Hasta ese
+momento no había nada adjunto, así que `SELECT ... FROM linea_venta` no
+resolvía contra ninguna base y **Reportes reventaba en toda instalación nueva**
+con `no such table: linea_venta`. Es el primer día de uso de cualquier negocio,
+no un caso borde: se abre la app, se mira Reportes, todavía no se cobró nada.
+
+`adjuntarAbierto` ahora crea el libro si no existe. Crear uno vacío no adelanta
+ninguna decisión de archivado: es el mismo archivo que habría creado la primera
+venta, con las mismas tablas y sin filas.
+
+Cubierto por `test/base_recien_instalada_test.dart`, incluido que abrir la app
+dos veces no genere un segundo libro — eso llenaría el índice de archivos
+vacíos y dejaría sin sentido el rodaje.

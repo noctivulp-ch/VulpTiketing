@@ -52,14 +52,14 @@ class LibroVentas {
   final bool cerrado;
 
   static LibroVentas deFila(Map<String, Object?> f) => LibroVentas(
-        id: f['id'] as String,
-        archivo: f['archivo'] as String,
-        fechaInicio: DateTime.parse(f['fecha_inicio'] as String),
-        fechaFin: f['fecha_fin'] == null ? null : DateTime.parse(f['fecha_fin'] as String),
-        diasConVentas: f['dias_con_ventas'] as int,
-        ultimoDia: f['ultimo_dia'] == null ? null : DateTime.parse(f['ultimo_dia'] as String),
-        cerrado: (f['cerrado'] as int) == 1,
-      );
+    id: f['id'] as String,
+    archivo: f['archivo'] as String,
+    fechaInicio: DateTime.parse(f['fecha_inicio'] as String),
+    fechaFin: f['fecha_fin'] == null ? null : DateTime.parse(f['fecha_fin'] as String),
+    diasConVentas: f['dias_con_ventas'] as int,
+    ultimoDia: f['ultimo_dia'] == null ? null : DateTime.parse(f['ultimo_dia'] as String),
+    cerrado: (f['cerrado'] as int) == 1,
+  );
 }
 
 const _uuid = Uuid();
@@ -120,8 +120,7 @@ class LibroVentasService {
 
   String rutaDe(String archivo) => p.join(directorio, archivo);
 
-  static String _soloFecha(DateTime d) =>
-      DateTime(d.year, d.month, d.day).toIso8601String();
+  static String _soloFecha(DateTime d) => DateTime(d.year, d.month, d.day).toIso8601String();
 
   static bool _mismoDia(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -183,9 +182,19 @@ class LibroVentasService {
   /// Adjunta el libro abierto. Si no hay ninguno, no adjunta nada: el primero
   /// se crea recién con la primera venta, así una instalación sin ventas no
   /// tiene archivos de libro sueltos.
+  /// Deja SIEMPRE un libro adjunto, creándolo si todavía no existe.
+  ///
+  /// Antes se salía sin hacer nada cuando no había libro, y eso rompía la app
+  /// recién instalada: el libro nacía con la primera venta, así que hasta
+  /// entonces `SELECT ... FROM linea_venta` no resolvía contra nada y Reportes
+  /// —o cualquier pantalla que consultara ventas— moría con
+  /// `no such table: linea_venta`. Un negocio que abre la app antes de cobrar
+  /// nada es el caso NORMAL del primer día, no un borde.
+  ///
+  /// Crear el libro vacío no adelanta ninguna decisión: es el mismo archivo que
+  /// habría creado la primera venta, con las mismas tablas y sin filas.
   Future<void> adjuntarAbierto(Database db) async {
-    final libro = await libroAbierto(db);
-    if (libro == null) return;
+    final libro = await libroAbierto(db) ?? await _crear(db, DateTime.now());
     await _adjuntar(db, libro.archivo);
   }
 
@@ -261,10 +270,7 @@ class LibroVentasService {
 
     await db.update(
       'libro_ventas',
-      {
-        'dias_con_ventas': actual.diasConVentas + 1,
-        'ultimo_dia': _soloFecha(fecha),
-      },
+      {'dias_con_ventas': actual.diasConVentas + 1, 'ultimo_dia': _soloFecha(fecha)},
       where: 'id = ?',
       whereArgs: [actual.id],
     );
@@ -335,11 +341,7 @@ class LibroVentasService {
 
     await db.update(
       'libro_ventas',
-      {
-        'archivo': archivoRegistrado,
-        'fecha_fin': _soloFecha(fin),
-        'cerrado': 1,
-      },
+      {'archivo': archivoRegistrado, 'fecha_fin': _soloFecha(fin), 'cerrado': 1},
       where: 'id = ?',
       whereArgs: [libro.id],
     );
