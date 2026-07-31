@@ -334,7 +334,11 @@ Color _tonoDeToque(Color pozo, Brightness brightness) {
 /// ganaba el velo. Anulado, manda siempre la onda.
 const WidgetStateProperty<Color> _sinVeloDeBoton = WidgetStatePropertyAll(Colors.transparent);
 
-ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightness.light}) {
+ThemeData buildBentoTheme(
+  AcentoTinte acento, {
+  Brightness brightness = Brightness.light,
+  BentoToqueReceta toque = const BentoToqueReceta(),
+}) {
   final scheme = _esquemaDe(acento, brightness);
   final laca = _lacaDe(acento, brightness);
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
@@ -351,6 +355,7 @@ ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightnes
     splashFactory: BentoGrainSplash.factoriaDe(
       relleno: _tonoDeToque(laca.pozo, brightness),
       cresta: laca.paredCresta,
+      receta: toque,
     ),
     // Sin estas dos, encima de la onda se pintaba el resaltado de fábrica:
     // un rectángulo BLANCO translúcido. Era el "sigue blanca" que se veía —
