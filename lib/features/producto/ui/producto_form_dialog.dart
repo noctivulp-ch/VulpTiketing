@@ -96,7 +96,8 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
     if (confirmado != true || !mounted) return;
 
     setState(() => _guardando = true);
-    final sincronizado = ref.read(syncNotifierProvider.notifier).todosLosDispositivosSincronizados;
+    final sincronizado = await ref.read(dispositivoSinParesProvider.future);
+    if (!mounted) return;
     final resultado = await ref
         .read(productoNotifierProvider.notifier)
         .purgar(widget.producto!.id, todosLosDispositivosSincronizados: sincronizado);

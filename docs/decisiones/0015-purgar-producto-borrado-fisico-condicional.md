@@ -34,3 +34,27 @@ Al purgar: `DELETE` físico real de la fila. No hace falta tombstone para esta o
 - El servicio de sync (`SyncNotifier`, [0007](0007-topologia-sync.md)) debe exponer un estado consultable de "todos los dispositivos conocidos están sincronizados" — detalle a definir al implementar sync. La acción "Purgar" en la UI queda deshabilitada mientras ese estado no sea `true`.
 - No modifica el mecanismo de tombstone de [0005](0005-borrados-en-sync.md) — sigue siendo necesario para todo borrado que no cumpla las tres condiciones de purgar (o para cualquier otra tabla con ciclo de vida de descontinuación, ej. Categoria).
 - Ver `docs/arquitectura/gestion-estado.md` — `ProductoNotifier` gana la operación `purgar`.
+
+## Addendum (2026-07-31) — "todos los dispositivos conocidos" cuando no se conoce ninguno
+
+La condición 3 se implementó devolviendo `false` **siempre**, con el argumento
+de que falta el handshake entre orquestadores (paso 3/4 de
+[0007](0007-topologia-sync.md)). Consecuencia: purgar era imposible en todos los
+casos, incluido aquel en el que es trivialmente seguro. Lo encontró el usuario
+intentando borrar un producto en el teléfono.
+
+La condición dice "todos los dispositivos **conocidos** están sincronizados", y
+cuando no se conoce ninguno se cumple sola: sin ningún aparato remoto no hay
+ninguno que pueda tener una venta pendiente con ese producto, que es el único
+riesgo que el gate cubre.
+
+Ahora se distinguen dos situaciones:
+
+- **Este aparato nunca vio a otro** → se permite purgar. Es el caso de una soda
+  con un solo teléfono, o sea el normal hoy.
+- **Ya vio pares alguna vez** → sigue bloqueado hasta que exista el handshake.
+
+"Vio a otro" se persiste en cuanto el descubrimiento encuentra un par, de
+cualquier rol, y **no se olvida**: si se borrara al perder de vista al par,
+apagar el otro teléfono habilitaría la purga — justo el escenario que este ADR
+quiere impedir. Cubierto por `test/purga_gate_sync_test.dart`.

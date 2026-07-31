@@ -7,6 +7,8 @@ import '../venta/libro_ventas.dart';
 import 'device_discovery_service.dart';
 import 'sync_client.dart';
 import 'sync_group_coordinator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'sync_server.dart';
 
 enum EstadoSync { idle, syncing, error }
@@ -43,7 +45,43 @@ class SyncNotifier extends Notifier<EstadoSync> {
   @override
   EstadoSync build() => EstadoSync.idle;
 
-  bool get todosLosDispositivosSincronizados => false;
+  /// Guarda que este aparato VIO a otro alguna vez. Se escribe cuando el
+  /// descubrimiento encuentra un par y no se borra: un aparato que ya estuvo
+  /// acompañado no vuelve a estar solo por apagar el otro.
+  static const _keyVioPares = 'sync_vio_pares';
+
+  /// El gate de purga de la [decisión 0015].
+  ///
+  /// Distingue dos situaciones que antes se trataban igual:
+  ///
+  /// - **Este aparato nunca vio a otro.** Entonces no hay ningún dispositivo
+  ///   remoto que pueda tener una venta pendiente con el producto, que es el
+  ///   único riesgo que el gate existe para cubrir. Purgar es seguro y se
+  ///   permite. Es el caso de una soda con un solo teléfono, o sea el normal
+  ///   hoy.
+  /// - **Ya vio pares.** Sigue en `false` hasta que exista el handshake entre
+  ///   orquestadores (paso 3/4 de 0007): sin él, un Gerente y una Registradora
+  ///   nunca terminan de verse, y ese es justamente el caso que le importa a la
+  ///   purga.
+  ///
+  /// Antes devolvía `false` siempre, así que purgar era imposible en todos los
+  /// casos — incluido aquel en que es trivialmente seguro. La condición 3 de
+  /// 0015 dice "todos los dispositivos CONOCIDOS están sincronizados": cuando
+  /// no se conoce ninguno, se cumple sola.
+  /// Lo consulta la UI por [dispositivoSinParesProvider], no por un campo en
+  /// memoria: así no hay una ventana en la que el dato todavía no se leyó y la
+  /// respuesta sea la equivocada según cuándo se pregunte.
+  static Future<bool> sinParesConocidos() async {
+    final prefs = await SharedPreferences.getInstance();
+    return !(prefs.getBool(_keyVioPares) ?? false);
+  }
+
+  Future<void> _marcarQueVioPares() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_keyVioPares) ?? false) return;
+    await prefs.setBool(_keyVioPares, true);
+    ref.invalidate(dispositivoSinParesProvider);
+  }
 
   bool get esOrquestadorDeMiGrupo {
     final miDeviceId = _miDeviceId;
@@ -73,6 +111,9 @@ class SyncNotifier extends Notifier<EstadoSync> {
 
     final cliente = SyncClient(db, libros: await ref.read(libroVentasServiceProvider.future));
     _discovery.descubrirPares().listen((pares) async {
+      // Cualquier par cuenta, sea del rol que sea: lo que decide si este
+      // aparato está solo es si HAY otro en la red, no si es de su grupo.
+      if (pares.isNotEmpty) await _marcarQueVioPares();
       _paresDelMismoRol = pares.where((p) => p.rol == rol.name).toList();
       for (final par in _paresDelMismoRol) {
         try {
@@ -97,3 +138,10 @@ class SyncNotifier extends Notifier<EstadoSync> {
 }
 
 final syncNotifierProvider = NotifierProvider<SyncNotifier, EstadoSync>(SyncNotifier.new);
+
+/// Si este aparato nunca vio a otro en la red.
+///
+/// Es el gate de la purga (decisión 0015, condición 3): sin ningún dispositivo
+/// conocido no hay ninguno que pueda tener una venta pendiente con el producto,
+/// que es el único riesgo que esa condición cubre.
+final dispositivoSinParesProvider = FutureProvider<bool>((ref) => SyncNotifier.sinParesConocidos());

@@ -27,7 +27,9 @@ class ProductoCrudScreen extends ConsumerWidget {
     // El catálogo del Gerente SÍ muestra los descontinuados: es la única
     // pantalla desde la que se puede recontinuarlos.
     final productosAsync = ref.watch(productoCatalogoProvider);
-    final sincronizado = ref.watch(syncNotifierProvider.notifier).todosLosDispositivosSincronizados;
+    // `false` mientras se lee: nunca habilitar un borrado físico por no haber
+    // terminado de comprobar si hay otros aparatos.
+    final sincronizado = ref.watch(dispositivoSinParesProvider).valueOrNull ?? false;
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
 
     return Scaffold(
