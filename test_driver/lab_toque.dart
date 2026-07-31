@@ -18,6 +18,7 @@
 // falta aclarar: sobre un elemento oscuro el mismo tono se lee cálido y sobre
 // uno claro se lee blanco.
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:vulp_tiketing/core/theme/bento_bandeja.dart';
 import 'package:vulp_tiketing/core/theme/bento_ink.dart';
@@ -36,6 +37,58 @@ class _LabToqueAppState extends State<LabToqueApp> {
   BentoToqueReceta _receta = const BentoToqueReceta();
   AcentoTinte _acento = AcentoTinte.cobre;
   Brightness _brillo = Brightness.dark;
+
+  @override
+  void initState() {
+    super.initState();
+    _restaurar();
+  }
+
+  // Los ajustes sobreviven a cerrar la app. Se perdieron una vez al salir sin
+  // querer, y encontrar de nuevo una combinación a ojo cuesta más que
+  // guardarla.
+  Future<void> _restaurar() async {
+    final prefs = await SharedPreferences.getInstance();
+    final textura = prefs.getString('textura');
+    if (!mounted) return;
+    setState(() {
+      _acento = AcentoTinte.values.firstWhere(
+        (a) => a.name == prefs.getString('acento'),
+        orElse: () => _acento,
+      );
+      _brillo = prefs.getBool('oscuro') ?? true ? Brightness.dark : Brightness.light;
+      _receta = BentoToqueReceta(
+        textura: BentoToqueTextura.values.firstWhere(
+          (t) => t.name == textura,
+          orElse: () => _receta.textura,
+        ),
+        duracion: Duration(
+          milliseconds: prefs.getInt('duracion') ?? _receta.duracion.inMilliseconds,
+        ),
+        opacidad: prefs.getDouble('opacidad') ?? _receta.opacidad,
+        fusion: prefs.getDouble('fusion') ?? _receta.fusion,
+        borde: prefs.getDouble('borde') ?? _receta.borde,
+        separacion: prefs.getDouble('separacion') ?? _receta.separacion,
+      );
+    });
+  }
+
+  Future<void> _guardar() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('textura', _receta.textura.name);
+    await prefs.setInt('duracion', _receta.duracion.inMilliseconds);
+    await prefs.setDouble('opacidad', _receta.opacidad);
+    await prefs.setDouble('fusion', _receta.fusion);
+    await prefs.setDouble('borde', _receta.borde);
+    await prefs.setDouble('separacion', _receta.separacion);
+    await prefs.setString('acento', _acento.name);
+    await prefs.setBool('oscuro', _brillo == Brightness.dark);
+  }
+
+  void _cambiar(VoidCallback cambio) {
+    setState(cambio);
+    _guardar();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,9 +110,9 @@ class _LabToqueAppState extends State<LabToqueApp> {
                     receta: _receta,
                     acento: _acento,
                     brillo: _brillo,
-                    onReceta: (r) => setState(() => _receta = r),
-                    onAcento: (a) => setState(() => _acento = a),
-                    onBrillo: (b) => setState(() => _brillo = b),
+                    onReceta: (r) => _cambiar(() => _receta = r),
+                    onAcento: (a) => _cambiar(() => _acento = a),
+                    onBrillo: (b) => _cambiar(() => _brillo = b),
                   ),
                 ),
               ],
