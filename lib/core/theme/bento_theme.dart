@@ -317,6 +317,23 @@ TextTheme _escalaTipografica(TextTheme base) {
   );
 }
 
+/// Tono del toque: el material del pozo separado de su color de reposo.
+///
+/// No sirve un tono fijo ni `pozoContacto` —que es la SOMBRA de contacto, o sea
+/// más oscura que el pozo: usarla restaba luminosidad y el toque quedaba casi
+/// invisible—. Lo que hace falta es alejarse del reposo en la dirección que
+/// contrasta: aclarar sobre material oscuro, oscurecer sobre material claro.
+Color _tonoDeToque(Color pozo, Brightness brightness) {
+  final hacia = brightness == Brightness.dark ? Colors.white : Colors.black;
+  return Color.lerp(pozo, hacia, 0.22)!;
+}
+
+/// Los botones pintan un velo propio (`overlayColor`) ADEMÁS del splash, y de
+/// fábrica ese velo es blanco translúcido. Era lo que hacía que el toque se
+/// viera con color en unos sitios y blanco en otros: donde había un botón,
+/// ganaba el velo. Anulado, manda siempre la onda.
+const WidgetStateProperty<Color> _sinVeloDeBoton = WidgetStatePropertyAll(Colors.transparent);
+
 ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightness.light}) {
   final scheme = _esquemaDe(acento, brightness);
   final laca = _lacaDe(acento, brightness);
@@ -327,13 +344,20 @@ ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightnes
     textTheme: _escalaTipografica(base.textTheme),
     // La bandeja es el plano de fondo de toda pantalla.
     scaffoldBackgroundColor: laca.bandeja,
-    // El toque se pinta con el material del elemento, no con blanco: relleno
-    // con el pozo en contacto —el mismo tono que ya usa un pozo presionado— y
-    // el frente de la onda con la cresta, que es literalmente su borde.
+    // El toque se pinta con el material del elemento, no con blanco: el pozo
+    // SEPARADO de su tono de reposo —más claro en oscuro, más oscuro en
+    // claro— y el frente de la onda con la cresta, que es literalmente su
+    // borde.
     splashFactory: BentoGrainSplash.factoriaDe(
-      relleno: laca.pozoContacto,
+      relleno: _tonoDeToque(laca.pozo, brightness),
       cresta: laca.paredCresta,
     ),
+    // Sin estas dos, encima de la onda se pintaba el resaltado de fábrica:
+    // un rectángulo BLANCO translúcido. Era el "sigue blanca" que se veía —
+    // el color de la onda estaba bien debajo. El resaltado lo hace ahora la
+    // onda misma, que se sostiene hasta apagarse.
+    highlightColor: Colors.transparent,
+    splashColor: _tonoDeToque(laca.pozo, brightness),
     // Sin elevacion ni sombra: la profundidad la da la cresta, no una sombra
     // proyectada (DESIGN.md, regla 1).
     cardTheme: CardThemeData(
@@ -373,10 +397,12 @@ ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightnes
         minimumSize: const Size(0, bentoObjetivoTactilMin),
         side: BorderSide(color: scheme.primary),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BentoRadius.pozo)),
-      ),
+      ).copyWith(overlayColor: _sinVeloDeBoton),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
-      style: SegmentedButton.styleFrom(side: BorderSide(color: scheme.primary)),
+      style: SegmentedButton.styleFrom(
+        side: BorderSide(color: scheme.primary),
+      ).copyWith(overlayColor: _sinVeloDeBoton),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -386,7 +412,7 @@ ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightnes
           vertical: BentoSpacing.paddingCelda,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BentoRadius.pozo)),
-      ),
+      ).copyWith(overlayColor: _sinVeloDeBoton),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
@@ -395,8 +421,9 @@ ThemeData buildBentoTheme(AcentoTinte acento, {Brightness brightness = Brightnes
           horizontal: BentoSpacing.paddingCelda,
           vertical: BentoSpacing.unidad,
         ),
-      ),
+      ).copyWith(overlayColor: _sinVeloDeBoton),
     ),
+    iconButtonTheme: IconButtonThemeData(style: ButtonStyle(overlayColor: _sinVeloDeBoton)),
     listTileTheme: ListTileThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BentoRadius.pozo)),
       minVerticalPadding: BentoSpacing.unidad * 1.5,
