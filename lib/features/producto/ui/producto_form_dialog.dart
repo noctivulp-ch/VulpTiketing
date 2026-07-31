@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/theme/bento_corner_notice.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_falla.dart';
+import '../../sync/sync_notifier.dart';
 import '../categoria_model.dart';
 import '../categoria_notifier.dart';
 import '../producto_model.dart';
@@ -54,6 +56,61 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
     _nombreController.dispose();
     _precioController.dispose();
     super.dispose();
+  }
+
+  /// Devuelve el producto a la carta y cierra: lo que se quería hacer ya está
+  /// hecho, y dejar el formulario abierto invitaría a un "Guardar" que no
+  /// agrega nada.
+  Future<void> _reactivar() async {
+    setState(() => _guardando = true);
+    await ref.read(productoNotifierProvider.notifier).recontinuar(widget.producto!.id);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  /// Borrado FÍSICO, con las tres condiciones de la decisión 0015 — de ahí que
+  /// el resultado pueda ser un "no se puede" y no un simple ok.
+  ///
+  /// El gate de sincronización llega como parámetro y no se lee acá adentro,
+  /// para no acoplar el formulario a SyncNotifier (0019).
+  Future<void> _eliminar() async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Eliminar el producto?'),
+        content: Text(
+          '"${widget.producto!.nombre}" se borra de verdad, no se puede deshacer. '
+          'Si tuvo ventas alguna vez, no se va a poder: su historial lo necesita.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !mounted) return;
+
+    setState(() => _guardando = true);
+    final sincronizado = ref.read(syncNotifierProvider.notifier).todosLosDispositivosSincronizados;
+    final resultado = await ref
+        .read(productoNotifierProvider.notifier)
+        .purgar(widget.producto!.id, todosLosDispositivosSincronizados: sincronizado);
+    if (!mounted) return;
+
+    setState(() => _guardando = false);
+    switch (resultado) {
+      case PurgarResultado.ok:
+        Navigator.of(context).pop();
+      case PurgarResultado.tieneVentasAsociadas:
+        mostrarNotificacionEsquina(context, '✗ Tiene ventas: no se puede borrar');
+      case PurgarResultado.faltaSincronizar:
+        mostrarNotificacionEsquina(context, '✗ Falta sincronizar los otros aparatos');
+    }
   }
 
   Future<void> _crearCategoria() async {
@@ -145,27 +202,64 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
             ),
             const SizedBox(height: BentoSpacing.unidad),
             categoriasAsync.when(
-              data: (categorias) => Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String?>(
-                      initialValue: _categoriaId,
-                      decoration: const InputDecoration(labelText: 'Categoría'),
-                      items: [
-                        const DropdownMenuItem(value: null, child: Text('Sin categoría')),
-                        for (final c in categorias)
-                          DropdownMenuItem(value: c.id, child: Text(c.nombre)),
-                      ],
-                      onChanged: (v) => setState(() => _categoriaId = v),
+              data: (categorias) {
+                // El producto puede apuntar a una categoría que ya no está —
+                // pasa tras importar un catálogo con reemplazo, o cuando la
+                // sincronización trae un borrado. Sin esta entrada extra, el
+                // `DropdownButton` REVIENTA la pantalla entera con un assert
+                // ("exactly one item with value X"), y editar el producto para
+                // arreglarlo se vuelve imposible: justo lo que hace falta.
+                //
+                // Se muestra en vez de caer a "Sin categoría" en silencio: que
+                // el dato esté roto tiene que verse, y elegir otra categoría lo
+                // corrige al guardar.
+                final huerfana =
+                    _categoriaId != null && !categorias.any((c) => c.id == _categoriaId);
+                return Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String?>(
+                        initialValue: _categoriaId,
+                        // El desplegable ocupa el ancho que le den y recorta lo
+                        // que sobre. Sin esto se dimensiona por su etiqueta más
+                        // larga y se sale de la caja: "(categoría eliminada)"
+                        // ya desbordaba 4,4 px, y un nombre de categoría largo
+                        // haría lo mismo.
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Categoría'),
+                        // Con elipsis, no cortado en seco: `isExpanded` recorta
+                        // por el ancho disponible y sin esto un nombre largo
+                        // termina a mitad de palabra, sin señal de que sigue.
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('Sin categoría', overflow: TextOverflow.ellipsis),
+                          ),
+                          for (final c in categorias)
+                            DropdownMenuItem(
+                              value: c.id,
+                              child: Text(c.nombre, overflow: TextOverflow.ellipsis),
+                            ),
+                          if (huerfana)
+                            DropdownMenuItem(
+                              value: _categoriaId,
+                              child: const Text(
+                                'Categoría eliminada',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        onChanged: (v) => setState(() => _categoriaId = v),
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    tooltip: 'Nueva categoría',
-                    onPressed: _crearCategoria,
-                  ),
-                ],
-              ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      tooltip: 'Nueva categoría',
+                      onPressed: _crearCategoria,
+                    ),
+                  ],
+                );
+              },
               loading: () => const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: LinearProgressIndicator(),
@@ -180,6 +274,14 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
         ),
       ),
       actions: [
+        // Un producto fuera de la carta se edita para volverlo a poner o para
+        // sacarlo del todo, así que las dos salidas viven acá. Antes había que
+        // cerrar el formulario y buscar los botones en la fila de la lista:
+        // llegar a editarlo y no encontrar cómo reactivarlo es un callejón.
+        if (_esEdicion && !widget.producto!.activo) ...[
+          TextButton(onPressed: _guardando ? null : _reactivar, child: const Text('Reactivar')),
+          TextButton(onPressed: _guardando ? null : _eliminar, child: const Text('Eliminar')),
+        ],
         TextButton(
           onPressed: _guardando ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
