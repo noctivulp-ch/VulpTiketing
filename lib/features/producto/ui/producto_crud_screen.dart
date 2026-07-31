@@ -44,14 +44,14 @@ class ProductoCrudScreen extends ConsumerWidget {
                       // Se conserva la cascada invertida: la lista crece hacia
                       // arriba desde el buscador de la barra inferior.
                       reverse: true,
+                      // El padding va en coordenadas de pantalla aunque el
+                      // scroll este invertido: el velo esta arriba, o sea `top`.
                       padding: EdgeInsets.fromLTRB(
                         BentoSpacing.gapCelda,
+                        bentoInsetSuperior(context),
                         BentoSpacing.gapCelda,
                         BentoSpacing.gapCelda,
-                        // `reverse: true` invierte los bordes del padding: el
-                        // "top" visual es el `bottom` del scroll.
-                        BentoSpacing.gapCelda,
-                      ).copyWith(bottom: bentoInsetSuperior(context)),
+                      ),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         // Una fila de producto ocupa 6, 3 o 2 columnas: en
                         // teléfono va a lo ancho, en escritorio caben tres.

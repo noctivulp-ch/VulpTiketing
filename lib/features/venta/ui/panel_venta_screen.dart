@@ -605,10 +605,12 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
               padding: EdgeInsets.only(
                 left: BentoSpacing.unidad,
                 right: BentoSpacing.unidad,
-                // `reverse: true` invierte los bordes: el `bottom` del scroll es
-                // el borde VISUAL de arriba, que es donde la lista tiene que
-                // desvanecerse bajo el velo en vez de cortarse.
-                bottom: bentoInsetSuperior(context),
+                // El padding de un scroll va en COORDENADAS DE PANTALLA, tambien
+                // con `reverse: true` — verificado. Antes esto decia `bottom`
+                // creyendo lo contrario, y el resultado era que la lista se
+                // despegaba del buscador y se iba hacia arriba: justo lo que
+                // rompia la cascada invertida.
+                top: bentoInsetSuperior(context),
               ),
               itemCount: productos.length,
               separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad / 2),

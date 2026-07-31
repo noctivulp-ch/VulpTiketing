@@ -101,6 +101,11 @@ class DiagnosticoDev {
     return (propias.isNotEmpty ? propias : lineas.take(3)).join('\n');
   }
 
+  /// OJO al limpiar: Flutter reporta un desborde de layout UNA SOLA VEZ por
+  /// objeto. Si el desborde ya estaba en pantalla y se llama a esto, no vuelve a
+  /// avisar aunque la franja amarilla siga ahí — pasó en una revisión real y
+  /// hizo creer que no había nada. Ante un desborde visible, consultar SIN
+  /// limpiar, o limpiar y volver a provocarlo.
   static void limpiar() {
     _errores.clear();
     _framesLentos.clear();

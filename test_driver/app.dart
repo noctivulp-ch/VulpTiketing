@@ -15,11 +15,11 @@
 //    Service que llamaria la UI real — nunca toca SQLite a mano, para no
 //    inventar un segundo camino de logica de negocio (decision 0009).
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:cryptography/dart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_driver/driver_extension.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
@@ -207,6 +207,24 @@ Future<dynamic> _ejecutar(
     case 'listar_categorias':
       final categorias = await container.read(categoriaNotifierProvider.future);
       return categorias.map((c) => {'id': c.id, 'nombre': c.nombre}).toList();
+
+    case 'orientacion':
+      // Rotar la app desde adentro, sin depender de la rotacion del sistema.
+      //
+      // `adb shell settings put system user_rotation` no sirve: en EMUI el
+      // ajuste no pega, y ademas con la rotacion automatica apagada el aparato
+      // se queda en vertical pase lo que pase. Asi la orientacion es
+      // DETERMINISTA, que es lo que hace falta para revisar un layout.
+      final modo = args['modo'] as String? ?? 'libre';
+      await SystemChrome.setPreferredOrientations(switch (modo) {
+        'vertical' => [DeviceOrientation.portraitUp],
+        'horizontal' => [
+            DeviceOrientation.landscapeLeft,
+            DeviceOrientation.landscapeRight,
+          ],
+        _ => DeviceOrientation.values,
+      });
+      return {'modo': modo};
 
     case 'diagnostico':
       // Errores acumulados y frames fuera de presupuesto desde el arranque o

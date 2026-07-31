@@ -398,12 +398,19 @@ class _VistaDrillDown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      // `stretch` y no `start`: con `start` cada hijo tomaba su ancho NATURAL,
+      // así que la celda del título se encogía hasta el largo del número —
+      // ₡1.500 daba una celda angosta y ₡142.468 una ancha. Una celda de bandeja
+      // se dimensiona por la pantalla, no por lo que le tocó contener.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextButton.icon(
-          onPressed: onVolver,
-          icon: const Icon(Icons.arrow_back),
-          label: const Text('Volver'),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: onVolver,
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Volver'),
+          ),
         ),
         BentoPozo(
           padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),

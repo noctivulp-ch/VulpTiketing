@@ -85,6 +85,10 @@ void main() {
   /// Los tres tamaños del sistema, con el teléfono real del negocio primero.
   const tamanos = <String, Size>{
     'compacto 360x800': Size(360, 800),
+    // Teléfono ACOSTADO: 800 de ancho por solo 360 de alto. Es el caso que más
+    // aprieta en vertical y no estaba cubierto — el usuario reportó un
+    // "overflowed by 36 pixels" en Reportes que ninguna prueba veía.
+    'horizontal 800x360': Size(800, 360),
     'medio 800x1280': Size(800, 1280),
     'amplio 1440x900': Size(1440, 900),
   };
@@ -137,6 +141,44 @@ void main() {
       }
     }
   }
+
+  testWidgets('el Login no desborda con el teclado abierto', (tester) async {
+    // La dimensión que faltaba. El usuario encontró en el aparato un
+    // "BOTTOM OVERFLOWED BY 251 PIXELS" en el Login acostado con el teclado
+    // abierto, y ninguna prueba lo veía: todas medían la pantalla completa.
+    //
+    // Acostado es el peor caso porque el teclado se come más de la mitad del
+    // alto disponible.
+    for (final tamano in [const Size(800, 360), const Size(360, 800)]) {
+      tester.view.physicalSize = tamano;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+          theme: buildBentoTheme(AcentoTinte.oro),
+          home: const LoginScreen(),
+        ),
+      ));
+      await tester.pump();
+
+      // Elegir el rol es lo que abre el teclado — el inset entra DESPUÉS, no
+      // antes: en la pantalla de roles no hay ningún campo y simular el teclado
+      // ahí probaba una situación que no existe.
+      await tester.tap(find.text('Gerente'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Un teclado real ocupa cerca de la mitad del alto en horizontal.
+      tester.view.viewInsets = FakeViewPadding(bottom: tamano.height * 0.55);
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'el Login desborda con el teclado abierto a $tamano',
+      );
+    }
+  });
 
   testWidgets('los tiles de Configuración caen de a 3 por fila', (tester) async {
     // La comprobación visible de que la retícula manda: cada tile ocupa 2 de 6
