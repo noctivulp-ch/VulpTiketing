@@ -307,7 +307,6 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
               : const Text('Guardar'),
         ),
       ],
-      enColumna: acostado,
     );
 
     return AlertDialog(
@@ -323,7 +322,9 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
                 children: [
                   Expanded(child: SingleChildScrollView(child: formulario)),
                   const SizedBox(width: BentoSpacing.pared),
-                  acciones,
+                  // `IntrinsicWidth`: la cuadrícula necesita un ancho acotado
+                  // para repartir sus dos columnas dentro de una fila.
+                  IntrinsicWidth(child: acciones),
                 ],
               ),
             )
@@ -340,7 +341,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
 /// dejar que el diálogo los apile solo los alinea a todos a la derecha —
 /// perdiendo justamente la distinción entre las dos columnas.
 class _Acciones extends StatelessWidget {
-  const _Acciones({required this.alProducto, required this.alFormulario, this.enColumna = false});
+  const _Acciones({required this.alProducto, required this.alFormulario});
 
   /// Lo que le pasa al producto. Vacío cuando está en la carta: no hay nada que
   /// reactivar ni conviene ofrecer borrar algo que se está usando.
@@ -349,39 +350,40 @@ class _Acciones extends StatelessWidget {
   /// Lo que le pasa a este formulario. Siempre hay dos: salir y guardar.
   final List<Widget> alFormulario;
 
-  /// Todo en una sola columna, para cuando las acciones van al costado del
-  /// formulario en vez de debajo.
-  final bool enColumna;
-
+  /// La MISMA cuadrícula en las dos orientaciones. Lo único que cambia acostado
+  /// es dónde se coloca —al costado del formulario en vez de debajo—, no cómo
+  /// se organiza: apilarla en una sola columna perdía la distinción entre lo
+  /// que le pasa al producto y lo que le pasa al formulario.
   @override
   Widget build(BuildContext context) {
-    if (enColumna) {
-      // `IntrinsicWidth`: los botones se estiran al ancho del más ancho, que es
-      // lo que los alinea como columna. Sin él, `stretch` dentro de una fila
-      // pide ancho infinito y el diálogo no llega ni a dibujarse.
-      return IntrinsicWidth(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // El mismo orden que en la cuadrícula: primero lo del producto,
-            // después lo del formulario.
-            ...alProducto,
-            ...alFormulario,
-          ],
-        ),
-      );
-    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < alFormulario.length; i++)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (i < alProducto.length) alProducto[i] else const SizedBox.shrink(),
-              alFormulario[i],
-            ],
+          Padding(
+            // Aire entre filas: pegados, los cuatro botones se leían como un
+            // bloque y costaba ver cuál era cuál.
+            padding: EdgeInsets.only(
+              top: i == 0 ? 0 : BentoSpacing.unidad,
+              bottom: BentoSpacing.unidad / 2,
+            ),
+            child: Row(
+              children: [
+                // Dos columnas del MISMO ancho, no dos botones repartidos con
+                // `spaceBetween`: así cada uno se colocaba según su propio
+                // largo y las columnas quedaban descuadradas entre filas.
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: i < alProducto.length ? alProducto[i] : const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(width: BentoSpacing.gapCelda),
+                Expanded(
+                  child: Align(alignment: Alignment.centerRight, child: alFormulario[i]),
+                ),
+              ],
+            ),
           ),
       ],
     );
