@@ -30,12 +30,59 @@ class PanelVentaScreen extends ConsumerStatefulWidget {
 class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
   bool _panelAbierto = false;
 
+  // El estado del cobro vive acá y no dentro del carrito porque la barra de
+  // cobro dejó de estar dentro de él: acostada cruza la pantalla entera por
+  // debajo del carrito Y del panel, que es lo que la vuelve "la caja" y no un
+  // apéndice de la lista.
+  final _recibidoController = TextEditingController();
+  double? _cambio;
+  Timer? _debounce;
+  bool _finalizando = false;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _recibidoController.dispose();
+    super.dispose();
+  }
+
+  void _onRecibidoChanged(String valor, double total) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      final recibido = double.tryParse(valor);
+      setState(() => _cambio = recibido == null ? null : recibido - total);
+    });
+  }
+
+  Future<void> _finalizar() async {
+    setState(() => _finalizando = true);
+    await ref.read(ventaEnCursoNotifierProvider.notifier).guardar();
+    _recibidoController.clear();
+    _cambio = null;
+    if (mounted) {
+      setState(() {
+        _finalizando = false;
+        _panelAbierto = false;
+      });
+      mostrarNotificacionEsquina(context, '✓ Venta OK');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final carrito = _Carrito(onFinalizar: () => setState(() => _panelAbierto = false));
+    final total = ref.watch(ventaEnCursoNotifierProvider).total;
+    final hayLineas = ref.watch(ventaEnCursoNotifierProvider).lineas.isNotEmpty;
     final costura = _SeparadorConToggle(
       abierto: _panelAbierto,
       onTap: () => setState(() => _panelAbierto = !_panelAbierto),
+    );
+    final barra = _BarraDeCobro(
+      controlador: _recibidoController,
+      cambio: _cambio,
+      total: total,
+      habilitado: hayLineas && !_finalizando,
+      onRecibidoChanged: (v) => _onRecibidoChanged(v, total),
+      onFinalizar: _finalizar,
     );
 
     // El panel se ACOPLA AL LADO LARGO: a la derecha cuando hay ancho, ARRIBA
@@ -69,22 +116,66 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
                 // es el control que abre el panel.
                 SizedBox(height: bentoInsetSuperior(context)),
               costura,
-              Expanded(flex: _panelAbierto ? 2 : 1, child: carrito),
+              Expanded(
+                flex: _panelAbierto ? 2 : 1,
+                child: Column(
+                  children: [
+                    const Expanded(child: _ListaCarrito()),
+                    barra,
+                  ],
+                ),
+              ),
             ],
           ),
         ),
       );
     }
 
+    // Acostado la barra de cobro sale de la fila y cruza el ancho COMPLETO por
+    // debajo. Antes vivía dentro del carrito, y eso dejaba dos cosas mal: el
+    // botón de la costura caía al costado DE la barra en vez de encima de ella
+    // —medio fuera de la pantalla—, y la barra terminaba antes del borde, así
+    // que no se leía como la zona de cobro sino como el pie de una lista.
     return RetrocesoCierra(
       activo: _panelAbierto,
       alRetroceder: () => setState(() => _panelAbierto = false),
       child: Scaffold(
-        body: Row(
+        body: Column(
           children: [
-            Expanded(flex: _panelAbierto ? 3 : 5, child: carrito),
-            costura,
-            if (_panelAbierto) Expanded(flex: 4, child: _PanelAgregarProducto()),
+            Expanded(
+              child: Padding(
+                // Más aire a la derecha con el panel cerrado: ahí la costura es
+                // el último elemento y el botón, que sobresale de ella, quedaba
+                // al ras del borde de la pantalla.
+                padding: EdgeInsets.fromLTRB(
+                  BentoSpacing.pared,
+                  BentoSpacing.pared,
+                  _panelAbierto ? BentoSpacing.pared : BentoSpacing.rim,
+                  0,
+                ),
+                child: Row(
+                  children: [
+                    // Los dos NO están al mismo nivel, y eso tiene que verse.
+                    //
+                    // El carrito es la superficie de trabajo: se queda en el
+                    // fondo de bandeja, sin relleno ni cresta propios. El panel
+                    // abatible es lo que aparece encima, y por eso es el único
+                    // con color de pozo y contorno. Darles a los dos el mismo
+                    // pozo separaba, pero los dejaba empatados: dos
+                    // compartimentos gemelos donde hay una base y algo que se
+                    // despliega sobre ella.
+                    Expanded(flex: _panelAbierto ? 3 : 5, child: const _ListaCarrito()),
+                    costura,
+                    if (_panelAbierto)
+                      Expanded(
+                        flex: 4,
+                        child: BentoPozo(padding: EdgeInsets.zero, child: _PanelAgregarProducto()),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            barra,
           ],
         ),
       ),
@@ -92,15 +183,17 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
   }
 }
 
-/// Costura entre el carrito y el panel de agregar producto — antes era solo
-/// un ícono flotando sin fondo propio (no se leía como una separación real
-/// entre los dos paneles, rompía la jerarquía). Ahora es una franja con tono
-/// de fondo distinto a ambos paneles (separador real, no una línea) y el
-/// botón que abre/cierra el panel vive anclado cerca del fondo de esa
-/// franja — no centrado en toda la altura, y por encima de la barra inferior
-/// del carrito (Recibí/Cambio/Total/Finalizar) para no estorbarla. El mismo
-/// botón abre y cierra: se "arrastra" con el panel porque vive
-/// estructuralmente en la costura, no en una posición fija.
+/// Costura entre el carrito y el panel de agregar producto, con el botón que
+/// lo abre y lo cierra. El mismo botón hace las dos cosas y se "arrastra" con
+/// el panel porque vive estructuralmente en la costura, no en una posición
+/// fija.
+///
+/// Las dos orientaciones separan distinto, y a propósito:
+/// - apilada (teléfono de pie) es una FRANJA con tono de bandeja, porque ahí
+///   los dos paneles ocupan el ancho completo y no hay pared que los separe;
+/// - vertical (acostado, tablet, escritorio) es solo la PARED entre dos pozos:
+///   el material de bandeja ya está detrás y la cresta de cada pozo hace la
+///   separación, así que pintarle un fondo encima sería una franja de más.
 class _SeparadorConToggle extends StatelessWidget {
   const _SeparadorConToggle({required this.abierto, required this.onTap});
 
@@ -112,22 +205,29 @@ class _SeparadorConToggle extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final horizontal = BentoAncho.de(context).esCompacto;
 
-    final boton = Material(
-      color: scheme.primaryContainer,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(BentoSpacing.unidad),
-          child: Icon(
-            // El icono apunta hacia donde se va el panel: a la derecha cuando
-            // la costura es vertical, hacia abajo cuando es horizontal.
-            abierto
-                ? (horizontal ? Icons.expand_less : Icons.chevron_right)
-                : Icons.add_shopping_cart,
-            size: 20,
-            color: scheme.onPrimaryContainer,
+    // Tooltip además del icono: es el único control de la pantalla sin texto, y
+    // sin etiqueta no lo anuncia un lector de pantalla ni lo encuentra el
+    // harness de pruebas.
+    final boton = Tooltip(
+      message: abierto ? 'Cerrar panel de productos' : 'Agregar productos',
+      child: Material(
+        key: const ValueKey('costura_toggle'),
+        color: scheme.primaryContainer,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(BentoSpacing.unidad),
+            child: Icon(
+              // El icono apunta hacia donde se va el panel: a la derecha cuando
+              // la costura es vertical, hacia abajo cuando es horizontal.
+              abierto
+                  ? (horizontal ? Icons.expand_less : Icons.chevron_right)
+                  : Icons.add_shopping_cart,
+              size: 20,
+              color: scheme.onPrimaryContainer,
+            ),
           ),
         ),
       ),
@@ -157,66 +257,30 @@ class _SeparadorConToggle extends StatelessWidget {
       );
     }
 
+    // Costura vertical: es la PARED entre dos pozos, así que no lleva fondo
+    // propio —el material de bandeja ya está detrás— y el botón se ancla ABAJO
+    // del todo. Ahí queda encima de la barra de cobro y a la derecha del
+    // carrito, que es donde lo esperaba el usuario; antes vivía a media altura
+    // y terminaba AL LADO de la barra, medio fuera de la pantalla.
     return SizedBox(
       width: BentoSpacing.gapGrupo,
-      child: Stack(
-        children: [
-          Positioned.fill(child: fondo),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: BentoSpacing.gapGrupo * 3,
-            child: Center(child: boton),
-          ),
-        ],
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: BentoSpacing.unidad),
+          child: boton,
+        ),
       ),
     );
   }
 }
 
-class _Carrito extends ConsumerStatefulWidget {
-  const _Carrito({required this.onFinalizar});
+/// Solo la lista de líneas: la barra de cobro es hermana suya, no hija — ver
+/// el porqué en el layout acostado de [_PanelVentaScreenState].
+class _ListaCarrito extends ConsumerWidget {
+  const _ListaCarrito();
 
-  final VoidCallback onFinalizar;
-
-  @override
-  ConsumerState<_Carrito> createState() => _CarritoState();
-}
-
-class _CarritoState extends ConsumerState<_Carrito> {
-  final _recibidoController = TextEditingController();
-  double? _cambio;
-  Timer? _debounce;
-  bool _finalizando = false;
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _recibidoController.dispose();
-    super.dispose();
-  }
-
-  void _onRecibidoChanged(String valor, double total) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
-      final recibido = double.tryParse(valor);
-      setState(() => _cambio = recibido == null ? null : recibido - total);
-    });
-  }
-
-  Future<void> _finalizar() async {
-    setState(() => _finalizando = true);
-    await ref.read(ventaEnCursoNotifierProvider.notifier).guardar();
-    _recibidoController.clear();
-    _cambio = null;
-    if (mounted) {
-      setState(() => _finalizando = false);
-      mostrarNotificacionEsquina(context, '✓ Venta OK');
-      widget.onFinalizar();
-    }
-  }
-
-  Future<void> _editarLinea(LineaVenta linea) async {
+  Future<void> _editarLinea(BuildContext context, LineaVenta linea) async {
     await showDialog<void>(
       context: context,
       builder: (_) => _DialogoEditarLinea(linea: linea),
@@ -224,57 +288,42 @@ class _CarritoState extends ConsumerState<_Carrito> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ventaEnCurso = ref.watch(ventaEnCursoNotifierProvider);
-    final productosAsync = ref.watch(productoQueryProvider);
-    final productos = productosAsync.valueOrNull ?? const <Producto>[];
-    final total = ventaEnCurso.total;
+    final productos = ref.watch(productoQueryProvider).valueOrNull ?? const <Producto>[];
 
-    return Column(
-      children: [
-        Expanded(
-          child: ventaEnCurso.lineas.isEmpty
-              // El texto sigue al panel: en teléfono la costura está ABAJO, y
-              // decir "a la derecha" mandaba al usuario a mirar donde no hay
-              // nada. Es el tipo de incoherencia que aparece al mover algo de
-              // sitio y no revisar lo que lo nombra.
-              ? Center(
-                  child: Text(
-                    BentoAncho.de(context).esCompacto
-                        ? 'Agregá productos con el botón de arriba'
-                        : 'Agregá productos con el botón de la derecha',
-                    textAlign: TextAlign.center,
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-                  itemCount: ventaEnCurso.lineas.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad),
-                  itemBuilder: (context, i) {
-                    final linea = ventaEnCurso.lineas[i];
-                    final nombre = linea.nombreLibre ?? _buscarNombre(linea.productoId, productos);
-                    return _FilaLineaVenta(
-                      nombre: nombre,
-                      lineaLibre: linea.nombreLibre != null,
-                      cantidad: linea.cantidad,
-                      nota: linea.nota,
-                      subtotal: linea.precioAplicado * linea.cantidad,
-                      onEditar: () => _editarLinea(linea),
-                      onQuitar: () =>
-                          ref.read(ventaEnCursoNotifierProvider.notifier).quitarLinea(linea.id),
-                    );
-                  },
-                ),
+    if (ventaEnCurso.lineas.isEmpty) {
+      // El texto sigue al panel: en teléfono la costura está ABAJO, y decir "a
+      // la derecha" mandaba al usuario a mirar donde no hay nada. Es el tipo de
+      // incoherencia que aparece al mover algo de sitio y no revisar lo que lo
+      // nombra.
+      return Center(
+        child: Text(
+          BentoAncho.de(context).esCompacto
+              ? 'Agregá productos con el botón de arriba'
+              : 'Agregá productos con el botón de la derecha',
+          textAlign: TextAlign.center,
         ),
-        _BarraDeCobro(
-          controlador: _recibidoController,
-          cambio: _cambio,
-          total: total,
-          habilitado: ventaEnCurso.lineas.isNotEmpty && !_finalizando,
-          onRecibidoChanged: (v) => _onRecibidoChanged(v, total),
-          onFinalizar: _finalizar,
-        ),
-      ],
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+      itemCount: ventaEnCurso.lineas.length,
+      separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad),
+      itemBuilder: (context, i) {
+        final linea = ventaEnCurso.lineas[i];
+        final nombre = linea.nombreLibre ?? _buscarNombre(linea.productoId, productos);
+        return _FilaLineaVenta(
+          nombre: nombre,
+          lineaLibre: linea.nombreLibre != null,
+          cantidad: linea.cantidad,
+          nota: linea.nota,
+          subtotal: linea.precioAplicado * linea.cantidad,
+          onEditar: () => _editarLinea(context, linea),
+          onQuitar: () => ref.read(ventaEnCursoNotifierProvider.notifier).quitarLinea(linea.id),
+        );
+      },
     );
   }
 
@@ -331,7 +380,10 @@ class _BarraDeCobro extends StatelessWidget {
     );
     final finalizar = FilledButton(
       onPressed: habilitado ? onFinalizar : null,
-      child: const Text('Finalizar'),
+      // Una línea: en la celda de 1/6 de la retícula "Finalizar" se partía en
+      // "Finaliza/r", que en la acción principal de la pantalla se lee como un
+      // defecto.
+      child: const FittedBox(fit: BoxFit.scaleDown, child: Text('Finalizar', maxLines: 1)),
     );
     final vertical = BentoAncho.de(context).esCompacto;
 
