@@ -15,6 +15,7 @@
 //    Service que llamaria la UI real — nunca toca SQLite a mano, para no
 //    inventar un segundo camino de logica de negocio (decision 0009).
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:cryptography/dart.dart';
@@ -81,12 +82,7 @@ void main() {
   // Vive en test_driver/, asi que no existe en produccion.
   DiagnosticoDev.instalar();
 
-  runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const VulpTiketingApp(),
-    ),
-  );
+  runApp(UncontrolledProviderScope(container: container, child: const VulpTiketingApp()));
 }
 
 Future<String> _manejarComandoDirecto(ProviderContainer container, String? mensaje) async {
@@ -112,10 +108,7 @@ Future<dynamic> _ejecutar(
       final modo = args['modo'] == 'reemplazar'
           ? ModoImportacion.reemplazar
           : ModoImportacion.fusionar;
-      await TiketdataService(db).importarCatalogo(
-        rutaOrigen: args['path'] as String,
-        modo: modo,
-      );
+      await TiketdataService(db).importarCatalogo(rutaOrigen: args['path'] as String, modo: modo);
       container.invalidate(productoNotifierProvider);
       container.invalidate(categoriaNotifierProvider);
       return null;
@@ -143,9 +136,7 @@ Future<dynamic> _ejecutar(
         directorioDatos: p.dirname(await AppDatabase.ruta()),
         nombreBasePrincipal: p.basename(await AppDatabase.ruta()),
         rutaOrigen: args['path'] as String,
-        alcance: AlcanceRestauracion.values.byName(
-          (args['alcance'] as String?) ?? 'todo',
-        ),
+        alcance: AlcanceRestauracion.values.byName((args['alcance'] as String?) ?? 'todo'),
       );
       container.invalidate(databaseProvider);
       return null;
@@ -153,14 +144,16 @@ Future<dynamic> _ejecutar(
     case 'seed_categoria':
       final nombre = args['nombre'] as String;
       final id = _uuid.v4();
-      await container.read(categoriaNotifierProvider.notifier).crear(
-            Categoria(id: id, nombre: nombre, updatedAt: DateTime.now()),
-          );
+      await container
+          .read(categoriaNotifierProvider.notifier)
+          .crear(Categoria(id: id, nombre: nombre, updatedAt: DateTime.now()));
       return {'id': id};
 
     case 'seed_producto':
       final id = _uuid.v4();
-      await container.read(productoNotifierProvider.notifier).crear(
+      await container
+          .read(productoNotifierProvider.notifier)
+          .crear(
             Producto(
               id: id,
               nombre: args['nombre'] as String,
@@ -170,6 +163,54 @@ Future<dynamic> _ejecutar(
             ),
           );
       return {'id': id};
+
+    case 'cargar_base_pruebas':
+      // La base de pruebas ÚNICA: el menú real más 500 ventas repartidas por
+      // semanas, días y turnos (`seed/base-de-pruebas.json`, generado por
+      // `scripts/generar_datos_prueba.dart`). La manda
+      // `scripts/cargar-datos-prueba.sh`.
+      //
+      // El CONTENIDO viaja en el comando, no una ruta: desde Android 10 la app
+      // no puede leer `/sdcard`, así que un `adb push` no le sirve de nada. Acá
+      // se escribe en el directorio propio de la app, que es el único al que sí
+      // llega.
+      //
+      // Las ventas se insertan por SQL y no por `VentaEnCursoNotifier` como
+      // `seed_venta`: ese camino fecha todo AHORA, y lo que importa acá es
+      // justamente que estén repartidas en el tiempo. El catálogo sí entra por
+      // el servicio de importación real.
+      final db = await container.read(databaseProvider.future);
+      final crudo = args['json'] as String;
+      final datos = jsonDecode(crudo) as Map<String, dynamic>;
+
+      final temporal = File(p.join(p.dirname(await AppDatabase.ruta()), 'base-de-pruebas.json'));
+      await temporal.writeAsString(crudo);
+      await TiketdataService(
+        db,
+      ).importarCatalogo(rutaOrigen: temporal.path, modo: ModoImportacion.reemplazar);
+      await temporal.delete();
+
+      final ventas = (datos['ventas'] as List).cast<Map<String, dynamic>>();
+      await db.transaction((txn) async {
+        await txn.delete('linea_venta');
+        await txn.delete('venta');
+        for (final venta in ventas) {
+          await txn.insert('venta', {
+            'id': venta['id'],
+            'fecha_hora': venta['fecha_hora'],
+            'estado': venta['estado'],
+            'updated_at': venta['updated_at'],
+          });
+          for (final linea in (venta['lineas'] as List).cast<Map<String, dynamic>>()) {
+            await txn.insert('linea_venta', linea);
+          }
+        }
+      });
+
+      container.invalidate(productoNotifierProvider);
+      container.invalidate(categoriaNotifierProvider);
+      container.invalidate(ventaNotifierProvider);
+      return {'productos': (datos['productos'] as List).length, 'ventas': ventas.length};
 
     case 'seed_venta':
       // Siembra una venta real pasando por VentaEnCursoNotifier, el mismo
@@ -196,12 +237,7 @@ Future<dynamic> _ejecutar(
     case 'listar_productos':
       final productos = await container.read(productoNotifierProvider.future);
       return productos
-          .map((p) => {
-                'id': p.id,
-                'nombre': p.nombre,
-                'precio': p.precioBase,
-                'activo': p.activo,
-              })
+          .map((p) => {'id': p.id, 'nombre': p.nombre, 'precio': p.precioBase, 'activo': p.activo})
           .toList();
 
     case 'listar_categorias':
@@ -218,10 +254,7 @@ Future<dynamic> _ejecutar(
       final modo = args['modo'] as String? ?? 'libre';
       await SystemChrome.setPreferredOrientations(switch (modo) {
         'vertical' => [DeviceOrientation.portraitUp],
-        'horizontal' => [
-            DeviceOrientation.landscapeLeft,
-            DeviceOrientation.landscapeRight,
-          ],
+        'horizontal' => [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight],
         _ => DeviceOrientation.values,
       });
       return {'modo': modo};
@@ -254,8 +287,7 @@ Future<dynamic> _ejecutar(
         final clave = await cifrador.newSecretKey();
         // Calentamiento: la primera llamada paga el arranque del canal a la
         // plataforma, y mediria eso en vez del cifrado.
-        await cifrador.encrypt(Uint8List(1024 * 1024),
-            secretKey: clave, nonce: nonce);
+        await cifrador.encrypt(Uint8List(1024 * 1024), secretKey: clave, nonce: nonce);
         final reloj = Stopwatch()..start();
         await cifrador.encrypt(datos, secretKey: clave, nonce: nonce);
         return (reloj..stop()).elapsedMilliseconds;

@@ -30,6 +30,10 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 - [Roles y autenticación](funciones/roles-y-auth.md)
 - [Backup](funciones/backup.md)
 
+## Datos de prueba
+
+- [seed/](../seed/README.md) — el menú real y la base de pruebas única (500 ventas repartidas por semanas, días y turnos)
+
 ## Decisiones
 
 - [Índice de decisiones (ADRs)](decisiones/index.md)
