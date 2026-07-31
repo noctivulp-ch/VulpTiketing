@@ -29,9 +29,11 @@ Además de los principios estándar de bento (una celda = una responsabilidad, j
 
 ### Feedback táctil (universal — todo elemento tocable de la app)
 
-- **Al presionar**: onda circular blanca semitransparente con textura granulada (símil papel rugoso, no un ripple liso), que nace en el punto exacto de la presión y crece hasta cubrir todo el elemento, luego desaparece. Duración corta — un poco más lenta que un parpadeo (≈200ms).
+- **Al presionar**: onda circular que nace en el punto exacto de la presión, crece hasta cubrir el elemento y desaparece. Duración 261 ms de crecimiento, más un desvanecido que sostiene la opacidad durante su primer tercio: el elemento tiene que verse LLENO antes de apagarse.
+  - **Corregido tras probarlo en el aparato (2026-07-31).** El boceto pedía blanco semitransparente con textura granulada, y así se implementó primero. Las dos cosas resultaron mal: el blanco no pertenece a la paleta de laca, y los puntos dispersos leían como el ripple de Android Lollipop (lenguaje frutiger aero), no como una pieza de laca. La versión buena es `mancha` — tinta que se absorbe, relleno continuo que se disuelve del todo hacia el borde— con el tono apenas separado del reposo del propio elemento (0.10) y el peso puesto en el frente de la onda, que lleva la cresta del elemento (0.86). O sea: lo que se ve no es una capa encima, es el borde del material corriéndose.
+  - Los valores salen de `test_driver/lab_toque.dart`, probándolos con el dedo. No hay tabla que los dé.
 - Aplica a cualquier botón, celda de producto, ícono de navegación — mismo lenguaje de interacción en toda la app, no solo en ventas.
-- *Nota de implementación:* el ripple estándar de Flutter (`InkWell`) es liso; esta textura granulada requiere un `splashFactory`/`CustomPainter` propio (una textura de grano/ruido enmascarada por el círculo animado) — detalle de implementación, no bloquea el diseño.
+- *Nota de implementación:* el ripple estándar de Flutter (`InkWell`) es liso; esto requiere un `splashFactory` propio (`BentoGrainSplash`). Ojo con los DOS velos blancos de fábrica que se pintan además del splash —`ThemeData.highlightColor` y el `overlayColor` de cada botón—: mientras estuvieron activos, el toque se veía blanco en unos sitios y con color en otros. Están anulados en el tema.
 
 ### Feedback de finalización (universal, no solo Venta)
 
@@ -429,7 +431,7 @@ Un matiz honesto para cuando se implemente: el flujo unificado en sí (tocar un 
 
 Las 6 fases de la pasada de refinamiento visual, cada una verificada con `flutter analyze`/`flutter test`/`flutter build linux --debug` + navegación real por teclado con captura de pantalla:
 
-- **Fase 0** — fundación: `lib/core/theme/bento_theme.dart` (tokens `BentoSpacing`/`BentoRadius`, escala tipográfica, theming de componentes compartidos), `bento_ink.dart` (ripple granulado, `BentoGrainSplash`), `bento_corner_notice.dart` (notificación de esquina).
+- **Fase 0** — fundación: `lib/core/theme/bento_theme.dart` (tokens `BentoSpacing`/`BentoRadius`, escala tipográfica, theming de componentes compartidos), `bento_ink.dart` (onda de toque, `BentoGrainSplash` + `BentoToqueReceta`), `bento_corner_notice.dart` (notificación de esquina).
 - **Fase 1** — Login con los tokens aplicados.
 - **Fase 2** — Ventana 1 (grid + overlay de cobro) con tokens y notificación de esquina.
 - **Fase 3** — Ventana 2: fila de carrito (`_FilaLineaVenta`) con el mismo lenguaje visual que la tarjeta de producto.

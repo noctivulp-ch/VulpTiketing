@@ -30,10 +30,10 @@ class BentoToqueReceta {
   const BentoToqueReceta({
     this.textura = BentoToqueTextura.mancha,
     this.duracion = bentoFeedbackTactilDuracion,
-    this.opacidad = 0.5,
-    this.fusion = 0.6,
-    this.borde = 0.22,
-    this.separacion = 0.22,
+    this.opacidad = 0.55,
+    this.fusion = 1,
+    this.borde = 0.86,
+    this.separacion = 0.10,
   });
 
   final BentoToqueTextura textura;

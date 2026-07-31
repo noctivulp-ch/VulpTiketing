@@ -60,11 +60,12 @@ class BentoRadius {
 
 /// Duracion del feedback tactil (onda al presionar).
 ///
-/// 240 y no 200: a 200 el toque no llegaba a leerse — la onda crecia y se
-/// apagaba antes de que la pantalla reaccionara, asi que el elemento tocado
-/// nunca se veia lleno. Con esto crece en 240, se sostiene un tercio del
-/// desvanecido y recien ahi se apaga.
-const Duration bentoFeedbackTactilDuracion = Duration(milliseconds: 240);
+/// A 200 el toque no llegaba a leerse — la onda crecia y se apagaba antes de
+/// que la pantalla reaccionara, asi que el elemento tocado nunca se veia lleno.
+/// Ahora crece en 261, se sostiene un tercio del desvanecido y recien ahi se
+/// apaga. El numero exacto sale de probarlo con el dedo en el aparato
+/// (test_driver/lab_toque.dart), no de una tabla.
+const Duration bentoFeedbackTactilDuracion = Duration(milliseconds: 261);
 
 /// Objetivo tactil minimo. Corre en tablet en el mostrador (escena de uso
 /// confirmada), asi que todo lo tocable respeta esto — DESIGN.md, regla 6.
