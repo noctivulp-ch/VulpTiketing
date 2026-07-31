@@ -31,10 +31,10 @@ class VentaRapidaScreen extends ConsumerWidget {
     // Material seria una pieza pegada ENCIMA de la bandeja, no un hueco
     // dentro (DESIGN.md, regla 8).
     return Scaffold(
-      body: BentoBandeja(
-        child: Column(
-          children: [
-            Expanded(
+      body: Column(
+        children: [
+          Expanded(
+            child: BentoBandeja(
               child: productosAsync.when(
                 data: (productos) => productos.isEmpty
                     ? const _SinProductos()
@@ -83,31 +83,43 @@ class VentaRapidaScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            // El buscador va ABAJO, al alcance del pulgar y en el mismo sitio
-            // que en Catálogo y que en el panel de Ventana 2: las tres
-            // pantallas que buscan productos lo tienen en el mismo borde.
-            // Arriba obligaba a estirar la mano y rompía esa coherencia.
-            const SizedBox(height: BentoSpacing.pared),
-            BentoPozo(
-              padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
-              child: TextField(
-                // Los TRES bordes en `none`, no solo `border`: dentro de un
-                // pozo el contorno ya lo pone el pozo, y el del campo dibujaba
-                // un segundo marco por dentro. `border` sola no alcanza —
-                // `enabledBorder` y `focusedBorder` la pisan.
-                decoration: const InputDecoration(
-                  isDense: true,
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Buscar producto o categoría…',
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
+          ),
+          // El buscador va ABAJO, al alcance del pulgar y en el mismo sitio
+          // que en Catálogo y que en el panel de Ventana 2: las tres pantallas
+          // que buscan productos lo tienen en el mismo borde.
+          //
+          // Y va FUERA de la bandeja, a lo ancho de la pantalla y pegado al
+          // borde, igual que en esas dos. Dentro del labio de la bandeja
+          // quedaba un pozo con aire por los cuatro costados: se leía como un
+          // elemento flotando, no como la barra de la pantalla.
+          ColoredBox(
+            color: lacaDe(context).pozo,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: BentoSpacing.paddingCelda,
+                  vertical: BentoSpacing.unidad / 2,
                 ),
-                onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
+                child: TextField(
+                  // Los TRES bordes en `none`, no solo `border`: dentro de un
+                  // pozo el contorno ya lo pone el pozo, y el del campo dibujaba
+                  // un segundo marco por dentro. `border` sola no alcanza —
+                  // `enabledBorder` y `focusedBorder` la pisan.
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    prefixIcon: Icon(Icons.search),
+                    hintText: 'Buscar producto o categoría…',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                  ),
+                  onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

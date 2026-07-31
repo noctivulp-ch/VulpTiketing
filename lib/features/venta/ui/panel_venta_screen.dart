@@ -110,8 +110,19 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
               // abierto o cerrado, así que el espacio reservado se decide acá y
               // no dentro de la costura: con el panel abierto la costura queda
               // en MEDIO, y ahí un margen superior sería un hueco absurdo.
+              // Un TERCIO, no la mitad: el panel es de donde se saca lo que se
+              // agrega, pero lo que importa mirar es el carrito. Con 3:2 el
+              // panel se quedaba con el 60 % y el carrito se veía encajonado.
+              //
+              // Y con el color de pozo, igual que acostado: es lo que se
+              // despliega ENCIMA de la superficie de trabajo, así que tiene que
+              // leerse por delante. Apilado se había quedado sin esa distinción
+              // y los dos parecían el mismo plano.
               if (_panelAbierto)
-                Expanded(flex: 3, child: _PanelAgregarProducto())
+                Expanded(
+                  flex: 1,
+                  child: BentoPozo(padding: EdgeInsets.zero, child: _PanelAgregarProducto()),
+                )
               else
                 // El botón de la costura es fijo: si quedara pegado al borde lo
                 // taparían la muesca de la cámara o una notificación que baje, y
@@ -376,8 +387,14 @@ class _BarraDeCobro extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(cambio == null ? 'Cambio: —' : 'Cambio: ₡${cambio!.toStringAsFixed(2)}'),
     );
+    final vertical = BentoAncho.de(context).esCompacto;
+    // Apilado, Cambio y Total quedan uno debajo del otro en la misma columna:
+    // con uno pegado a la izquierda y el otro a la derecha, dos importes que se
+    // leen juntos no compartían margen y la columna se veía descuadrada.
+    // Acostado van en celdas distintas de la misma fila y ahí el Total sí cierra
+    // contra su borde, al lado del botón.
     final textoTotal = Align(
-      alignment: Alignment.centerRight,
+      alignment: vertical ? Alignment.centerLeft : Alignment.centerRight,
       child: Text('₡${total.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleMedium),
     );
     final finalizar = FilledButton(
@@ -387,7 +404,6 @@ class _BarraDeCobro extends StatelessWidget {
       // defecto.
       child: const FittedBox(fit: BoxFit.scaleDown, child: Text('Finalizar', maxLines: 1)),
     );
-    final vertical = BentoAncho.de(context).esCompacto;
 
     return ColoredBox(
       color: lacaDe(context).pozo,
