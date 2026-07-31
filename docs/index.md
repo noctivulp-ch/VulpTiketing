@@ -12,6 +12,7 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 - [Gestión de estado](arquitectura/gestion-estado.md) (Riverpod — regla dura contra abstracciones genéricas de CRUD)
 - [Sincronización](arquitectura/sincronizacion.md)
 - [Seguridad](arquitectura/seguridad.md)
+- [Rendimiento](arquitectura/rendimiento.md) (medido en el teléfono, en profile — cuellos, opciones probadas y cómo medir)
 
 ## Pantallas
 
