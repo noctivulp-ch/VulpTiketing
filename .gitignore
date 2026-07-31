@@ -20,3 +20,6 @@ scripts/**/node_modules/
 .agents/
 .claude/
 skills-lock.json
+
+# Mediciones del banco de rendimiento: se regeneran corriéndolo.
+build/banco/
