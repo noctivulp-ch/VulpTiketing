@@ -33,6 +33,7 @@ class BentoToqueReceta {
     this.opacidad = 0.5,
     this.fusion = 0.6,
     this.borde = 0.22,
+    this.separacion = 0.22,
   });
 
   final BentoToqueTextura textura;
@@ -53,18 +54,25 @@ class BentoToqueReceta {
   /// con el material, no de contorno.
   final double borde;
 
+  /// Cuánto se aleja el tono del toque del color de reposo del elemento.
+  /// 0 lo deja igual (invisible); 1 lo lleva al blanco puro sobre material
+  /// oscuro y al negro puro sobre material claro.
+  final double separacion;
+
   BentoToqueReceta copyWith({
     BentoToqueTextura? textura,
     Duration? duracion,
     double? opacidad,
     double? fusion,
     double? borde,
+    double? separacion,
   }) => BentoToqueReceta(
     textura: textura ?? this.textura,
     duracion: duracion ?? this.duracion,
     opacidad: opacidad ?? this.opacidad,
     fusion: fusion ?? this.fusion,
     borde: borde ?? this.borde,
+    separacion: separacion ?? this.separacion,
   );
 
   @override
@@ -73,7 +81,8 @@ class BentoToqueReceta {
       'duracion: Duration(milliseconds: ${duracion.inMilliseconds}), '
       'opacidad: ${opacidad.toStringAsFixed(2)}, '
       'fusion: ${fusion.toStringAsFixed(2)}, '
-      'borde: ${borde.toStringAsFixed(2)})';
+      'borde: ${borde.toStringAsFixed(2)}, '
+      'separacion: ${separacion.toStringAsFixed(2)})';
 }
 
 /// Onda de toque de la app — ver docs/pantallas/prototipos-ascii.md#feedback-tactil.

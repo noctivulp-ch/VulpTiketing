@@ -323,9 +323,9 @@ TextTheme _escalaTipografica(TextTheme base) {
 /// más oscura que el pozo: usarla restaba luminosidad y el toque quedaba casi
 /// invisible—. Lo que hace falta es alejarse del reposo en la dirección que
 /// contrasta: aclarar sobre material oscuro, oscurecer sobre material claro.
-Color _tonoDeToque(Color pozo, Brightness brightness) {
+Color _tonoDeToque(Color pozo, Brightness brightness, double separacion) {
   final hacia = brightness == Brightness.dark ? Colors.white : Colors.black;
-  return Color.lerp(pozo, hacia, 0.22)!;
+  return Color.lerp(pozo, hacia, separacion.clamp(0.0, 1.0))!;
 }
 
 /// Los botones pintan un velo propio (`overlayColor`) ADEMÁS del splash, y de
@@ -353,7 +353,7 @@ ThemeData buildBentoTheme(
     // claro— y el frente de la onda con la cresta, que es literalmente su
     // borde.
     splashFactory: BentoGrainSplash.factoriaDe(
-      relleno: _tonoDeToque(laca.pozo, brightness),
+      relleno: _tonoDeToque(laca.pozo, brightness, toque.separacion),
       cresta: laca.paredCresta,
       receta: toque,
     ),
@@ -362,7 +362,7 @@ ThemeData buildBentoTheme(
     // el color de la onda estaba bien debajo. El resaltado lo hace ahora la
     // onda misma, que se sostiene hasta apagarse.
     highlightColor: Colors.transparent,
-    splashColor: _tonoDeToque(laca.pozo, brightness),
+    splashColor: _tonoDeToque(laca.pozo, brightness, toque.separacion),
     // Sin elevacion ni sombra: la profundidad la da la cresta, no una sombra
     // proyectada (DESIGN.md, regla 1).
     cardTheme: CardThemeData(

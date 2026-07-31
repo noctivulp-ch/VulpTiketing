@@ -206,6 +206,13 @@ class _Controles extends StatelessWidget {
             onCambio: (v) => onReceta(receta.copyWith(fusion: v)),
           ),
           _Dial(
+            nombre: 'separación del tono',
+            valor: receta.separacion,
+            min: 0,
+            max: 1,
+            onCambio: (v) => onReceta(receta.copyWith(separacion: v)),
+          ),
+          _Dial(
             nombre: 'cresta en el frente',
             valor: receta.borde,
             min: 0,
