@@ -21,6 +21,8 @@ import 'dart:ui' show FrameTiming;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
@@ -127,16 +129,44 @@ void main() {
     final etapas = <String, int>{};
     final arranque = Stopwatch()..start();
 
+    // PRIMERO restaurar la sesión, antes de tocar el almacén seguro por
+    // cualquier otra vía: en un arranque real ese almacén está frío, y si el
+    // banco lo abriera antes estaría midiendo con la caché puesta y diría que
+    // todo va rápido.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('rol_activo_pista', 'gerente');
     final reloj = Stopwatch()..start();
+    final contenedorSesion = ProviderContainer();
+    await contenedorSesion.read(sesionRestauradaProvider.future);
+    etapas['restaurar sesión (con pista)'] = reloj.elapsedMilliseconds;
+    contenedorSesion.dispose();
+
+    reloj.reset();
     await AppDatabase.open();
     etapas['abrir base'] = reloj.elapsedMilliseconds;
 
+    // Las dos lecturas por separado: si la primera es lenta y la segunda no,
+    // el costo es abrir el almacén (Keystore) y no leer el dato, y entonces no
+    // sirve de nada optimizar la consulta.
+    const almacen = FlutterSecureStorage();
     reloj.reset();
-    final contenedor = ProviderContainer();
-    await contenedor.read(sesionRestauradaProvider.future);
-    etapas['restaurar sesión'] = reloj.elapsedMilliseconds;
+    await almacen.read(key: 'rol_activo');
+    etapas['almacén seguro · 1ª lectura'] = reloj.elapsedMilliseconds;
 
     reloj.reset();
+    await almacen.read(key: 'rol_activo');
+    etapas['almacén seguro · 2ª lectura'] = reloj.elapsedMilliseconds;
+
+    // Comparación con un almacén NO cifrado, sobre una clave inventada para no
+    // tocar datos reales: si esto es instantáneo, el 1,2 s es el coste de abrir
+    // el cifrado (Keystore), y entonces la decisión es dónde vive el rol, no
+    // cómo se lee.
+    reloj.reset();
+    prefs.getString('medicion_banco');
+    etapas['preferencias simples · lectura'] = reloj.elapsedMilliseconds;
+
+    reloj.reset();
+    final contenedor = ProviderContainer();
     await contenedor.read(productoNotifierProvider.future);
     etapas['cargar catálogo'] = reloj.elapsedMilliseconds;
     contenedor.dispose();
@@ -231,7 +261,15 @@ void main() {
 Future<void> _montar(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [sesionNotifierProvider.overrideWith(() => _SesionGerente())],
+      overrides: [
+        sesionNotifierProvider.overrideWith(() => _SesionGerente()),
+        // También la restauración, y no por comodidad: sin esto la app hace el
+        // arranque de verdad, la verificación no encuentra sesión en el almacén
+        // seguro de este aparato y termina en el Login — con lo cual el
+        // escenario mediría la pantalla equivocada. El coste del arranque ya se
+        // mide arriba, aparte.
+        sesionRestauradaProvider.overrideWith((ref) async {}),
+      ],
       child: const VulpTiketingApp(),
     ),
   );
