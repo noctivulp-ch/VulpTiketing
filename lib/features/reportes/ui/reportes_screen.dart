@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -101,6 +103,10 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   }
 }
 
+/// Por debajo de este alto la pantalla se considera acostada: apilar bloques
+/// ya no entra, y hay ancho de sobra para repartirlos a lo largo.
+const double _altoAcostado = 520;
+
 String _nombreTurno(Turno turno) => switch (turno) {
   Turno.manana => 'Mañana',
   Turno.tarde => 'Tarde',
@@ -176,6 +182,19 @@ class _VistaGeneral extends StatelessWidget {
     }
   }
 
+  /// Lo mínimo para que un ranking siga siendo legible: su título más un par
+  /// de filas.
+  static const double _altoMinimoRanking = 160;
+
+  /// Lo que ocupan hero, turnos, las separaciones y el selector de rango.
+  static const double _altoResto = 220;
+
+  /// Alto del bloque de rankings: en teléfono se apilan, así que hacen falta
+  /// dos mínimos y la pared entre ellos, no uno.
+  static double _altoMinimoRankings(BuildContext context) => BentoAncho.de(context).esCompacto
+      ? _altoMinimoRanking * 2 + BentoSpacing.pared
+      : _altoMinimoRanking;
+
   @override
   Widget build(BuildContext context) {
     final ahora = DateTime.now();
@@ -191,110 +210,207 @@ class _VistaGeneral extends StatelessWidget {
     // 40 px y cada turno en ~52 dp. Ahora en teléfono el hero toma la fila
     // entera y los tres turnos la siguiente; en escritorio 3+1+1+1 vuelve a dar
     // exactamente la fila de siempre.
+    // La pantalla se desplaza cuando no entra, y llena el alto cuando sí.
+    //
+    // `SizedBox` con el alto REAL de la caja: dentro de un scroll el alto es
+    // infinito y `Flexible`/`Expanded` no reparten infinitos. Y el mínimo evita
+    // que, acostado, los rankings se aplasten por debajo de lo legible — ahí
+    // simplemente se desplaza.
+    return LayoutBuilder(
+      builder: (context, restricciones) {
+        final acostado =
+            restricciones.maxHeight < _altoAcostado && !BentoAncho.de(context).esCompacto;
+        return SingleChildScrollView(
+          child: SizedBox(
+            height: acostado
+                ? restricciones.maxHeight
+                : math.max(restricciones.maxHeight, _altoResto + _altoMinimoRankings(context)),
+            child: acostado ? _cuerpoAcostado(context, esHoy) : _cuerpo(context, esHoy),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _cuerpo(BuildContext context, bool esHoy) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        BentoCuadricula(
-          hijos: [
-            BentoCelda(
-              compacto: 6,
-              medio: 6,
-              amplio: 3,
-              hijo: BentoPozo(
-                onTap: onVerDetalle,
-                padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          _tituloRango(rango, fecha, esHoy),
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        if (esGerente && rango == RangoReporte.dia)
-                          IconButton(
-                            icon: const Icon(Icons.calendar_month_outlined, size: 18),
-                            tooltip: 'Elegir día',
-                            onPressed: onElegirFecha,
-                          ),
-                      ],
-                    ),
-                    // El hero es el numero mas importante de la pantalla
-                    // — debe destacar claramente sobre los turnos, no
-                    // ser "casi del mismo tamano" (skill
-                    // visual-hierarchy: minimo 1.5x de diferencia).
-                    // displaySmall (40) vs bodyLarge (16) de los turnos
-                    // da 2.5x.
-                    BentoTextoTallado(
-                      '₡${reporte.total.toStringAsFixed(2)}',
-                      sobre: lacaDe(context).pozo,
-                      nivel: TalladoNivel.marcado,
-                      estilo: Theme.of(context).textTheme.displaySmall,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (rango == RangoReporte.dia)
-              for (final (nombre, turno) in const [
-                ('Mañana', Turno.manana),
-                ('Tarde', Turno.tarde),
-                ('Noche', Turno.noche),
-              ])
-                BentoCelda(
-                  compacto: 2,
-                  medio: 2,
-                  amplio: 1,
-                  hijo: _TarjetaTurno(
-                    nombre: nombre,
-                    monto: reporte.porTurno[turno]!,
-                    onTap: () => onSeleccionarTurno(turno),
-                  ),
-                ),
-          ],
-        ),
+        _resumen(context, esHoy),
         const SizedBox(height: BentoSpacing.pared),
-        // Los rankings quedan lado a lado desde tablet y apilados en teléfono,
-        // donde dos listas de ~156 dp con nombre y cantidad no se leen.
-        Expanded(
-          child: BentoCuadricula(
-            llenarAlto: true,
-            hijos: [
-              BentoCelda(
-                compacto: 6,
-                medio: 3,
-                amplio: 3,
-                hijo: _Ranking(titulo: 'Más vendidos', items: reporte.masVendidos),
-              ),
-              BentoCelda(
-                compacto: 6,
-                medio: 3,
-                amplio: 3,
-                hijo: _Ranking(titulo: 'Menos vendidos', items: reporte.menosVendidos),
-              ),
-            ],
+        Flexible(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: _altoMinimoRankings(context)),
+            child: _rankings(),
           ),
         ),
         const SizedBox(height: BentoSpacing.unidad),
-        // `Wrap` porque el Gerente tiene cuatro segmentos y la Registradora
-        // dos: el ancho de este control depende del ROL, no solo del aparato.
-        Wrap(
-          children: [
-            SegmentedButton<RangoReporte>(
-              segments: [
-                const ButtonSegment(value: RangoReporte.dia, label: Text('Día')),
-                const ButtonSegment(value: RangoReporte.semana, label: Text('Semana')),
-                if (esGerente) ...[
-                  const ButtonSegment(value: RangoReporte.mes, label: Text('Mes')),
-                  const ButtonSegment(value: RangoReporte.anio, label: Text('Año')),
-                ],
+        _selector(),
+      ],
+    );
+  }
+
+  /// Acostado el alto es el recurso escaso y el ancho sobra: el resumen se va a
+  /// una columna y los rankings a la otra, en vez de apilarse y obligar a
+  /// desplazar para ver el selector de rango.
+  Widget _cuerpoAcostado(BuildContext context, bool esHoy) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // El hero se queda con lo que sobre; turnos y selector piden su
+              // alto natural. Con la cuadrícula normal aquí dentro el alto
+              // intrínseco de hero+turnos excedía la columna y desbordaba 32.
+              Expanded(child: _hero(context, esHoy)),
+              if (rango == RangoReporte.dia) ...[
+                const SizedBox(height: BentoSpacing.pared),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final (i, celda) in _turnos().indexed) ...[
+                        if (i > 0) const SizedBox(width: BentoSpacing.pared),
+                        Expanded(child: celda),
+                      ],
+                    ],
+                  ),
+                ),
               ],
-              selected: {rango},
-              onSelectionChanged: (s) => onCambiarRango(s.first),
-            ),
+              const SizedBox(height: BentoSpacing.unidad),
+              _selector(),
+            ],
+          ),
+        ),
+        const SizedBox(width: BentoSpacing.pared),
+        Expanded(flex: 4, child: _rankings()),
+      ],
+    );
+  }
+
+  Widget _resumen(BuildContext context, bool esHoy) {
+    return BentoCuadricula(
+      hijos: [
+        BentoCelda(compacto: 6, medio: 6, amplio: 3, hijo: _hero(context, esHoy)),
+        if (rango == RangoReporte.dia)
+          for (final celda in _turnos()) BentoCelda(compacto: 2, medio: 2, amplio: 1, hijo: celda),
+      ],
+    );
+  }
+
+  List<Widget> _turnos() => [
+    for (final (nombre, turno) in const [
+      ('Mañana', Turno.manana),
+      ('Tarde', Turno.tarde),
+      ('Noche', Turno.noche),
+    ])
+      _TarjetaTurno(
+        nombre: nombre,
+        monto: reporte.porTurno[turno]!,
+        onTap: () => onSeleccionarTurno(turno),
+      ),
+  ];
+
+  Widget _hero(BuildContext context, bool esHoy) {
+    return BentoPozo(
+      onTap: onVerDetalle,
+      padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Text(
+                _tituloRango(rango, fecha, esHoy),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              if (esGerente && rango == RangoReporte.dia)
+                IconButton(
+                  icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                  tooltip: 'Elegir día',
+                  onPressed: onElegirFecha,
+                ),
+            ],
+          ),
+          // El hero es el numero mas importante de la pantalla
+          // — debe destacar claramente sobre los turnos, no
+          // ser "casi del mismo tamano" (skill
+          // visual-hierarchy: minimo 1.5x de diferencia).
+          // displaySmall (40) vs bodyLarge (16) de los turnos
+          // da 2.5x.
+          BentoTextoTallado(
+            '₡${reporte.total.toStringAsFixed(2)}',
+            sobre: lacaDe(context).pozo,
+            nivel: TalladoNivel.marcado,
+            estilo: Theme.of(context).textTheme.displaySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Lado a lado desde tablet y apilados en teléfono, donde dos listas de
+  /// ~156 dp con nombre y cantidad no se leen.
+  Widget _rankings() {
+    return BentoCuadricula(
+      llenarAlto: true,
+      hijos: [
+        BentoCelda(
+          compacto: 6,
+          medio: 3,
+          amplio: 3,
+          hijo: _Ranking(titulo: 'Más vendidos', items: reporte.masVendidos),
+        ),
+        BentoCelda(
+          compacto: 6,
+          medio: 3,
+          amplio: 3,
+          hijo: _Ranking(titulo: 'Menos vendidos', items: reporte.menosVendidos),
+        ),
+      ],
+    );
+  }
+
+  ButtonSegment<RangoReporte> _segmento(RangoReporte valor, String etiqueta) {
+    return ButtonSegment(
+      value: valor,
+      label: FittedBox(fit: BoxFit.scaleDown, child: Text(etiqueta, maxLines: 1)),
+    );
+  }
+
+  Widget _selector() {
+    // `Wrap` porque el Gerente tiene cuatro segmentos y la Registradora
+    // dos: el ancho de este control depende del ROL, no solo del aparato.
+    return Wrap(
+      children: [
+        SegmentedButton<RangoReporte>(
+          segments: [
+            // Etiquetas que se encogen en vez de partirse: escalar el texto no
+            // toca el alto del control, así que el objetivo táctil de 48 dp
+            // sigue intacto (regla 7).
+            _segmento(RangoReporte.dia, 'Día'),
+            _segmento(RangoReporte.semana, 'Semana'),
+            if (esGerente) ...[
+              _segmento(RangoReporte.mes, 'Mes'),
+              _segmento(RangoReporte.anio, 'Año'),
+            ],
           ],
+          selected: {rango},
+          // Sin la marca de verificación: roba ~40 dp y en la columna angosta
+          // del modo acostado partía "Día" en tres líneas. El segmento elegido
+          // ya se distingue por el relleno.
+          showSelectedIcon: false,
+          // Padding horizontal reducido, no fuente más chica: con el de fábrica
+          // "Semana" se parte en dos renglones en la columna angosta del modo
+          // acostado. El alto —y con él el objetivo táctil de 48 dp— no cambia.
+          style: const ButtonStyle(
+            padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: BentoSpacing.unidad)),
+          ),
+          onSelectionChanged: (s) => onCambiarRango(s.first),
         ),
       ],
     );
@@ -326,8 +442,22 @@ class _TarjetaTurno extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(nombre, style: Theme.of(context).textTheme.bodyMedium),
-          Text('₡${monto.toStringAsFixed(0)}', style: Theme.of(context).textTheme.titleMedium),
+          // Una línea cada uno: en la columna angosta del modo acostado
+          // "Mañana" se partía en "Maña/na" y el monto en dos renglones.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(nombre, style: Theme.of(context).textTheme.bodyMedium, maxLines: 1),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '₡${monto.toStringAsFixed(0)}',
+              style: Theme.of(context).textTheme.titleMedium,
+              maxLines: 1,
+            ),
+          ),
         ],
       ),
     );
@@ -397,6 +527,7 @@ class _VistaDrillDown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final acostado = MediaQuery.sizeOf(context).height < _altoAcostado;
     return Column(
       // `stretch` y no `start`: con `start` cada hijo tomaba su ancho NATURAL,
       // así que la celda del título se encogía hasta el largo del número —
@@ -412,8 +543,13 @@ class _VistaDrillDown extends StatelessWidget {
             label: const Text('Volver'),
           ),
         ),
+        // Acostado el encabezado se aprieta: con el padding y el número
+        // grandes se llevaba un tercio del alto y la lista de ventas —que es a
+        // lo que se vino— quedaba en una franja.
         BentoPozo(
-          padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
+          padding: EdgeInsets.all(
+            acostado ? BentoSpacing.paddingCelda : BentoSpacing.paddingCeldaGrande,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -422,7 +558,9 @@ class _VistaDrillDown extends StatelessWidget {
                 '\u20a1${total.toStringAsFixed(2)}',
                 sobre: lacaDe(context).pozo,
                 nivel: TalladoNivel.marcado,
-                estilo: Theme.of(context).textTheme.displaySmall,
+                estilo: acostado
+                    ? Theme.of(context).textTheme.headlineSmall
+                    : Theme.of(context).textTheme.displaySmall,
               ),
             ],
           ),
@@ -432,27 +570,36 @@ class _VistaDrillDown extends StatelessWidget {
           Text(nota!, style: Theme.of(context).textTheme.bodySmall),
         ],
         const SizedBox(height: BentoSpacing.unidad),
-        Expanded(
-          child: ventas.isEmpty
-              ? Center(child: Text(vacio))
-              : BentoPozo(
-                  padding: EdgeInsets.zero,
-                  child: ListView.builder(
-                    itemCount: ventas.length,
-                    itemBuilder: (context, i) {
-                      final vc = ventas[i];
-                      final f = vc.venta.fechaHora;
-                      final hora = TimeOfDay.fromDateTime(f).format(context);
-                      return ListTile(
-                        title: Text('${f.day}/${f.month} $hora'),
-                        subtitle: Text('${vc.lineas.length} l\u00ednea(s)'),
-                        trailing: Text('\u20a1${vc.total.toStringAsFixed(2)}'),
-                      );
-                    },
+        // `Flexible` con mínimo, igual que en la vista general: acostado, entre
+        // el botón de volver y la celda del total no queda alto para la lista, y
+        // un `Expanded` a secas la dejaba en cero.
+        Flexible(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: _altoMinimoLista),
+            child: ventas.isEmpty
+                ? Center(child: Text(vacio))
+                : BentoPozo(
+                    padding: EdgeInsets.zero,
+                    child: ListView.builder(
+                      itemCount: ventas.length,
+                      itemBuilder: (context, i) {
+                        final vc = ventas[i];
+                        final f = vc.venta.fechaHora;
+                        final hora = TimeOfDay.fromDateTime(f).format(context);
+                        return ListTile(
+                          title: Text('${f.day}/${f.month} $hora'),
+                          subtitle: Text('${vc.lineas.length} l\u00ednea(s)'),
+                          trailing: Text('\u20a1${vc.total.toStringAsFixed(2)}'),
+                        );
+                      },
+                    ),
                   ),
-                ),
+          ),
         ),
       ],
     );
   }
+
+  /// Lo mínimo para que la lista de ventas siga sirviendo.
+  static const double _altoMinimoLista = 140;
 }

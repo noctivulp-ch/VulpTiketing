@@ -59,7 +59,7 @@ class DiagnosticoDev {
       _registrar(
         detalles.exceptionAsString(),
         detalles.library ?? 'desconocida',
-        detalles.stack?.toString() ?? '',
+        _ubicacion(detalles),
       );
       anterior?.call(detalles);
     };
@@ -90,15 +90,38 @@ class DiagnosticoDev {
       ya.ultima = DateTime.now();
       return;
     }
-    _errores[clave] = _ErrorAcumulado(clave, biblioteca, _pilaCorta(pila));
+    _errores[clave] = _ErrorAcumulado(clave, biblioteca, pila);
   }
 
-  /// Solo los primeros marcos de la pila, y sin los del framework: lo que
-  /// importa es en qué archivo NUESTRO empezó.
-  static String _pilaCorta(String pila) {
-    final lineas = pila.split('\n').where((l) => l.trim().isNotEmpty);
-    final propias = lineas.where((l) => l.contains('vulp_tiketing')).take(3);
-    return (propias.isNotEmpty ? propias : lineas.take(3)).join('\n');
+  /// De dónde salió el error, en NUESTRO código.
+  ///
+  /// Primero la pila. Pero los desbordes de layout no traen pila útil: los
+  /// lanza la librería de renderizado y ningún marco es nuestro. Lo que sí
+  /// traen es el volcado completo, que incluye la línea "The relevant
+  /// error-causing widget was" con el archivo y la línea del widget. Sin esto,
+  /// un "overflowed by 36 pixels" llegaba sin decir DÓNDE — que es justo lo
+  /// único que hace falta saber.
+  static String _ubicacion(FlutterErrorDetails detalles) {
+    final deLaPila = _lineasPropias(detalles.stack?.toString() ?? '');
+    if (deLaPila.isNotEmpty) return deLaPila;
+
+    final volcado = detalles.toString().split('\n');
+    final pistas = <String>[];
+    for (var i = 0; i < volcado.length; i++) {
+      final l = volcado[i];
+      if (l.contains('error-causing widget')) {
+        // Las dos siguientes traen el widget y su archivo:line.
+        pistas.addAll(volcado.skip(i + 1).take(2).map((x) => x.trim()));
+      } else if (l.contains('vulp_tiketing') && pistas.length < 3) {
+        pistas.add(l.trim());
+      }
+    }
+    return pistas.take(3).join('\n');
+  }
+
+  static String _lineasPropias(String pila) {
+    final lineas = pila.split('\n').where((l) => l.contains('vulp_tiketing'));
+    return lineas.take(3).join('\n');
   }
 
   /// OJO al limpiar: Flutter reporta un desborde de layout UNA SOLA VEZ por

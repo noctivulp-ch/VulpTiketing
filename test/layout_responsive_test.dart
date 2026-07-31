@@ -152,8 +152,14 @@ void main() {
     for (final tamano in [const Size(800, 360), const Size(360, 800)]) {
       tester.view.physicalSize = tamano;
       tester.view.devicePixelRatio = 1.0;
+      // El inset de la vuelta anterior sigue puesto si no se limpia acá, y la
+      // segunda iteración arrancaba con medio teclado fantasma.
+      tester.view.viewInsets = FakeViewPadding.zero;
       addTearDown(tester.view.reset);
 
+      // Árbol vacío entre vueltas: sin esto el `State` del Login sobrevive al
+      // segundo `pumpWidget` y la prueba no empieza en la vista de roles.
+      await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpWidget(ProviderScope(
         child: MaterialApp(
           theme: buildBentoTheme(AcentoTinte.oro),
@@ -176,6 +182,16 @@ void main() {
         tester.takeException(),
         isNull,
         reason: 'el Login desborda con el teclado abierto a $tamano',
+      );
+
+      // No desbordar no basta: acostado el contenido cabía en el scroll pero
+      // "Entrar" quedaba por debajo del borde visible, así que había que
+      // desplazar para poder pulsarlo. El botón tiene que estar A LA VISTA.
+      final visible = tamano.height - tamano.height * 0.55;
+      expect(
+        tester.getRect(find.text('Entrar')).bottom,
+        lessThanOrEqualTo(visible),
+        reason: '"Entrar" queda fuera de la vista con el teclado abierto a $tamano',
       );
     }
   });

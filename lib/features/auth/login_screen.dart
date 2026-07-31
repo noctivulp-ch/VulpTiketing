@@ -72,6 +72,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     //
     // Ahora los compartimentos ocupan la bandeja completa hasta las esquinas, y
     // la elección de rol es literalmente eso: dos compartimentos del mismo peso.
+    // Acostado y con el teclado abierto quedan ~230 dp de alto útil, y el
+    // título se lleva 52 de ellos: el botón "Entrar" caía fuera de la vista y
+    // había que desplazar para pulsarlo. Cuando el espacio aprieta, el título
+    // es lo primero que sobra — la app ya se identificó al abrirse.
+    final altoUtil = MediaQuery.sizeOf(context).height - MediaQuery.viewInsetsOf(context).bottom;
+    final apretado = altoUtil < _altoConTitulo;
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -79,18 +86,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // El título vive en la ESQUINA, sobre la bandeja, no centrado
-              // como un encabezado de formulario. Lleva el color de texto de
-              // bandeja explícito: con el de pozo (`onSurface`, casi negro en
-              // modo claro) quedaba invisible sobre el marco oscuro — fue un
-              // bug real.
-              Text(
-                'VulpTiketing',
-                style: Theme.of(
-                  context,
-                ).textTheme.headlineSmall?.copyWith(color: laca.textoEnBandeja),
-              ),
-              const SizedBox(height: BentoSpacing.pared),
+              if (!apretado) ...[
+                // El título vive en la ESQUINA, sobre la bandeja, no centrado
+                // como un encabezado de formulario. Lleva el color de texto de
+                // bandeja explícito: con el de pozo (`onSurface`, casi negro en
+                // modo claro) quedaba invisible sobre el marco oscuro — fue un
+                // bug real.
+                Text(
+                  'VulpTiketing',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineSmall?.copyWith(color: laca.textoEnBandeja),
+                ),
+                const SizedBox(height: BentoSpacing.pared),
+              ],
               Expanded(child: _rolSeleccionado == null ? _elegirRolVista() : _contrasenaVista()),
             ],
           ),
@@ -236,6 +245,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   /// Piso para la fila cuando el teclado deja muy poco: campo, botón y el
   /// enlace para cambiar de rol, en una sola fila.
   static const double _altoMinimoAcceso = 220;
+
+  /// Alto útil a partir del cual cabe el título además del contenido.
+  static const double _altoConTitulo = 320;
 }
 
 class _TarjetaRol extends StatelessWidget {
