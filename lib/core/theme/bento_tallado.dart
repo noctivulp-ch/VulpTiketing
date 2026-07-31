@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'bento_efectos.dart';
+
 /// Tallado: el glifo se lee grabado en su superficie en vez de apoyado encima.
 ///
 /// Calibrado por el usuario en el banco de pruebas (`test_driver/sandbox.dart`)
@@ -79,7 +81,9 @@ class BentoTallado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (profundidad <= 0) return child;
+    // Apagado desde Configuración → Optimización: se devuelve el hijo tal cual,
+    // sin las dos capas extra. Es el efecto más caro de la app al desplazar.
+    if (profundidad <= 0 || !bentoEfectoActivo(context, EfectoPesado.tallado)) return child;
 
     // La pared de arriba de la incision queda en sombra y su fondo atrapa luz
     // desde arriba: sombra desplazada hacia arriba, luz hacia abajo.
@@ -120,6 +124,18 @@ class BentoTextoTallado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = estilo?.color ?? DefaultTextStyle.of(context).style.color!;
+    // Sin relieve, el glifo recupera su color PLENO. `bentoColorTallado` lo
+    // acerca a la superficie a propósito —contraste gastado en el efecto—, y
+    // conservar esa fusión sin el relieve que la justifica dejaría el texto
+    // lavado y peor de leer que antes de apagar nada.
+    if (!bentoEfectoActivo(context, EfectoPesado.tallado)) {
+      return Text(
+        texto,
+        maxLines: maxLines,
+        overflow: overflow,
+        style: (estilo ?? const TextStyle()).copyWith(color: base),
+      );
+    }
     return BentoTallado(
       sobre: sobre,
       child: Text(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/theme/bento_efectos.dart';
 import 'core/theme/bento_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/sesion_notifier.dart';
@@ -20,11 +21,12 @@ class VulpTiketingApp extends ConsumerWidget {
     final preferencias = ref.watch(preferenciasNotifierProvider).valueOrNull;
     final acento = preferencias?.acento ?? AcentoTinte.oro;
     final modoTema = preferencias?.modoTema ?? ModoTema.sistema;
+    final efectos = BentoEfectos(apagados: preferencias?.efectosApagados ?? const {});
 
     return MaterialApp(
       title: 'VulpTiketing',
-      theme: buildBentoTheme(acento),
-      darkTheme: buildBentoTheme(acento, brightness: Brightness.dark),
+      theme: buildBentoTheme(acento, efectos: efectos),
+      darkTheme: buildBentoTheme(acento, brightness: Brightness.dark, efectos: efectos),
       themeMode: switch (modoTema) {
         ModoTema.claro => ThemeMode.light,
         ModoTema.oscuro => ThemeMode.dark,

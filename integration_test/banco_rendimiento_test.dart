@@ -33,6 +33,9 @@ import 'package:vulp_tiketing/features/producto/producto_notifier.dart';
 import 'package:vulp_tiketing/features/producto/producto_query_provider.dart';
 import 'package:vulp_tiketing/features/reportes/reportes_provider.dart';
 
+import 'package:vulp_tiketing/core/theme/bento_efectos.dart';
+import 'package:vulp_tiketing/features/configuracion/preferencias_notifier.dart';
+
 import 'siembra.dart';
 
 void main() {
@@ -218,13 +221,31 @@ void main() {
       },
     );
 
-    interfaz['desplazar catálogo'] = await _medirFrames(tester, 'desplazar catálogo', () async {
+    Future<void> desplazar() async {
       final lista = find.byType(Scrollable).first;
       for (var i = 0; i < 4; i++) {
         await tester.fling(lista, const Offset(0, -400), 3000);
         await tester.pumpAndSettle();
       }
-    });
+    }
+
+    // Una vuelta de calentamiento antes de comparar: la primera paga la
+    // compilación de shaders, y sin descartarla la segunda variante siempre
+    // parece mejor. Esa trampa ya nos hizo aplicar un cambio inútil a cuatro
+    // pantallas — ver docs/arquitectura/rendimiento.md.
+    await _medirFrames(tester, 'calentando', desplazar);
+    interfaz['desplazar catálogo'] = await _medirFrames(tester, 'desplazar catálogo', desplazar);
+
+    // Y con el relieve apagado, que es lo que ofrece Configuración →
+    // Optimización: sirve para saber cuánto gana de verdad quien lo apaga.
+    await _montar(tester, efectosApagados: const {EfectoPesado.tallado});
+    await _medirFrames(tester, 'calentando sin relieve', desplazar);
+    interfaz['desplazar catálogo · sin relieve'] = await _medirFrames(
+      tester,
+      'desplazar catálogo · sin relieve',
+      desplazar,
+    );
+    await _montar(tester);
 
     interfaz['escribir en el buscador'] = await _medirFrames(
       tester,
@@ -244,10 +265,11 @@ void main() {
   });
 }
 
-Future<void> _montar(WidgetTester tester) async {
+Future<void> _montar(WidgetTester tester, {Set<EfectoPesado> efectosApagados = const {}}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        preferenciasNotifierProvider.overrideWith(() => _PreferenciasFijas(efectosApagados)),
         sesionNotifierProvider.overrideWith(() => _SesionGerente()),
         // También la restauración, y no por comodidad: sin esto la app hace el
         // arranque de verdad, la verificación no encuentra sesión en el almacén
@@ -314,6 +336,15 @@ Future<Map<String, Object>> _medirFrames(
   // ignore: avoid_print
   print('BANCO\tinterfaz\t$nombre\t${medida['total_ms']}');
   return medida;
+}
+
+class _PreferenciasFijas extends PreferenciasNotifier {
+  _PreferenciasFijas(this.apagados);
+
+  final Set<EfectoPesado> apagados;
+
+  @override
+  Future<Preferencias> build() async => Preferencias(efectosApagados: apagados);
 }
 
 class _SesionGerente extends SesionNotifier {

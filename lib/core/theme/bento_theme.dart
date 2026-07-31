@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'bento_efectos.dart';
 import 'bento_ink.dart';
 
 // CONTRATO DE DIRECCION (ver DESIGN.md en la raiz del repo).
@@ -339,13 +340,14 @@ ThemeData buildBentoTheme(
   AcentoTinte acento, {
   Brightness brightness = Brightness.light,
   BentoToqueReceta toque = const BentoToqueReceta(),
+  BentoEfectos efectos = const BentoEfectos(),
 }) {
   final scheme = _esquemaDe(acento, brightness);
   final laca = _lacaDe(acento, brightness);
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
 
   return base.copyWith(
-    extensions: [laca],
+    extensions: [laca, efectos],
     textTheme: _escalaTipografica(base.textTheme),
     // La bandeja es el plano de fondo de toda pantalla.
     scaffoldBackgroundColor: laca.bandeja,

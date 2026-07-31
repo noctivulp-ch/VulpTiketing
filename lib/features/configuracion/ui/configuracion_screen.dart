@@ -10,6 +10,7 @@ import '../../auth/sesion_notifier.dart';
 import '../../import_export/ui/tiketback_panels.dart';
 import '../../import_export/ui/tiketdata_panel.dart';
 import '../../sync/sync_notifier.dart';
+import '../../../core/theme/bento_efectos.dart';
 import '../preferencias_notifier.dart';
 import 'cambiar_contrasena_panel.dart';
 
@@ -23,6 +24,7 @@ enum _Opcion {
   ordenProducto,
   acento,
   modoTema,
+  optimizacion,
 }
 
 /// Ventana 5 — ver docs/pantallas/flujo-descripcion.md#ventana-5--configuración.
@@ -117,6 +119,12 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
             seleccionado: _seleccion == _Opcion.modoTema,
             onTap: () => setState(() => _seleccion = _Opcion.modoTema),
           ),
+          _TileConfiguracion(
+            icono: Icons.speed_outlined,
+            etiqueta: 'Optimización',
+            seleccionado: _seleccion == _Opcion.optimizacion,
+            onTap: () => setState(() => _seleccion = _Opcion.optimizacion),
+          ),
         ])
           BentoCelda(compacto: 2, medio: 2, amplio: 2, hijo: tile),
       ],
@@ -165,10 +173,7 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
           child: ancho == BentoAncho.amplio
               ? Padding(padding: _margenPagina(context), child: cuerpo)
               // La página entera scrollea, que es el arreglo del desborde.
-              : SingleChildScrollView(
-                  padding: _margenPagina(context),
-                  child: cuerpo,
-                ),
+              : SingleChildScrollView(padding: _margenPagina(context), child: cuerpo),
         ),
       ),
     );
@@ -176,11 +181,11 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
 
   /// Margen de la página, con el espacio reservado del borde superior.
   EdgeInsets _margenPagina(BuildContext context) => EdgeInsets.fromLTRB(
-        BentoSpacing.gapCelda,
-        bentoInsetSuperior(context),
-        BentoSpacing.gapCelda,
-        BentoSpacing.gapCelda,
-      );
+    BentoSpacing.gapCelda,
+    bentoInsetSuperior(context),
+    BentoSpacing.gapCelda,
+    BentoSpacing.gapCelda,
+  );
 
   Widget _panelPara(_Opcion? opcion) {
     switch (opcion) {
@@ -204,7 +209,50 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
         return const _PanelAcento();
       case _Opcion.modoTema:
         return const _PanelModoTema();
+      case _Opcion.optimizacion:
+        return const _PanelOptimizacion();
     }
+  }
+}
+
+/// Apagar adorno para ganar fluidez, efecto por efecto.
+///
+/// Es una decisión POR APARATO: el teléfono viejo de la caja puede necesitar
+/// apagar el relieve y la tablet del mostrador no. Por eso vive en las
+/// preferencias locales y no viaja en el backup ni en la sincronización.
+class _PanelOptimizacion extends ConsumerWidget {
+  const _PanelOptimizacion();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final apagados =
+        ref.watch(preferenciasNotifierProvider).valueOrNull?.efectosApagados ?? const {};
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Optimización', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: BentoSpacing.unidad / 2),
+        Text(
+          'Apagar un efecto no cambia lo que la app hace, solo cómo se ve. '
+          'En un aparato lento se nota al desplazar listas largas.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: BentoSpacing.unidad),
+        for (final efecto in EfectoPesado.values)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: !apagados.contains(efecto),
+            title: Text(efecto.etiqueta),
+            subtitle: Text(efecto.explicacion),
+            isThreeLine: true,
+            onChanged: (activo) => ref
+                .read(preferenciasNotifierProvider.notifier)
+                .cambiarEfecto(efecto, activo: activo),
+          ),
+      ],
+    );
   }
 }
 

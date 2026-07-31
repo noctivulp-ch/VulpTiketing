@@ -86,15 +86,37 @@ Variantes medidas sobre la misma cuadrícula
 | con `RepaintBoundary` por tarjeta | 13,3 | 54/124 |
 
 El **texto tallado** es el costo dominante: pinta el mismo texto varias veces
-desplazado, y quitarlo lleva los frames lentos de 50 a 4. No se quita —es la
-identidad visual de la app— pero es ahí donde hay que trabajar si el
-desplazamiento tiene que ir más fino: abaratar el tallado, no aislar capas ni
-tocar el velo.
+desplazado. No se quita —es la identidad visual de la app— pero **se puede
+apagar por aparato**, desde Configuración → Optimización (ver abajo).
 
 `RepaintBoundary` por tarjeta **no sirve**: sale igual o peor. Flutter ya
 envuelve cada ítem de una lista por su cuenta (`addRepaintBoundaries` es `true`
 por defecto en `SliverChildBuilderDelegate`), así que agregarlo solo duplica
 capas.
+
+### Configuración → Optimización
+
+El interruptor existe porque el aparato del negocio es de gama baja y esto es
+adorno, no función: apagarlo no cambia lo que la app hace. Es preferencia
+**local** —el teléfono de la caja puede necesitarlo y la tablet no—, así que no
+viaja en el backup ni en la sincronización.
+
+Medido sobre la pantalla real, con el catálogo sembrado:
+
+| | raster prom | frames fuera de presupuesto |
+|---|---|---|
+| con relieve | 17,5 ms | 54 de 81 |
+| sin relieve | 15,2 ms | **33 de 84** |
+
+Menos espectacular que en el experimento aislado (12,9 → 7,9 ms), porque la
+pantalla real pinta más cosas — pero los frames que se pasan del presupuesto
+caen casi a la mitad, y eso es lo que se siente en la mano.
+
+**Para agregar otro efecto apagable**: una constante en `EfectoPesado`
+(`lib/core/theme/bento_efectos.dart`) con su etiqueta y su explicación,
+respetarla donde se pinta con `bentoEfectoActivo(context, …)`, y medir la
+diferencia con el banco para poder decir cuánto gana. El panel se construye
+solo recorriendo el enum.
 
 ### Cómo medir esto sin engañarse
 
