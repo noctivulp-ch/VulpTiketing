@@ -55,7 +55,8 @@ void main() {
       rutaDestino: ruta,
       formato: FormatoReporte.csv,
       titulo: 'Ventas del día · 4/3/2026',
-      reporte: reporte,
+      total: reporte.total,
+      porTurno: reporte.porTurno,
       ventas: ventas,
       nota: nota,
     );
@@ -97,7 +98,8 @@ void main() {
       rutaDestino: ruta,
       formato: FormatoReporte.csv,
       titulo: 'Reporte "especial", con coma',
-      reporte: reporte,
+      total: reporte.total,
+      porTurno: reporte.porTurno,
       ventas: const [],
     );
 
@@ -114,7 +116,8 @@ void main() {
       rutaDestino: ruta,
       formato: FormatoReporte.pdf,
       titulo: 'Ventas del día',
-      reporte: reporte,
+      total: reporte.total,
+      porTurno: reporte.porTurno,
       ventas: ventas,
     );
 
@@ -128,7 +131,8 @@ void main() {
       rutaDestino: ruta,
       formato: FormatoReporte.pdf,
       titulo: 'Ventas del mes',
-      reporte: reporte,
+      total: reporte.total,
+      porTurno: reporte.porTurno,
       ventas: ventas,
     );
 
@@ -137,13 +141,31 @@ void main() {
     expect(bytes.length, greaterThan(1000));
   });
 
+  test('exportar UN turno no incluye la tabla de turnos', () async {
+    // Con dos ceros y su propio total repetido, esa tabla no informa nada.
+    final ruta = '${dir.path}/turno.csv';
+    await const ReporteExportService().exportar(
+      rutaDestino: ruta,
+      formato: FormatoReporte.csv,
+      titulo: 'Tarde · 4/3/2026',
+      total: 2000,
+      ventas: ventas,
+    );
+
+    final csv = await File(ruta).readAsString();
+    expect(csv, contains('"Total","2000.00"'));
+    expect(csv, isNot(contains('"Mañana"')));
+    expect(csv, isNot(contains('"Noche"')));
+  });
+
   test('un período sin ventas exporta igual, no falla', () async {
     final ruta = '${dir.path}/vacio.pdf';
     await const ReporteExportService().exportar(
       rutaDestino: ruta,
       formato: FormatoReporte.pdf,
       titulo: 'Ventas del día',
-      reporte: reporte,
+      total: reporte.total,
+      porTurno: reporte.porTurno,
       ventas: const [],
     );
 

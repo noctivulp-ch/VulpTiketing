@@ -102,17 +102,14 @@ class VentaRapidaScreen extends ConsumerWidget {
                   vertical: BentoSpacing.unidad / 2,
                 ),
                 child: TextField(
-                  // Los TRES bordes en `none`, no solo `border`: dentro de un
-                  // pozo el contorno ya lo pone el pozo, y el del campo dibujaba
-                  // un segundo marco por dentro. `border` sola no alcanza —
-                  // `enabledBorder` y `focusedBorder` la pisan.
+                  // CON su contorno, como los otros dos buscadores. Estaba en
+                  // `none` de cuando el campo vivía dentro de un pozo y el pozo
+                  // ya ponía el marco; al sacarlo a la barra se quedó sin
+                  // ningún borde, así que no se leía como algo donde se escribe.
                   decoration: const InputDecoration(
                     isDense: true,
                     prefixIcon: Icon(Icons.search),
                     hintText: 'Buscar producto o categoría…',
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
                   ),
                   onChanged: (v) => ref.read(productoBusquedaProvider.notifier).state = v,
                 ),

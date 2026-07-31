@@ -49,21 +49,62 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   /// Las ventas se piden aparte porque el reporte de pantalla trae solo los
   /// agregados — el detalle se carga bajo demanda para no traer el año entero
   /// cada vez que se abre Reportes.
-  Future<void> _exportar(ReporteResultado reporte) async {
+  Future<void> _exportarPeriodo(ReporteResultado reporte) async {
+    final params = ReportesParametros(rango: _rango, fechaReferencia: _fecha);
+    await _exportar(
+      titulo: '${_tituloDelRango()} · ${_tituloPeriodo()}',
+      sufijoArchivo: _rango.name,
+      total: reporte.total,
+      porTurno: reporte.porTurno,
+      // Las ventas se piden aparte porque el reporte de pantalla trae solo los
+      // agregados: el detalle se carga bajo demanda para no arrastrar el año
+      // entero cada vez que se abre Reportes.
+      cargarVentas: () async {
+        final detalle = await ref.read(detalleRangoProvider(params).future);
+        return (
+          detalle.ventas,
+          detalle.truncado
+              ? 'Incluye las ${detalle.ventas.length} ventas más recientes de '
+                    '${detalle.totalVentas}.'
+              : null,
+        );
+      },
+    );
+  }
+
+  /// Un turno suelto. Sus ventas ya están en el reporte de pantalla —vienen
+  /// con el cálculo por turno—, así que acá no hay nada que volver a consultar.
+  Future<void> _exportarTurno(ReporteResultado reporte, Turno turno) async {
+    await _exportar(
+      titulo: '${_nombreTurno(turno)} · ${_tituloPeriodo()}',
+      sufijoArchivo: '${_rango.name}-${turno.name}',
+      total: reporte.porTurno[turno]!,
+      cargarVentas: () async => (reporte.ventasPorTurno[turno]!, null),
+    );
+  }
+
+  Future<void> _exportar({
+    required String titulo,
+    required String sufijoArchivo,
+    required double total,
+    required Future<(List<VentaConLineas>, String?)> Function() cargarVentas,
+    Map<Turno, double>? porTurno,
+  }) async {
     final formato = await showDialog<FormatoReporte>(
       context: context,
       builder: (_) => const _ElegirFormato(),
     );
     if (formato == null || !mounted) return;
 
-    final params = ReportesParametros(rango: _rango, fechaReferencia: _fecha);
-    final titulo = '${_tituloDelRango()} · ${_tituloPeriodo()}';
-    final detalle = await ref.read(detalleRangoProvider(params).future);
+    final (ventas, nota) = await cargarVentas();
     if (!mounted) return;
 
+    final (desde, _) = rangoDeFechas(_rango, _fecha);
     final ruta = await FilePicker.platform.saveFile(
       dialogTitle: 'Guardar reporte',
-      fileName: '${_nombreArchivo()}.${formato.extension}',
+      fileName:
+          'reporte-$sufijoArchivo-${desde.toIso8601String().split('T').first}'
+          '.${formato.extension}',
     );
     if (ruta == null || !mounted) return;
 
@@ -72,14 +113,10 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         rutaDestino: ruta,
         formato: formato,
         titulo: titulo,
-        reporte: reporte,
-        ventas: detalle.ventas,
-        // Si la lista venía recortada hay que decirlo EN el archivo: un reporte
-        // que omite ventas sin avisar es peor que no exportar nada.
-        nota: detalle.truncado
-            ? 'Incluye las ${detalle.ventas.length} ventas más recientes de '
-                  '${detalle.totalVentas}.'
-            : null,
+        total: total,
+        porTurno: porTurno,
+        ventas: ventas,
+        nota: nota,
       );
       if (mounted) mostrarNotificacionEsquina(context, '✓ Reporte guardado');
     } catch (_) {
@@ -92,12 +129,6 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     final fin = hasta.subtract(const Duration(days: 1));
     String d(DateTime x) => '${x.day}/${x.month}/${x.year}';
     return desde == fin ? d(desde) : '${d(desde)} a ${d(fin)}';
-  }
-
-  String _nombreArchivo() {
-    final (desde, _) = rangoDeFechas(_rango, _fecha);
-    final iso = desde.toIso8601String().split('T').first;
-    return 'reporte-${_rango.name}-$iso';
   }
 
   String _tituloDelRango() => switch (_rango) {
@@ -145,7 +176,8 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                           onCambiarRango: (r) => setState(() => _rango = r),
                           onSeleccionarTurno: (t) => setState(() => _turnoSeleccionado = t),
                           onVerDetalle: () => setState(() => _detalleDelRango = true),
-                          onExportar: () => _exportar(reporte),
+                          onExportar: () => _exportarPeriodo(reporte),
+                          onExportarTurno: (t) => _exportarTurno(reporte, t),
                           onElegirFecha: () async {
                             final elegida = await elegirPeriodo(
                               context,
@@ -222,6 +254,7 @@ class _VistaGeneral extends StatelessWidget {
     required this.onSeleccionarTurno,
     required this.onVerDetalle,
     required this.onExportar,
+    required this.onExportarTurno,
     required this.onElegirFecha,
   });
 
@@ -239,6 +272,9 @@ class _VistaGeneral extends StatelessWidget {
 
   /// Mantener presionado el total exporta el período que se está mirando.
   final VoidCallback onExportar;
+
+  /// Y mantener presionado un turno exporta solo ese turno.
+  final ValueChanged<Turno> onExportarTurno;
 
   final VoidCallback onElegirFecha;
 
@@ -408,6 +444,7 @@ class _VistaGeneral extends StatelessWidget {
         nombre: nombre,
         monto: reporte.porTurno[turno]!,
         onTap: () => onSeleccionarTurno(turno),
+        onExportar: () => onExportarTurno(turno),
       ),
   ];
 
@@ -534,16 +571,25 @@ class _VistaGeneral extends StatelessWidget {
 /// `_VistaGeneral.build`) para llenar la misma altura que el hero, en vez
 /// de quedar con una altura fija que no se acomoda al espacio disponible.
 class _TarjetaTurno extends StatelessWidget {
-  const _TarjetaTurno({required this.nombre, required this.monto, required this.onTap});
+  const _TarjetaTurno({
+    required this.nombre,
+    required this.monto,
+    required this.onTap,
+    required this.onExportar,
+  });
 
   final String nombre;
   final double monto;
   final VoidCallback onTap;
+  final VoidCallback onExportar;
 
   @override
   Widget build(BuildContext context) {
     return BentoPozo(
       onTap: onTap,
+      // El mismo gesto que en el total: mantener presionado exporta lo que se
+      // está tocando. Si vale para el período, vale para cada turno.
+      onLongPress: onExportar,
       padding: const EdgeInsets.symmetric(
         horizontal: BentoSpacing.paddingCelda,
         vertical: BentoSpacing.unidad,

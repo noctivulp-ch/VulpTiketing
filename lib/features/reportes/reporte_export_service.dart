@@ -30,38 +30,43 @@ enum FormatoReporte {
 class ReporteExportService {
   const ReporteExportService();
 
+  /// [porTurno] solo cuando el período los tiene: exportando UN turno, una
+  /// tabla de turnos con dos ceros y su propio total repetido no informa nada.
   Future<void> exportar({
     required String rutaDestino,
     required FormatoReporte formato,
     required String titulo,
-    required ReporteResultado reporte,
+    required double total,
     required List<VentaConLineas> ventas,
+    Map<Turno, double>? porTurno,
     String? nota,
   }) async {
     final archivo = File(rutaDestino);
     switch (formato) {
       case FormatoReporte.csv:
         await archivo.writeAsString(
-          _csv(titulo: titulo, reporte: reporte, ventas: ventas, nota: nota),
+          _csv(titulo: titulo, total: total, porTurno: porTurno, ventas: ventas, nota: nota),
         );
       case FormatoReporte.pdf:
         await archivo.writeAsBytes(
-          await _pdf(titulo: titulo, reporte: reporte, ventas: ventas, nota: nota),
+          await _pdf(titulo: titulo, total: total, porTurno: porTurno, ventas: ventas, nota: nota),
         );
     }
   }
 
   String _csv({
     required String titulo,
-    required ReporteResultado reporte,
+    required double total,
     required List<VentaConLineas> ventas,
+    Map<Turno, double>? porTurno,
     String? nota,
   }) {
     final lineas = <String>[
       _fila(['Reporte', titulo]),
-      _fila(['Total', reporte.total.toStringAsFixed(2)]),
-      for (final turno in Turno.values)
-        _fila([_nombreTurno(turno), reporte.porTurno[turno]!.toStringAsFixed(2)]),
+      _fila(['Total', total.toStringAsFixed(2)]),
+      if (porTurno != null)
+        for (final turno in Turno.values)
+          _fila([_nombreTurno(turno), porTurno[turno]!.toStringAsFixed(2)]),
       '',
       _fila(['Fecha', 'Hora', 'Líneas', 'Total']),
       for (final venta in ventas)
@@ -101,8 +106,9 @@ class ReporteExportService {
 
   Future<List<int>> _pdf({
     required String titulo,
-    required ReporteResultado reporte,
+    required double total,
     required List<VentaConLineas> ventas,
+    Map<Turno, double>? porTurno,
     String? nota,
   }) async {
     final doc = pw.Document(theme: await _tema());
@@ -112,18 +118,20 @@ class ReporteExportService {
         build: (context) => [
           pw.Header(level: 0, text: titulo),
           pw.Text(
-            'Total: ₡${reporte.total.toStringAsFixed(2)}',
+            'Total: ₡${total.toStringAsFixed(2)}',
             style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),
-          pw.TableHelper.fromTextArray(
-            headers: const ['Turno', 'Total'],
-            data: [
-              for (final turno in Turno.values)
-                [_nombreTurno(turno), '₡${reporte.porTurno[turno]!.toStringAsFixed(2)}'],
-            ],
-          ),
-          pw.SizedBox(height: 16),
+          if (porTurno != null) ...[
+            pw.TableHelper.fromTextArray(
+              headers: const ['Turno', 'Total'],
+              data: [
+                for (final turno in Turno.values)
+                  [_nombreTurno(turno), '₡${porTurno[turno]!.toStringAsFixed(2)}'],
+              ],
+            ),
+            pw.SizedBox(height: 16),
+          ],
           pw.Text('Ventas', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 4),
           if (ventas.isEmpty)

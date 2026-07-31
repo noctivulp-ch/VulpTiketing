@@ -715,29 +715,37 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
             ),
           ),
         ),
-        if (_modoSeleccion)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: BentoSpacing.unidad,
-              vertical: BentoSpacing.unidad / 2,
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                icon: const Icon(Icons.add),
-                label: Text('Agregar (${_seleccionados.length})'),
-                onPressed: () => _agregarSeleccionados(productosAsync.valueOrNull ?? const []),
-              ),
-            ),
-          ),
+        // El botón de la selección múltiple ocupaba una franja entera con el
+        // padding de un botón principal, y en el panel apilado eso se comía una
+        // fila de productos. Ahora entra EN la barra de abajo, junto al
+        // buscador: aparece solo mientras hay algo seleccionado y no empuja
+        // nada.
         // Barra inferior unificada: buscador + acciones en el mismo panel
         // (antes el buscador vivia arriba, separado de estos botones).
         ColoredBox(
           color: lacaDe(context).pozo,
           child: Padding(
-            padding: const EdgeInsets.all(BentoSpacing.unidad),
+            // Vertical a la mitad: esta barra es fija y todo lo que ocupa se lo
+            // quita a la lista de productos, que es lo que se viene a mirar.
+            padding: const EdgeInsets.symmetric(
+              horizontal: BentoSpacing.unidad,
+              vertical: BentoSpacing.unidad / 2,
+            ),
             child: Row(
               children: [
+                if (_modoSeleccion)
+                  Padding(
+                    padding: const EdgeInsets.only(right: BentoSpacing.unidad / 2),
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: Text('${_seleccionados.length}'),
+                      onPressed: () =>
+                          _agregarSeleccionados(productosAsync.valueOrNull ?? const []),
+                    ),
+                  ),
                 Expanded(
                   child: TextField(
                     decoration: const InputDecoration(
