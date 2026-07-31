@@ -135,16 +135,23 @@ class _SeparadorConToggle extends StatelessWidget {
 
     final fondo = ColoredBox(color: lacaDe(context).bandeja);
 
-    // Costura horizontal: la franja cruza la pantalla y el botón va centrado.
-    // No se puede anclar cerca de un extremo como en la vertical, porque acá el
-    // extremo es un borde de pantalla y el pulgar no llega igual.
+    // Costura horizontal: la franja cruza la pantalla y el botón se ancla a la
+    // DERECHA, a la misma altura. Centrado quedaba en medio del recorrido de
+    // lectura y lejos del pulgar; contra el borde derecho cae donde la mano ya
+    // está, y deja libre el resto de la franja.
     if (horizontal) {
       return SizedBox(
         height: bentoObjetivoTactilMin,
         child: Stack(
           children: [
             Positioned.fill(child: fondo),
-            Center(child: boton),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: BentoSpacing.gapCelda),
+                child: boton,
+              ),
+            ),
           ],
         ),
       );

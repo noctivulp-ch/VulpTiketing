@@ -40,8 +40,18 @@ class BentoGrainSplash extends InteractiveInkFeature {
         AnimationController(duration: bentoFeedbackTactilDuracion, vsync: controller.vsync)
           ..addListener(controller.markNeedsPaint)
           ..forward();
+    // `a.chain(b)` evalúa PRIMERO `b` y después `a`. Estaba al revés: el
+    // `Tween` convertía el 0..1 del controlador en un radio en píxeles (274,
+    // por ejemplo) y recién entonces se lo pasaba a la curva, que solo acepta
+    // 0..1. Cada toque disparaba
+    // `parametric value 274.0 is outside of [0, 1] range`, la excepción caía
+    // DURANTE EL PINTADO y el frame se perdía: la pantalla entera quedaba en
+    // blanco unos fotogramas. Ese era el parpadeo al seleccionar productos.
+    //
+    // El orden correcto es curva primero (0..1 → 0..1 con easing) y después el
+    // tween al radio.
     _radio = _radioControlador.drive(
-      CurveTween(curve: Curves.easeOut).chain(Tween<double>(begin: 0, end: _targetRadius)),
+      Tween<double>(begin: 0, end: _targetRadius).chain(CurveTween(curve: Curves.easeOut)),
     );
     _alfaControlador =
         AnimationController(duration: bentoFeedbackTactilDuracion ~/ 2, vsync: controller.vsync)
