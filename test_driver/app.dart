@@ -39,6 +39,8 @@ import 'package:vulp_tiketing/features/venta/venta_notifier.dart';
 import 'package:vulp_tiketing/features/producto/producto_model.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
 
+import 'diagnostico.dart';
+
 const _uuid = Uuid();
 
 void main() {
@@ -64,6 +66,20 @@ void main() {
     handler: (mensaje) => _manejarComandoDirecto(container, mensaje),
     enableTextEntryEmulation: false,
   );
+
+  // El diagnostico va DESPUES de `enableFlutterDriverExtension` y antes de
+  // `runApp`.
+  //
+  // No puede ir antes: `enableFlutterDriverExtension` instala su PROPIO binding
+  // (`_DriverBinding`), y un binding solo puede crearse una vez. Cualquier cosa
+  // que toque `SchedulerBinding.instance` o llame a `ensureInitialized()` antes
+  // se lo impide, y entonces la extension no se registra: el harness conecta al
+  // VM service y espera para siempre una extension que nunca aparece. Se
+  // reconoce por "Flutter Driver extension is taking a long time to become
+  // available" — que dice, con razon, que debe ser la PRIMERA llamada de main().
+  //
+  // Vive en test_driver/, asi que no existe en produccion.
+  DiagnosticoDev.instalar();
 
   runApp(
     UncontrolledProviderScope(
@@ -191,6 +207,17 @@ Future<dynamic> _ejecutar(
     case 'listar_categorias':
       final categorias = await container.read(categoriaNotifierProvider.future);
       return categorias.map((c) => {'id': c.id, 'nombre': c.nombre}).toList();
+
+    case 'diagnostico':
+      // Errores acumulados y frames fuera de presupuesto desde el arranque o
+      // desde el ultimo `diagnostico_limpiar`.
+      return DiagnosticoDev.resumen(maximo: (args['maximo'] as num?)?.toInt() ?? 10);
+
+    case 'diagnostico_limpiar':
+      // Se limpia ANTES de una interaccion para que lo que aparezca despues sea
+      // atribuible a ella y no al arranque.
+      DiagnosticoDev.limpiar();
+      return null;
 
     case 'diagnostico_cifrado':
       // Mide AES-GCM EN EL DISPOSITIVO. Es la unica forma de saber si
