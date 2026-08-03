@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/bento_bandeja.dart';
+import '../../core/nav/gesto_navegacion.dart';
 import '../../core/theme/bento_cuadricula.dart';
 import '../../core/theme/bento_icon.dart';
 import '../../core/theme/bento_velo.dart';
@@ -64,19 +65,24 @@ class _DashboardShellState extends State<DashboardShell> {
     // Cada pantalla reserva `bentoInsetSuperior` donde le toca: como padding de
     // su scroll —así los elementos suben y se desvanecen— o como espacio fijo
     // cuando lo de arriba no scrollea.
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: IndexedStack(
-            index: _indice,
-            children: [
-              for (var i = 0; i < _pantallas.length; i++)
-                ExcludeFocus(excluding: i != _indice, child: _pantallas[i]),
-            ],
+    return NavegacionPorGesto(
+      indice: _indice,
+      cantidad: _pantallas.length,
+      onCambio: (i) => setState(() => _indice = i),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IndexedStack(
+              index: _indice,
+              children: [
+                for (var i = 0; i < _pantallas.length; i++)
+                  ExcludeFocus(excluding: i != _indice, child: _pantallas[i]),
+              ],
+            ),
           ),
-        ),
-        const Positioned(top: 0, left: 0, right: 0, child: BentoVeloSuperior()),
-      ],
+          const Positioned(top: 0, left: 0, right: 0, child: BentoVeloSuperior()),
+        ],
+      ),
     );
   }
 

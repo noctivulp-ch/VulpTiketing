@@ -33,3 +33,4 @@ Volver a [../index](../index.md)
 | [0027](0027-arranque-optimista-de-sesion.md) | Arranque optimista de sesión: el rol se duplica como pista en preferencias | Aceptada |
 | [0028](0028-acciones-de-dialogo-al-costado-acostado.md) | Las acciones de un diálogo van al costado cuando la pantalla está acostada | Aceptada |
 | [0029](0029-exportar-a-descargas-por-mediastore.md) | Exportar a Descargas por MediaStore, con código nativo | Aceptada |
+| [0030](0030-gestos-un-dedo-navega-varios-actuan.md) | Gestos: un dedo navega, dos o tres actúan | Aceptada |

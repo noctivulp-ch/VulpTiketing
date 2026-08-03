@@ -226,3 +226,19 @@ sombra de contacto.
 
 Notas de herramienta: el detector mecánico de impeccable es solo web
 (HTML/CSS/URL), no analiza Dart — no aplica a este proyecto y no se corre.
+
+## Gestos: un dedo navega, dos o tres actúan
+
+Deslizar de lado con **un** dedo cambia de ventana — a la izquierda la
+siguiente, como pasar la hoja de un cuaderno. En los extremos no da la vuelta.
+
+**Dos y tres dedos quedan reservados para acciones.** El gesto de navegación se
+aparta en cuanto aparece un segundo dedo, incluso a mitad del arrastre: no basta
+con un `HorizontalDragGestureRecognizer`, que sigue atendiendo al primer dedo y
+navegaría igual.
+
+La regla es previa a cada gesto nuevo: **antes de escribirlo hay que decir
+cuántos dedos usa**. Uno es territorio de la navegación.
+
+Ver [decisión 0030](docs/decisiones/0030-gestos-un-dedo-navega-varios-actuan.md).
+
