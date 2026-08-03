@@ -14,6 +14,17 @@ class VentaNotifier extends AsyncNotifier<List<Venta>> {
   /// cada llamada, nunca se guarda en un campo.
   Future<VentaDao> get _dao async => VentaDao(await ref.read(databaseProvider.future));
 
+  /// **Ninguna pantalla observa este estado**, y es a propósito.
+  ///
+  /// `listar()` trae el libro ENTERO —con el volumen medido son 117 k ventas—,
+  /// así que observar este provider sería construir cien mil objetos para
+  /// pintar como mucho trescientas filas. Las pantallas consultan por
+  /// `reportesProvider` (agregados en SQL) y por `detalleRangoProvider`
+  /// (paginado). Este notifier existe por la decisión 0009: es el dueño de las
+  /// operaciones de Venta, no una caché de ventas.
+  ///
+  /// Si alguna pantalla llegara a necesitar la lista, el camino es un provider
+  /// acotado como los de Reportes — no observar este.
   @override
   Future<List<Venta>> build() async {
     final db = await ref.watch(databaseProvider.future);
@@ -37,7 +48,11 @@ class VentaNotifier extends AsyncNotifier<List<Venta>> {
   Future<void> anotarReferenciaDePago(String ventaId, String? referencia) async {
     final dao = await _dao;
     await dao.anotarReferenciaDePago(ventaId, referencia, DateTime.now());
-    state = AsyncData(await dao.listar());
+    // `invalidateSelf` y no `state = AsyncData(await dao.listar())`: recargar
+    // traía el libro entero en memoria después de escribir UNA columna, y nadie
+    // observa esta lista. Invalidar cuesta cero si nadie mira, y recarga solo si
+    // alguien llega a mirar.
+    ref.invalidateSelf();
   }
 
   /// Exige motivo estructurado (decision 0010): tipo, detalle, quien, cuando.
@@ -55,7 +70,10 @@ class VentaNotifier extends AsyncNotifier<List<Venta>> {
     });
     final dao = await _dao;
     await dao.revertir(ventaId, motivo, DateTime.now());
-    state = AsyncData(await dao.listar());
+    // Mismo motivo que en `anotarReferenciaDePago`: no se recarga el libro para
+    // descartarlo. Quien muestre totales —Reportes— tiene sus propios providers
+    // y los invalida por su cuenta.
+    ref.invalidateSelf();
   }
 }
 

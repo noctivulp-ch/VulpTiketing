@@ -218,4 +218,28 @@ void main() {
     };
     expect(columnas.where((c) => c == 'metodo_pago'), hasLength(1));
   });
+
+  test('anotar no recarga el libro entero', () async {
+    // Escribir UNA columna no puede costar traerse todas las ventas a memoria.
+    // Con el volumen medido son 117 k, y nadie observa esa lista: las pantallas
+    // consultan por `reportesProvider` y `detalleRangoProvider`.
+    for (var i = 0; i < 40; i++) {
+      await vender('v$i', DateTime(2026, 3, 4, 8 + (i % 12)), metodo: MetodoPago.sinpe);
+    }
+    final c = ProviderContainer(overrides: [databaseProvider.overrideWith((ref) async => db)]);
+    addTearDown(c.dispose);
+    // Se observa a propósito, para poder ver en qué estado queda.
+    final sub = c.listen(ventaNotifierProvider, (_, _) {});
+    addTearDown(sub.close);
+    await c.read(ventaNotifierProvider.future);
+
+    await c.read(ventaNotifierProvider.notifier).anotarReferenciaDePago('v3', '123');
+
+    // Queda invalidado, no recargado: si se hubiera recargado, el estado ya
+    // tendría datos frescos sin pasar por `loading`.
+    expect(c.read(ventaNotifierProvider).isLoading, isTrue);
+    // Y al pedirlo de verdad, trae lo escrito.
+    final ventas = await c.read(ventaNotifierProvider.future);
+    expect(ventas.firstWhere((v) => v.id == 'v3').referenciaPago, '123');
+  });
 }
