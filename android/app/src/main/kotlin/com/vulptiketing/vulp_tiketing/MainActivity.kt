@@ -94,7 +94,24 @@ class MainActivity : FlutterActivity() {
             null,
         )
 
-        return "Descargas/VulpTiketing/$nombre"
+        // El nombre REAL, no el que se pidió: si ya había uno igual, MediaStore
+        // guarda "reporte (1).csv" sin avisar. Devolver el pedido mandaba al
+        // usuario a buscar un archivo que existe pero es OTRO —el de la
+        // exportación anterior, con otros datos—, que es peor que no decir nada.
+        return "Descargas/VulpTiketing/${nombreReal(uri) ?: nombre}"
+    }
+
+    /** Cómo quedó llamándose de verdad el archivo que acaba de insertarse. */
+    private fun nombreReal(uri: android.net.Uri): String? {
+        return contentResolver.query(
+            uri,
+            arrayOf(MediaStore.Downloads.DISPLAY_NAME),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
     }
 
     /** Android 9 y anteriores: ahí sí se puede escribir directo. */
