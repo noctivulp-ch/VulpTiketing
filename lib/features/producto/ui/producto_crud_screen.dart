@@ -273,9 +273,14 @@ class _FilaProducto extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
+                  // El PRECIO primero: cuando el subtítulo no entra, la elipsis
+                  // se come lo último. Con el estado delante, "Fuera de la
+                  // carta · ₡15000" salía como "Fuera de la carta · ₡1500…" —
+                  // un número recortado se lee como otro número, y eso es peor
+                  // que no verlo.
                   producto.activo
                       ? '₡${producto.precioBase.toStringAsFixed(2)}'
-                      : 'Fuera de la carta · ₡${producto.precioBase.toStringAsFixed(2)}',
+                      : '₡${producto.precioBase.toStringAsFixed(2)} · Fuera de la carta',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     // Atenuado, no translúcido: bajar la opacidad se
                     // llevaría el contraste por debajo del mínimo AA, y el
