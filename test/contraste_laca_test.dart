@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vulp_tiketing/core/theme/bento_theme.dart';
@@ -35,7 +36,11 @@ void main() {
 
         paresDeTexto.forEach((nombre, par) {
           final ratio = _contraste(par.$1, par.$2);
-          expect(ratio, greaterThanOrEqualTo(4.5), reason: '$nombre en $etiqueta: ${ratio.toStringAsFixed(2)}:1');
+          expect(
+            ratio,
+            greaterThanOrEqualTo(4.5),
+            reason: '$nombre en $etiqueta: ${ratio.toStringAsFixed(2)}:1',
+          );
         });
       });
 
@@ -59,7 +64,11 @@ void main() {
         final laca = tema.extension<BentoLaca>()!;
 
         final ratio = _contraste(laca.paredCresta, laca.bandeja);
-        expect(ratio, greaterThanOrEqualTo(3.0), reason: 'cresta vs bandeja en $etiqueta: ${ratio.toStringAsFixed(2)}:1');
+        expect(
+          ratio,
+          greaterThanOrEqualTo(3.0),
+          reason: 'cresta vs bandeja en $etiqueta: ${ratio.toStringAsFixed(2)}:1',
+        );
       });
 
       test('el pozo nunca es mas oscuro que la bandeja en $etiqueta', () {
@@ -90,9 +99,7 @@ void main() {
     test('cambiar de metal cambia el ribete de los pozos en ${brillo.name}', () {
       final ribetes = {
         for (final acento in AcentoTinte.values)
-          acento: buildBentoTheme(acento, brightness: brillo)
-              .extension<BentoLaca>()!
-              .paredCresta,
+          acento: buildBentoTheme(acento, brightness: brillo).extension<BentoLaca>()!.paredCresta,
       };
 
       expect(
@@ -102,4 +109,44 @@ void main() {
       );
     });
   }
+
+  // Que cada acento dé un ribete DISTINTO no basta: cobre y oro daban dos
+  // colores distintos que a simple vista eran el mismo marrón anaranjado, o sea
+  // que el ajuste ofrecía tres opciones y entregaba dos. Por eso cobre pasó a
+  // jade, y por eso esto se mide en vez de confiar en el ojo.
+  for (final brillo in Brightness.values) {
+    test('los acentos se distinguen entre sí en ${brillo.name}', () {
+      final acentos = {
+        for (final acento in AcentoTinte.values)
+          acento: buildBentoTheme(acento, brightness: brillo).colorScheme.primary,
+      };
+
+      for (final a in AcentoTinte.values) {
+        for (final b in AcentoTinte.values) {
+          if (a.index >= b.index) continue;
+          expect(
+            _distanciaPercibida(acentos[a]!, acentos[b]!),
+            greaterThan(40),
+            reason: '${a.name} y ${b.name} se parecen demasiado en ${brillo.name}',
+          );
+        }
+      }
+    });
+  }
+}
+
+/// Distancia de color "redmean": la aproximación barata a la percepción humana
+/// que pondera el verde por encima del azul. Suficiente para lo que se pregunta
+/// acá —¿son dos colores o el mismo dos veces?— sin traerse una conversión a
+/// CIELAB.
+double _distanciaPercibida(Color x, Color y) {
+  final rx = (x.r * 255).round();
+  final ry = (y.r * 255).round();
+  final rMedia = (rx + ry) / 2;
+  final dr = rx - ry;
+  final dg = (x.g - y.g) * 255;
+  final db = (x.b - y.b) * 255;
+  return math.sqrt(
+    (2 + rMedia / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rMedia) / 256) * db * db,
+  );
 }

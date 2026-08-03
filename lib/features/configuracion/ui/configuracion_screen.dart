@@ -448,7 +448,7 @@ class _PanelAcento extends ConsumerWidget {
           data: (prefs) => SegmentedButton<AcentoTinte>(
             segments: const [
               ButtonSegment(value: AcentoTinte.oro, label: Text('Oro')),
-              ButtonSegment(value: AcentoTinte.cobre, label: Text('Cobre')),
+              ButtonSegment(value: AcentoTinte.jade, label: Text('Jade')),
               ButtonSegment(value: AcentoTinte.peltre, label: Text('Peltre')),
             ],
             selected: {prefs.acento},

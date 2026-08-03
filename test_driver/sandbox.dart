@@ -802,7 +802,7 @@ class _PanelControl extends StatelessWidget {
               SegmentedButton<AcentoTinte>(
                 segments: const [
                   ButtonSegment(value: AcentoTinte.oro, label: Text('Oro')),
-                  ButtonSegment(value: AcentoTinte.cobre, label: Text('Cobre')),
+                  ButtonSegment(value: AcentoTinte.jade, label: Text('Jade')),
                   ButtonSegment(value: AcentoTinte.peltre, label: Text('Peltre')),
                 ],
                 selected: {metal},

@@ -313,7 +313,7 @@ void main() {
         nombrePrincipal: nombrePrincipal,
         principal: bytesPrincipal,
         libros: {libros.first: bytesLibro},
-        prefs: utf8.encode('{"acento_tinte":"cobre"}'),
+        prefs: utf8.encode('{"acento_tinte":"jade"}'),
       ),
       flush: true,
     );
@@ -327,7 +327,7 @@ void main() {
     expect(await totalVendido(), closeTo(5000, 0.01));
     expect(await nombresDeProducto(), equals(['Café']));
     final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString('acento_tinte'), 'cobre');
+    expect(prefs.getString('acento_tinte'), 'jade');
   });
 
   test('la contrasena equivocada no escribe nada', () async {

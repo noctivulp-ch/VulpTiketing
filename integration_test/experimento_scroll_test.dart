@@ -30,7 +30,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: buildBentoTheme(AcentoTinte.cobre, brightness: Brightness.dark),
+        theme: buildBentoTheme(AcentoTinte.jade, brightness: Brightness.dark),
         home: Scaffold(body: pantalla),
       ),
     );

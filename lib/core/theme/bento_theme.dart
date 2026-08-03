@@ -14,7 +14,7 @@ import 'bento_ink.dart';
 // oscuro = marco negro + pozos rojos + metal; claro = su reflejo, marco
 // blanco + pozos verdes + metal. Marco continuo con borde exterior 24,
 // paredes compartidas 12, radio exterior 20 contra radio de pozo 4. Cada pozo
-// lleva borde de 1px y sombra de contacto arriba. El metal (oro/cobre/peltre)
+// lleva borde de 1px y sombra de contacto arriba. El acento (oro/jade/peltre)
 // es el unico acento y solo marca accion primaria y seleccion. Cero BoxShadow.
 //
 // STORY: la registradora distingue de un golpe que pozo es que, por tamano y
@@ -81,8 +81,14 @@ const double bentoObjetivoTactilMin = 48;
 const double bentoMiniatura = 44;
 
 /// Metal del acento. Sobre laca, el pan de metal tradicional es oro, pero
-/// cobre y peltre tambien lo son — asi que el ajuste configurable de la
-/// decision 0020 pasa a elegir el METAL, no el color de la laca.
+/// peltre tambien lo es, y el jade es la incrustacion de piedra que acompana al
+/// pan — asi que el ajuste configurable de la decision 0020 pasa a elegir el
+/// ACENTO, no el color de la laca.
+///
+/// El tercero era cobre y paso a jade: cobre y oro son los dos un marron
+/// anaranjado y a simple vista no se distinguian, o sea que el ajuste ofrecia
+/// tres opciones y entregaba dos. El jade separa la paleta de verdad y sigue
+/// siendo material de laca.
 ///
 /// El reparto de responsabilidades es lo importante: el MODO (claro/oscuro)
 /// determina la laca completa (blanco-verde u oscuro-rojo) y el metal es
@@ -92,7 +98,7 @@ const double bentoMiniatura = 44;
 /// Los nombres viejos no existen mas: `PreferenciasNotifier` resuelve el
 /// acento guardado con `orElse` al default, asi que una preferencia vieja cae
 /// sola al primer metal sin migracion.
-enum AcentoTinte { oro, cobre, peltre }
+enum AcentoTinte { oro, jade, peltre }
 
 /// Tokens de material que `ColorScheme` no tiene como expresar: la bandeja
 /// (el plano continuo), la cresta de pared iluminada y la sombra de contacto
@@ -218,13 +224,13 @@ const _textoAtenuadoEnBandejaClara = Color(0xFF55584F); // 6.76:1
 // bandeja Y sobre pozo, y como relleno con su propio color de texto encima.
 const _metales = {
   AcentoTinte.oro: (claro: Color(0xFF7A4F0E), oscuro: Color(0xFFD9A54A)),
-  AcentoTinte.cobre: (claro: Color(0xFF7E3F16), oscuro: Color(0xFFD98E5E)),
+  AcentoTinte.jade: (claro: Color(0xFF156353), oscuro: Color(0xFF5FCBAB)),
   AcentoTinte.peltre: (claro: Color(0xFF4F5450), oscuro: Color(0xFFC6C4BC)),
 };
 const _sobreMetalClaro = Color(0xFFFFFFFF);
 const _sobreMetalOscuro = {
   AcentoTinte.oro: Color(0xFF241A0C),
-  AcentoTinte.cobre: Color(0xFF2A1408),
+  AcentoTinte.jade: Color(0xFF06231C),
   AcentoTinte.peltre: Color(0xFF1E1D1A),
 };
 

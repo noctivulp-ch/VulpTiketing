@@ -34,7 +34,7 @@ real de las cajas de las referencias — **negras por fuera, rojas por dentro**:
 Marco continuo con borde exterior grueso (24), paredes interiores compartidas
 (12), radio exterior 20 contra radio de pozo 4. Cada pozo lleva un borde de
 1px y una sombra de contacto en su borde superior. El metal
-(oro / cobre / peltre) es el único acento y solo marca acción primaria y
+(oro / jade / peltre) es el único acento y solo marca acción primaria y
 selección. Cero `BoxShadow` en celdas.
 
 **STORY.** La registradora distingue de un golpe qué pozo es qué por su
@@ -104,8 +104,9 @@ toda una clase de bug por construcción, en vez de tener que parchear pantalla
 por pantalla.
 
 El ajuste configurable de la [decisión 0020](docs/decisiones/0020-iconografia-vectorial-propia.md)
-pasa a elegir el **metal del acento** (oro / cobre / peltre) — el pan de metal
-sobre laca, que es tradicionalmente oro pero también cobre y peltre. Se
+pasa a elegir el **acento** (oro / jade / peltre) — el pan de metal sobre laca,
+que es tradicionalmente oro pero también peltre, más el jade de las
+incrustaciones de piedra. Se
 conserva la intención de 0020 (pocos, hardcodeados, coherentes) y se le da un
 trabajo que no choca con el modo.
 

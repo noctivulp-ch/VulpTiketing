@@ -35,7 +35,7 @@ class LabToqueApp extends StatefulWidget {
 
 class _LabToqueAppState extends State<LabToqueApp> {
   BentoToqueReceta _receta = const BentoToqueReceta();
-  AcentoTinte _acento = AcentoTinte.cobre;
+  AcentoTinte _acento = AcentoTinte.jade;
   Brightness _brillo = Brightness.dark;
 
   @override
