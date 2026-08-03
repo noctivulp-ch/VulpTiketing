@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/ui/bento_dialogo.dart';
+import '../periodos_con_datos_provider.dart';
+import 'calendario_periodo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../reportes_provider.dart';
 
@@ -23,20 +26,25 @@ Future<DateTime?> elegirPeriodo(
   final hoy = DateTime.now();
   switch (rango) {
     case RangoReporte.dia:
-      return showDatePicker(
-        context: context,
-        initialDate: actual,
-        firstDate: DateTime(2020),
-        lastDate: hoy,
-      );
     case RangoReporte.semana:
-      // Cualquier día sirve: `rangoDeFechas` lo lleva al lunes de su semana.
-      return showDatePicker(
+      // Calendario propio y no `showDatePicker`: el de Material no sabe marcar
+      // los días que tienen ventas ni resaltar una semana entera, que son
+      // justamente las dos cosas que faltaban.
+      return showDialog<DateTime>(
         context: context,
-        initialDate: actual,
-        firstDate: DateTime(2020),
-        lastDate: hoy,
-        helpText: 'Elegí un día de la semana',
+        builder: (_) => BentoDialogo(
+          titulo: Text(rango == RangoReporte.semana ? 'Elegí la semana' : 'Elegí el día'),
+          contenido: CalendarioPeriodo(
+            actual: actual,
+            hoy: hoy,
+            porSemana: rango == RangoReporte.semana,
+          ),
+          acciones: BentoAcciones(
+            derecha: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ],
+          ),
+        ),
       );
     case RangoReporte.mes:
       return showDialog<DateTime>(
@@ -54,21 +62,22 @@ Future<DateTime?> elegirPeriodo(
 const _meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 /// Año primero, mes después: doce celdas en una cuadrícula de 3×4.
-class _ElegirMes extends StatefulWidget {
+class _ElegirMes extends ConsumerStatefulWidget {
   const _ElegirMes({required this.actual, required this.hoy});
 
   final DateTime actual;
   final DateTime hoy;
 
   @override
-  State<_ElegirMes> createState() => _ElegirMesState();
+  ConsumerState<_ElegirMes> createState() => _ElegirMesState();
 }
 
-class _ElegirMesState extends State<_ElegirMes> {
+class _ElegirMesState extends ConsumerState<_ElegirMes> {
   late int _anio = widget.actual.year;
 
   @override
   Widget build(BuildContext context) {
+    final datos = ref.watch(periodosConDatosProvider(_anio)).valueOrNull;
     return BentoDialogo(
       titulo: const Text('Elegí el mes'),
       contenido: SizedBox(
@@ -98,6 +107,7 @@ class _ElegirMesState extends State<_ElegirMes> {
                         _anio < widget.hoy.year ||
                         (_anio == widget.hoy.year && mes <= widget.hoy.month),
                     seleccionada: _anio == widget.actual.year && mes == widget.actual.month,
+                    conVentas: datos?.tieneMes(_anio, mes) ?? false,
                     onTap: () => Navigator.pop(context, DateTime(_anio, mes)),
                   ),
               ],
@@ -114,15 +124,16 @@ class _ElegirMesState extends State<_ElegirMes> {
   }
 }
 
-class _ElegirAnio extends StatelessWidget {
+class _ElegirAnio extends ConsumerWidget {
   const _ElegirAnio({required this.actual, required this.hoy});
 
   final DateTime actual;
   final DateTime hoy;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final anios = [for (var a = hoy.year; a >= 2020; a--) a];
+    final conVentas = ref.watch(aniosConVentasProvider).valueOrNull ?? const <int>{};
     return BentoDialogo(
       titulo: const Text('Elegí el año'),
       contenido: SizedBox(
@@ -139,6 +150,7 @@ class _ElegirAnio extends StatelessWidget {
                 etiqueta: '$a',
                 habilitada: true,
                 seleccionada: a == actual.year,
+                conVentas: conVentas.contains(a),
                 onTap: () => Navigator.pop(context, DateTime(a)),
               ),
           ],
@@ -194,11 +206,16 @@ class _CeldaPeriodo extends StatelessWidget {
     required this.habilitada,
     required this.seleccionada,
     required this.onTap,
+    this.conVentas = false,
   });
 
   final String etiqueta;
   final bool habilitada;
   final bool seleccionada;
+
+  /// Marca de "acá hay ventas". Un punto y no un color de fondo: el fondo ya lo
+  /// usa la selección, y dos significados en el mismo canal no se distinguen.
+  final bool conVentas;
   final VoidCallback onTap;
 
   @override
@@ -210,13 +227,31 @@ class _CeldaPeriodo extends StatelessWidget {
         onTap: habilitada ? onTap : null,
         seleccionado: seleccionada,
         padding: EdgeInsets.zero,
-        child: Center(
-          child: Text(
-            etiqueta,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: seleccionada ? Theme.of(context).colorScheme.primary : laca.textoEnBandeja,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              etiqueta,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: seleccionada ? Theme.of(context).colorScheme.primary : laca.textoEnBandeja,
+              ),
             ),
-          ),
+            const SizedBox(height: 2),
+            // El hueco se reserva siempre: sin él, las celdas con ventas
+            // empujan su etiqueta y la cuadrícula queda temblando.
+            SizedBox(
+              height: 4,
+              width: 4,
+              child: conVentas
+                  ? DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    )
+                  : null,
+            ),
+          ],
         ),
       ),
     );
