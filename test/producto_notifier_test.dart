@@ -10,27 +10,30 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  test('invalidar productoNotifierProvider varias veces no revienta con LateInitializationError', () async {
-    final db = await databaseFactory.openDatabase(
-      inMemoryDatabasePath,
-      options: OpenDatabaseOptions(singleInstance: false),
-    );
-    await db.execute('''
+  test(
+    'invalidar productoNotifierProvider varias veces no revienta con LateInitializationError',
+    () async {
+      final db = await databaseFactory.openDatabase(
+        inMemoryDatabasePath,
+        options: OpenDatabaseOptions(singleInstance: false),
+      );
+      await db.execute('''
       CREATE TABLE producto (
         id TEXT PRIMARY KEY, nombre TEXT NOT NULL, imagen TEXT, categoria_id TEXT,
         precio_base REAL NOT NULL, updated_at TEXT NOT NULL, deleted_at TEXT
       );
     ''');
 
-    final container = ProviderContainer(
-      overrides: [databaseProvider.overrideWith((ref) async => db)],
-    );
-    addTearDown(container.dispose);
+      final container = ProviderContainer(
+        overrides: [databaseProvider.overrideWith((ref) async => db)],
+      );
+      addTearDown(container.dispose);
 
-    await container.read(productoNotifierProvider.future);
-    container.invalidate(productoNotifierProvider);
-    await container.read(productoNotifierProvider.future);
-    container.invalidate(productoNotifierProvider);
-    await expectLater(container.read(productoNotifierProvider.future), completes);
-  });
+      await container.read(productoNotifierProvider.future);
+      container.invalidate(productoNotifierProvider);
+      await container.read(productoNotifierProvider.future);
+      container.invalidate(productoNotifierProvider);
+      await expectLater(container.read(productoNotifierProvider.future), completes);
+    },
+  );
 }

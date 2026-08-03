@@ -13,12 +13,12 @@ import 'package:vulp_tiketing/features/dashboard/dashboard_shell.dart';
 /// y lo que se quiere probar acá es la DECISIÓN, no el almacén.
 void main() {
   Future<void> montar(WidgetTester tester, {Rol? sesionGuardada}) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        sesionNotifierProvider.overrideWith(() => _SesionFalsa(sesionGuardada)),
-      ],
-      child: const VulpTiketingApp(),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sesionNotifierProvider.overrideWith(() => _SesionFalsa(sesionGuardada))],
+        child: const VulpTiketingApp(),
+      ),
+    );
     // `pump` con tiempo y no `pumpAndSettle`: el Dashboard monta pantallas con
     // indicadores de carga que giran para siempre y dejarían el settle
     // esperando indefinidamente.

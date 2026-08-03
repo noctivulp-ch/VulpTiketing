@@ -136,10 +136,83 @@ void main() {
     final c = ProviderContainer(overrides: [databaseProvider.overrideWith((ref) async => db)]);
     addTearDown(c.dispose);
 
-    final detalle = await c.read(detalleRangoProvider(params).future);
+    final detalle = await c.read(detalleRangoProvider(PaginaDetalle(params)).future);
 
     expect(detalle.ventas, hasLength(limiteDetalleRango));
     expect(detalle.totalVentas, cuantas);
     expect(detalle.truncado, isTrue);
+  });
+
+  group('el detalle de pantalla pagina', () {
+    ProviderContainer contenedor() {
+      final c = ProviderContainer(overrides: [databaseProvider.overrideWith((ref) async => db)]);
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    test('cada tanda trae las siguientes, sin repetir', () async {
+      // 700 ventas en tandas de 300: 300 + 300 + 100.
+      final c = contenedor();
+      final vistas = <String>{};
+      var ultima = 0;
+
+      for (var pagina = 0; pagina < 3; pagina++) {
+        final tanda = await c.read(
+          detalleRangoProvider(PaginaDetalle(params, pagina: pagina)).future,
+        );
+        for (final v in tanda.ventas) {
+          expect(vistas.add(v.venta.id), isTrue, reason: '${v.venta.id} vino dos veces');
+        }
+        ultima = tanda.ventas.length;
+      }
+
+      expect(vistas, hasLength(cuantas), reason: 'entre las tres tandas están todas');
+      expect(ultima, cuantas - limiteDetalleRango * 2, reason: 'la última va incompleta');
+    });
+
+    test('sabe dónde está parada y si queda algo', () async {
+      final c = contenedor();
+
+      final primera = await c.read(detalleRangoProvider(PaginaDetalle(params)).future);
+      expect(primera.pagina, 0);
+      expect(primera.paginas, 3);
+      expect(primera.hayAnterior, isFalse);
+      expect(primera.haySiguiente, isTrue);
+      expect(primera.desplazamiento, 0);
+
+      final ultima = await c.read(detalleRangoProvider(PaginaDetalle(params, pagina: 2)).future);
+      expect(ultima.hayAnterior, isTrue);
+      expect(ultima.haySiguiente, isFalse, reason: 'no hay una cuarta tanda');
+      expect(ultima.desplazamiento, limiteDetalleRango * 2);
+    });
+
+    test('un período que cabe entero tiene una sola página', () async {
+      final c = contenedor();
+      final detalle = await c.read(
+        detalleRangoProvider(
+          PaginaDetalle(
+            ReportesParametros(rango: RangoReporte.dia, fechaReferencia: DateTime(2026, 1, 1)),
+          ),
+        ).future,
+      );
+
+      expect(detalle.paginas, 1);
+      expect(detalle.haySiguiente, isFalse);
+      expect(detalle.truncado, isFalse);
+    });
+
+    test('cambiar de página NO recalcula el reporte general', () async {
+      // Es la razón de que la página viva en su propia clave y no en
+      // `ReportesParametros`: totales, turnos y rankings no dependen de qué
+      // tanda se esté mirando, y recalcularlos al pasar de página sería pagar
+      // la consulta cara por nada.
+      final c = contenedor();
+      final antes = await c.read(reportesProvider(params).future);
+
+      await c.read(detalleRangoProvider(PaginaDetalle(params, pagina: 1)).future);
+      final despues = c.read(reportesProvider(params)).valueOrNull;
+
+      expect(identical(antes, despues), isTrue, reason: 'el reporte no se volvió a calcular');
+    });
   });
 }

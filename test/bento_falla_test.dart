@@ -57,10 +57,7 @@ void main() {
     expect(find.text('Reintentar'), findsNothing);
 
     var intentos = 0;
-    await montar(
-      tester,
-      BentoFalla(mensaje: 'Falló algo.', onReintentar: () => intentos++),
-    );
+    await montar(tester, BentoFalla(mensaje: 'Falló algo.', onReintentar: () => intentos++));
     await tester.tap(find.text('Reintentar'));
     expect(intentos, 1);
   });

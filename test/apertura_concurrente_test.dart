@@ -76,8 +76,11 @@ void main() {
     await servicio.adjuntarAbierto(db);
 
     expect(await servicio.estaAdjunto(db), isTrue);
-    expect((await db.rawQuery('SELECT COUNT(*) c FROM venta')).first['c'], equals(0),
-        reason: 'el libro tiene que quedar consultable, no a medio adjuntar');
+    expect(
+      (await db.rawQuery('SELECT COUNT(*) c FROM venta')).first['c'],
+      equals(0),
+      reason: 'el libro tiene que quedar consultable, no a medio adjuntar',
+    );
   });
 
   test('adjuntar en paralelo desde varios lectores no revienta', () async {
@@ -87,9 +90,7 @@ void main() {
     addTearDown(db.close);
     final servicio = LibroVentasService(directorio: dir.path);
 
-    await Future.wait([
-      for (var i = 0; i < 8; i++) servicio.adjuntarAbierto(db),
-    ]);
+    await Future.wait([for (var i = 0; i < 8; i++) servicio.adjuntarAbierto(db)]);
 
     expect(await servicio.estaAdjunto(db), isTrue);
     expect((await db.rawQuery('SELECT COUNT(*) c FROM venta')).first['c'], equals(0));

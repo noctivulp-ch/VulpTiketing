@@ -225,7 +225,9 @@ void main() {
     addTearDown(container.dispose);
     final detalle = await container.read(
       detalleRangoProvider(
-        ReportesParametros(rango: RangoReporte.mes, fechaReferencia: DateTime(2026, 3, 10)),
+        PaginaDetalle(
+          ReportesParametros(rango: RangoReporte.mes, fechaReferencia: DateTime(2026, 3, 10)),
+        ),
       ).future,
     );
 

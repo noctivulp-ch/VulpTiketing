@@ -66,9 +66,7 @@ void main() {
     final ahora = DateTime.now();
     for (var i = 0; i < 5; i++) {
       final f = DateTime(ahora.year, ahora.month, ahora.day, 8 + i * 3).toIso8601String();
-      await db.insert('venta', {
-        'id': 'v$i', 'fecha_hora': f, 'estado': 'activa', 'updated_at': f,
-      });
+      await db.insert('venta', {'id': 'v$i', 'fecha_hora': f, 'estado': 'activa', 'updated_at': f});
       await db.insert('linea_venta', {
         'id': 'l$i', 'venta_id': 'v$i', 'producto_id': 'p$i',
         // Importes grandes a propósito: son los que desbordan una celda angosta.
@@ -98,18 +96,18 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        databaseProvider.overrideWith((ref) async => db),
-        libroVentasServiceProvider
-            .overrideWith((ref) async => LibroVentasService(directorio: dir.path)),
-        sesionNotifierProvider.overrideWith(() => _SesionFija(rol)),
-      ],
-      child: MaterialApp(
-        theme: buildBentoTheme(AcentoTinte.oro),
-        home: pantalla,
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWith((ref) async => db),
+          libroVentasServiceProvider.overrideWith(
+            (ref) async => LibroVentasService(directorio: dir.path),
+          ),
+          sesionNotifierProvider.overrideWith(() => _SesionFija(rol)),
+        ],
+        child: MaterialApp(theme: buildBentoTheme(AcentoTinte.oro), home: pantalla),
       ),
-    ));
+    );
     // `pump` con tiempo en vez de `pumpAndSettle`: hay indicadores de progreso
     // que giran para siempre y dejarían el settle esperando indefinidamente.
     //
@@ -137,8 +135,7 @@ void main() {
   for (final rol in Rol.values) {
     for (final tamano in tamanos.entries) {
       for (final pantalla in pantallas.entries) {
-        testWidgets('${pantalla.key} no desborda en ${tamano.key} (${rol.name})',
-            (tester) async {
+        testWidgets('${pantalla.key} no desborda en ${tamano.key} (${rol.name})', (tester) async {
           await montar(tester, pantalla.value(), tamano.value, rol);
 
           expect(
@@ -169,12 +166,11 @@ void main() {
       // Árbol vacío entre vueltas: sin esto el `State` del Login sobrevive al
       // segundo `pumpWidget` y la prueba no empieza en la vista de roles.
       await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pumpWidget(ProviderScope(
-        child: MaterialApp(
-          theme: buildBentoTheme(AcentoTinte.oro),
-          home: const LoginScreen(),
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(theme: buildBentoTheme(AcentoTinte.oro), home: const LoginScreen()),
         ),
-      ));
+      );
       await tester.pump();
 
       // Elegir el rol es lo que abre el teclado — el inset entra DESPUÉS, no
@@ -211,17 +207,16 @@ void main() {
     await montar(tester, const ConfiguracionScreen(), const Size(360, 800), Rol.gerente);
 
     final primeros = ['Contraseña', 'Exportar', 'Restaurar'];
-    final ys = {
-      for (final t in primeros) tester.getTopLeft(find.text(t)).dy,
-    };
+    final ys = {for (final t in primeros) tester.getTopLeft(find.text(t)).dy};
     expect(ys, hasLength(1), reason: 'los tres primeros tiles van en la misma fila');
 
     final cuarto = tester.getTopLeft(find.text('Catálogo')).dy;
     expect(cuarto, greaterThan(ys.first), reason: 'el cuarto abre una fila nueva');
   });
 
-  testWidgets('Configuración muestra el panel al lado en escritorio y debajo en teléfono',
-      (tester) async {
+  testWidgets('Configuración muestra el panel al lado en escritorio y debajo en teléfono', (
+    tester,
+  ) async {
     await montar(tester, const ConfiguracionScreen(), const Size(1440, 900), Rol.gerente);
     // `.first` porque tras elegir la opción el panel repite el rótulo
     // "Acento" en su cabecera, y el finder encontraría dos.
@@ -233,8 +228,11 @@ void main() {
     expect(find.text('Acento'), findsNWidgets(2));
     final xTile = tester.getTopLeft(find.text('Acento').first).dx;
     final xPanel = tester.getTopLeft(find.text('Acento').last).dx;
-    expect(xPanel, greaterThan(xTile),
-        reason: 'en escritorio el detalle va a la derecha de los tiles');
+    expect(
+      xPanel,
+      greaterThan(xTile),
+      reason: 'en escritorio el detalle va a la derecha de los tiles',
+    );
 
     await montar(tester, const ConfiguracionScreen(), const Size(360, 800), Rol.gerente);
     await tester.tap(find.text('Acento').first);
@@ -243,8 +241,7 @@ void main() {
     expect(find.text('Acento'), findsNWidgets(2));
     final yTile = tester.getTopLeft(find.text('Acento').first).dy;
     final yPanel = tester.getTopLeft(find.text('Acento').last).dy;
-    expect(yPanel, greaterThan(yTile),
-        reason: 'en teléfono el detalle va debajo');
+    expect(yPanel, greaterThan(yTile), reason: 'en teléfono el detalle va debajo');
   });
 }
 

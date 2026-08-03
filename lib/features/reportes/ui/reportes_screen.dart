@@ -41,11 +41,17 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   /// el de turno: uno recorta por franja horaria y este no recorta nada.
   bool _detalleDelRango = false;
 
+  /// Qué tanda del detalle se está mirando. Se pasa con dos dedos.
+  int _paginaDetalle = 0;
+
   bool get enDetalle => _turnoSeleccionado != null || _detalleDelRango;
 
   void volver() => setState(() {
     _turnoSeleccionado = null;
     _detalleDelRango = false;
+    // Se vuelve a la primera tanda: reabrir el detalle y aparecer en la página
+    // 7 de la vez pasada no lo espera nadie.
+    _paginaDetalle = 0;
   });
 
   /// Exporta lo que se está mirando: el mismo período, el mismo total.
@@ -170,13 +176,39 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   List<RangoReporte> _rangosDe(bool esGerente) =>
       esGerente ? RangoReporte.values : const [RangoReporte.dia, RangoReporte.semana];
 
+  /// Un paso en las tandas del detalle.
+  ///
+  /// Se apoya en lo que el provider ya trajo —cuántas hay en total— en vez de
+  /// consultar de nuevo para saber si queda algo: pasarse de la última página
+  /// mostraría una lista vacía sin decir por qué.
+  void _moverPagina(int paso) {
+    final detalle = ref
+        .read(
+          detalleRangoProvider(
+            PaginaDetalle(
+              ReportesParametros(rango: _rango, fechaReferencia: _fecha),
+              pagina: _paginaDetalle,
+            ),
+          ),
+        )
+        .valueOrNull;
+    if (detalle == null) return;
+
+    final destino = _paginaDetalle + paso;
+    if (destino < 0 || destino >= detalle.paginas) return;
+    setState(() => _paginaDetalle = destino);
+  }
+
   /// Un paso en la lista de rangos. En los extremos no da la vuelta, igual que
   /// la navegación entre ventanas.
   void _moverRango(int paso, bool esGerente) {
     final rangos = _rangosDe(esGerente);
     final destino = rangos.indexOf(_rango) + paso;
     if (destino < 0 || destino >= rangos.length) return;
-    setState(() => _rango = rangos[destino]);
+    setState(() {
+      _rango = rangos[destino];
+      _paginaDetalle = 0;
+    });
   }
 
   /// Exporta lo que se está mirando: el turno abierto, si hay uno, y si no el
@@ -200,7 +232,12 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
   Future<void> _elegirFecha() async {
     final elegida = await elegirPeriodo(context, rango: _rango, actual: _fecha);
-    if (elegida != null && mounted) setState(() => _fecha = elegida);
+    if (elegida != null && mounted) {
+      setState(() {
+        _fecha = elegida;
+        _paginaDetalle = 0;
+      });
+    }
   }
 
   String _tituloPeriodo() {
@@ -227,8 +264,15 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       // Dos dedos de lado recorren los rangos, en el mismo orden en que están
       // en el selector: Día → Semana → Mes → Año. Con un dedo el horizontal ya
       // es cambiar de ventana, así que esto no le pisa nada (decisión 0030).
-      alDeslizarIzquierda: () => _moverRango(1, esGerente),
-      alDeslizarDerecha: () => _moverRango(-1, esGerente),
+      // Dentro del detalle el mismo gesto pasa de PÁGINA, no de rango: ahí lo
+      // que se recorre son las ventas, y cambiar el rango por debajo de una
+      // lista que se está leyendo sería desconcertante.
+      alDeslizarIzquierda: _detalleDelRango
+          ? () => _moverPagina(1)
+          : () => _moverRango(1, esGerente),
+      alDeslizarDerecha: _detalleDelRango
+          ? () => _moverPagina(-1)
+          : () => _moverRango(-1, esGerente),
       // Abajo despliega el selector del rango actual —calendario, meses o
       // años—, que es el mismo sentido de "abrir" que en Ventana 2.
       alDeslizarAbajo: enDetalle || !esGerente ? null : _elegirFecha,
@@ -251,7 +295,11 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               BentoSpacing.gapCelda,
             ),
             child: _detalleDelRango
-                ? _DetalleDelRango(params: params, titulo: _tituloDelRango(), onVolver: volver)
+                ? _DetalleDelRango(
+                    peticion: PaginaDetalle(params, pagina: _paginaDetalle),
+                    titulo: _tituloDelRango(),
+                    onVolver: volver,
+                  )
                 : reporteAsync.when(
                     data: (reporte) => _turnoSeleccionado != null
                         ? _VistaDrillDown(
@@ -300,32 +348,37 @@ String _nombreTurno(Turno turno) => switch (turno) {
 /// Carga el detalle del rango bajo demanda: pedirlo por adelantado haría que
 /// abrir Reportes trajera el año entero aunque nadie mire la lista.
 class _DetalleDelRango extends ConsumerWidget {
-  const _DetalleDelRango({required this.params, required this.titulo, required this.onVolver});
+  const _DetalleDelRango({required this.peticion, required this.titulo, required this.onVolver});
 
-  final ReportesParametros params;
+  final PaginaDetalle peticion;
   final String titulo;
   final VoidCallback onVolver;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ref
-        .watch(detalleRangoProvider(params))
+        .watch(detalleRangoProvider(peticion))
         .when(
           data: (detalle) => _VistaDrillDown(
             titulo: titulo,
             ventas: detalle.ventas,
             total: detalle.ventas.fold<double>(0, (s, v) => s + v.total),
             onVolver: onVolver,
+            // Dónde está parado, no una disculpa. Antes decía "mostrando las
+            // 300 más recientes de 2.847" y ahí se acababa el asunto: no había
+            // forma de ver las otras 2.547.
             nota: detalle.truncado
-                ? 'Mostrando las ${detalle.ventas.length} más recientes '
-                      'de ${detalle.totalVentas}.'
+                ? '${detalle.desplazamiento + 1}–'
+                      '${detalle.desplazamiento + detalle.ventas.length} '
+                      'de ${detalle.totalVentas} · página ${detalle.pagina + 1} '
+                      'de ${detalle.paginas} · dos dedos para pasar'
                 : null,
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, st) => BentoFalla(
             mensaje: 'No se pudo cargar el detalle de las ventas.',
             error: e,
-            onReintentar: () => ref.invalidate(detalleRangoProvider(params)),
+            onReintentar: () => ref.invalidate(detalleRangoProvider(peticion)),
           ),
         );
   }

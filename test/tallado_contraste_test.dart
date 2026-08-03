@@ -32,10 +32,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: tema,
-          home: Builder(builder: (context) {
-            capturado = context;
-            return const SizedBox.shrink();
-          }),
+          home: Builder(
+            builder: (context) {
+              capturado = context;
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       );
       return capturado;
@@ -47,57 +49,49 @@ void main() {
     };
 
     superficies.forEach((nombreSup, sup) {
-      testWidgets(
-        'tallado sutil mantiene AA (4.5:1) sobre $nombreSup en ${brillo.name}',
-        (tester) async {
-          final context = await contextoCon(tester);
-          final glifo = bentoColorTallado(
-            context,
-            base: sup.base,
-            sobre: sup.fondo,
-          );
-          final ratio = _contraste(glifo, sup.fondo);
-          expect(
-            ratio,
-            greaterThanOrEqualTo(4.5),
-            reason: 'texto de lectura tallado sobre $nombreSup en '
-                '${brillo.name}: ${ratio.toStringAsFixed(2)}:1',
-          );
-        },
-      );
+      testWidgets('tallado sutil mantiene AA (4.5:1) sobre $nombreSup en ${brillo.name}', (
+        tester,
+      ) async {
+        final context = await contextoCon(tester);
+        final glifo = bentoColorTallado(context, base: sup.base, sobre: sup.fondo);
+        final ratio = _contraste(glifo, sup.fondo);
+        expect(
+          ratio,
+          greaterThanOrEqualTo(4.5),
+          reason:
+              'texto de lectura tallado sobre $nombreSup en '
+              '${brillo.name}: ${ratio.toStringAsFixed(2)}:1',
+        );
+      });
 
-      testWidgets(
-        'tallado marcado mantiene 3:1 sobre $nombreSup en ${brillo.name}',
-        (tester) async {
-          // 3:1 es el minimo de WCAG para texto grande (1.4.3) y para
-          // elementos no textuales (1.4.11) — el nivel marcado solo se usa en
-          // >=24px e iconos, donde ese umbral aplica.
-          final context = await contextoCon(tester);
-          final glifo = bentoColorTallado(
-            context,
-            base: sup.base,
-            sobre: sup.fondo,
-            nivel: TalladoNivel.marcado,
-          );
-          final ratio = _contraste(glifo, sup.fondo);
-          expect(
-            ratio,
-            greaterThanOrEqualTo(3.0),
-            reason: 'texto grande tallado sobre $nombreSup en '
-                '${brillo.name}: ${ratio.toStringAsFixed(2)}:1',
-          );
-        },
-      );
+      testWidgets('tallado marcado mantiene 3:1 sobre $nombreSup en ${brillo.name}', (
+        tester,
+      ) async {
+        // 3:1 es el minimo de WCAG para texto grande (1.4.3) y para
+        // elementos no textuales (1.4.11) — el nivel marcado solo se usa en
+        // >=24px e iconos, donde ese umbral aplica.
+        final context = await contextoCon(tester);
+        final glifo = bentoColorTallado(
+          context,
+          base: sup.base,
+          sobre: sup.fondo,
+          nivel: TalladoNivel.marcado,
+        );
+        final ratio = _contraste(glifo, sup.fondo);
+        expect(
+          ratio,
+          greaterThanOrEqualTo(3.0),
+          reason:
+              'texto grande tallado sobre $nombreSup en '
+              '${brillo.name}: ${ratio.toStringAsFixed(2)}:1',
+        );
+      });
     });
 
     testWidgets('el nivel marcado talla mas que el sutil en ${brillo.name}', (tester) async {
       // Si los dos niveles dieran lo mismo, la distincion seria decorativa.
       final context = await contextoCon(tester);
-      final sutil = bentoColorTallado(
-        context,
-        base: tema.colorScheme.onSurface,
-        sobre: laca.pozo,
-      );
+      final sutil = bentoColorTallado(context, base: tema.colorScheme.onSurface, sobre: laca.pozo);
       final marcado = bentoColorTallado(
         context,
         base: tema.colorScheme.onSurface,

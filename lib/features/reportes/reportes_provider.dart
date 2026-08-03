@@ -1,4 +1,5 @@
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/db_providers.dart';
@@ -268,24 +269,63 @@ final reportesProvider = FutureProvider.family<ReporteResultado, ReportesParamet
   );
 });
 
-/// Cuántas ventas trae como mucho el detalle de un rango.
+/// Cuántas ventas trae CADA TANDA del detalle de un rango.
 ///
 /// Hay tope porque el rango puede ser un AÑO: con el volumen real medido son
 /// 117 k ventas y 234 k líneas, y traerlas todas a memoria para pintar una
-/// lista es exactamente el problema que se arregló al agregar en SQL. Se
-/// muestran las más recientes y se dice cuántas quedaron fuera — mentir por
-/// omisión sería peor que el tope.
-const limiteDetalleRango = 300;
+/// lista es exactamente el problema que se arregló al agregar en SQL.
+///
+/// Ya no significa "solo se pueden ver 300": el detalle **pagina**, y se avanza
+/// con dos dedos. Así el aparato nunca carga más de una tanda y aun así se puede
+/// revisar el período entero. Exportar es otra cosa y no tiene tope —
+/// ver `ventasDelRangoPorLotes`.
+/// Ajustable solo desde las pruebas: montar la pantalla con 300 filas por tanda
+/// —y las 700 ventas que hacen falta para que haya tres— tarda minutos. Con un
+/// tope de 5 se prueba exactamente lo mismo en un segundo.
+@visibleForTesting
+int limiteDetalleRango = 300;
 
 class DetalleRango {
-  const DetalleRango({required this.ventas, required this.totalVentas});
+  const DetalleRango({required this.ventas, required this.totalVentas, required this.pagina});
 
   final List<VentaConLineas> ventas;
 
   /// Cuántas hay en el rango completo, más allá de las que se trajeron.
   final int totalVentas;
 
+  /// Qué tanda se está mirando, desde 0.
+  final int pagina;
+
+  /// Cuántas quedaron atrás en las páginas anteriores.
+  int get desplazamiento => pagina * limiteDetalleRango;
+
+  bool get hayAnterior => pagina > 0;
+  bool get haySiguiente => desplazamiento + ventas.length < totalVentas;
+
   bool get truncado => totalVentas > ventas.length;
+
+  /// Cuántas páginas tiene el período, mínimo una.
+  int get paginas => totalVentas == 0 ? 1 : ((totalVentas - 1) ~/ limiteDetalleRango) + 1;
+}
+
+/// Qué tanda del detalle se pide.
+///
+/// Clase aparte de [ReportesParametros] a propósito: cambiar de página no puede
+/// invalidar el reporte general —totales, turnos y rankings—, que se calcula con
+/// los mismos parámetros y no depende de la página.
+@immutable
+class PaginaDetalle {
+  const PaginaDetalle(this.params, {this.pagina = 0});
+
+  final ReportesParametros params;
+  final int pagina;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PaginaDetalle && other.params == params && other.pagina == pagina;
+
+  @override
+  int get hashCode => Object.hash(params, pagina);
 }
 
 /// Las ventas de un rango, para el detalle que se abre al tocar el total.
@@ -293,10 +333,12 @@ class DetalleRango {
 /// Provider APARTE de `reportesProvider` a propósito: se resuelve solo cuando
 /// alguien entra al detalle. Meterlo en el reporte general habría hecho que
 /// abrir Reportes cargara el año entero aunque nadie mirara la lista.
-final detalleRangoProvider = FutureProvider.family<DetalleRango, ReportesParametros>((
+final detalleRangoProvider = FutureProvider.family<DetalleRango, PaginaDetalle>((
   ref,
-  params,
+  peticion,
 ) async {
+  final params = peticion.params;
+  final desplazamiento = peticion.pagina * limiteDetalleRango;
   final db = await ref.watch(databaseProvider.future);
   final (desde, hasta) = rangoDeFechas(params.rango, params.fechaReferencia);
   final args = [desde.toIso8601String(), hasta.toIso8601String()];
@@ -306,11 +348,11 @@ final detalleRangoProvider = FutureProvider.family<DetalleRango, ReportesParamet
 
   final ventasRows = await db.rawQuery(
     'SELECT v.* FROM venta v WHERE $_sqlRangoActivo '
-    'ORDER BY v.fecha_hora DESC LIMIT $limiteDetalleRango',
+    'ORDER BY v.fecha_hora DESC LIMIT $limiteDetalleRango OFFSET $desplazamiento',
     args,
   );
   if (ventasRows.isEmpty) {
-    return DetalleRango(ventas: const [], totalVentas: total);
+    return DetalleRango(ventas: const [], totalVentas: total, pagina: peticion.pagina);
   }
 
   // Las líneas de ESAS ventas en una sola consulta, no una por venta.
@@ -333,6 +375,7 @@ final detalleRangoProvider = FutureProvider.family<DetalleRango, ReportesParamet
         ),
     ],
     totalVentas: total,
+    pagina: peticion.pagina,
   );
 });
 

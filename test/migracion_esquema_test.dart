@@ -146,8 +146,7 @@ void main() {
         .listSync()
         .map((e) => p.basename(e.path))
         .where((n) => n.startsWith('ventas-'));
-    expect(sueltos, isEmpty,
-        reason: 'el primer libro se crea con la primera venta, no al migrar');
+    expect(sueltos, isEmpty, reason: 'el primer libro se crea con la primera venta, no al migrar');
   });
 
   test('migrar dos veces no falla', () async {

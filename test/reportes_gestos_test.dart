@@ -10,6 +10,7 @@ import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/core/theme/bento_theme.dart';
 import 'package:vulp_tiketing/features/auth/sesion_notifier.dart';
+import 'package:vulp_tiketing/features/reportes/reportes_provider.dart';
 import 'package:vulp_tiketing/features/reportes/ui/reportes_screen.dart';
 import 'package:vulp_tiketing/features/venta/libro_ventas.dart';
 
@@ -30,6 +31,7 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    limiteDetalleRango = 300;
     dir = Directory.systemTemp.createTempSync('vulp-gestos-reportes');
     db = await databaseFactory.openDatabase(
       p.join(dir.path, 'vulp_tiketing.db'),
@@ -38,6 +40,37 @@ void main() {
     await AppDatabase.crearEsquema(db);
     await aplicarEsquemaLibro(db);
   });
+
+  /// Siembra [cuantas] ventas del mismo día, para que el detalle tenga varias
+  /// tandas que pasar.
+  Future<void> sembrar(int cuantas) async {
+    await db.insert('producto', {
+      'id': 'p1',
+      'nombre': 'Casado con pollo',
+      'precio_base': 2500.0,
+      'updated_at': DateTime(2026).toIso8601String(),
+    });
+    final hoy = DateTime.now();
+    final lote = db.batch();
+    for (var i = 0; i < cuantas; i++) {
+      final cuando = DateTime(hoy.year, hoy.month, hoy.day, 8 + (i % 12), i % 60);
+      lote.insert('venta', {
+        'id': 'v$i',
+        'fecha_hora': cuando.toIso8601String(),
+        'estado': 'activa',
+        'updated_at': cuando.toIso8601String(),
+      });
+      lote.insert('linea_venta', {
+        'id': 'l$i',
+        'venta_id': 'v$i',
+        'producto_id': 'p1',
+        'precio_aplicado': 2500.0,
+        'cantidad': 1,
+        'updated_at': cuando.toIso8601String(),
+      });
+    }
+    await lote.commit(noResult: true);
+  }
 
   tearDown(() async {
     await db.close();
@@ -167,6 +200,74 @@ void main() {
     expect(find.text('Exportar reporte'), findsOneWidget);
     expect(find.text('PDF'), findsOneWidget);
     expect(find.text('Tabla (CSV)'), findsOneWidget);
+  });
+
+  group('dentro del detalle, dos dedos pasan de PÁGINA', () {
+    // Tres tandas: 5, 5 y 2. Sin paginar, las últimas eran invisibles y la nota
+    // se limitaba a decir cuántas faltaban.
+    Future<void> abrirDetalle(WidgetTester tester) async {
+      // Tandas de 5 y 12 ventas: tres páginas igual que con 300 y 700, pero sin
+      // montar 300 filas por vuelta.
+      limiteDetalleRango = 5;
+      // Dentro de `runAsync`: escribir en SQLite es I/O real y no avanza con el
+      // reloj falso de `testWidgets`. Sin esto el test se queda colgado en el
+      // `commit` hasta que el runner lo mata.
+      await tester.runAsync(() => sembrar(12));
+      await montar(tester, Rol.gerente);
+      // Tocar el hero abre el detalle del rango. Por el título y no por el
+      // monto: hay un "₡" en cada venta de la lista.
+      await tester.tap(find.text('Hoy'));
+      await tester.pump();
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    testWidgets('la nota dice dónde está parado, no cuánto falta', (tester) async {
+      await abrirDetalle(tester);
+      expect(find.textContaining('1–5 de 12'), findsOneWidget);
+      expect(find.textContaining('página 1 de 3'), findsOneWidget);
+    });
+
+    testWidgets('de lado se avanza y se retrocede', (tester) async {
+      await abrirDetalle(tester);
+
+      await dosDedos(tester, dx: -160);
+      expect(find.textContaining('6–10 de 12'), findsOneWidget);
+
+      await dosDedos(tester, dx: -160);
+      expect(find.textContaining('11–12 de 12'), findsOneWidget);
+
+      await dosDedos(tester, dx: 160);
+      expect(find.textContaining('6–10 de 12'), findsOneWidget);
+    });
+
+    testWidgets('en la última no se pasa de largo', (tester) async {
+      await abrirDetalle(tester);
+      await dosDedos(tester, dx: -160);
+      await dosDedos(tester, dx: -160);
+      expect(find.textContaining('página 3 de 3'), findsOneWidget);
+
+      await dosDedos(tester, dx: -160);
+      expect(find.textContaining('página 3 de 3'), findsOneWidget);
+    });
+
+    testWidgets('salir y volver a entrar arranca en la primera', (tester) async {
+      await abrirDetalle(tester);
+      await dosDedos(tester, dx: -160);
+      expect(find.textContaining('página 2 de 3'), findsOneWidget);
+
+      await tester.tap(find.text('Volver'));
+      await tester.pump();
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+      await tester.pump(const Duration(seconds: 1));
+
+      await tester.tap(find.text('Hoy'));
+      await tester.pump();
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.textContaining('página 1 de 3'), findsOneWidget);
+    });
   });
 }
 

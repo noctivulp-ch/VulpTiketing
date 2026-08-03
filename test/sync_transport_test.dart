@@ -24,14 +24,14 @@ Map<String, Object?> _producto({
   String updatedAt = '2026-01-01T00:00:00.000',
   String? deletedAt,
 }) => {
-      'id': id,
-      'nombre': nombre,
-      'imagen': null,
-      'categoria_id': null,
-      'precio_base': 800,
-      'updated_at': updatedAt,
-      'deleted_at': deletedAt,
-    };
+  'id': id,
+  'nombre': nombre,
+  'imagen': null,
+  'categoria_id': null,
+  'precio_base': 800,
+  'updated_at': updatedAt,
+  'deleted_at': deletedAt,
+};
 
 void main() {
   setUpAll(() {
@@ -69,7 +69,10 @@ void main() {
     servidor = SyncServer(dbServidor);
     final puerto = await servidor.iniciar();
     peer = PeerVisible(
-      deviceId: 'servidor', rol: 'gerente', direccion: '127.0.0.1', puerto: puerto,
+      deviceId: 'servidor',
+      rol: 'gerente',
+      direccion: '127.0.0.1',
+      puerto: puerto,
     );
   });
 
@@ -157,9 +160,13 @@ void main() {
     await clienteSync().sincronizarCon(peer);
 
     final libro = await librosCliente.libroAbierto(dbCliente);
-    expect(libro!.diasConVentas, equals(3),
-        reason: 'sin recontar, un libro que recibe todo por sync no contaría '
-            'ningún día y no rotaría nunca');
+    expect(
+      libro!.diasConVentas,
+      equals(3),
+      reason:
+          'sin recontar, un libro que recibe todo por sync no contaría '
+          'ningún día y no rotaría nunca',
+    );
   });
 
   test('sincronizar dos veces no altera el conteo de dias', () async {
@@ -171,8 +178,11 @@ void main() {
     await clienteSync().sincronizarCon(peer);
 
     final libro = await librosCliente.libroAbierto(dbCliente);
-    expect(libro!.diasConVentas, equals(3),
-        reason: 'el sync reenvía las mismas filas: contar tiene que ser idempotente');
+    expect(
+      libro!.diasConVentas,
+      equals(3),
+      reason: 'el sync reenvía las mismas filas: contar tiene que ser idempotente',
+    );
     expect(await dbCliente.query('venta'), hasLength(3));
   });
 
@@ -204,8 +214,11 @@ void main() {
     await clienteSync().sincronizarCon(peer);
 
     final p1 = (await dbCliente.query('producto', where: 'id = ?', whereArgs: ['p1'])).first;
-    expect(p1['nombre'], 'Café especial',
-        reason: 'el cambio local es mas reciente que el del servidor');
+    expect(
+      p1['nombre'],
+      'Café especial',
+      reason: 'el cambio local es mas reciente que el del servidor',
+    );
   });
 
   test('un peer con otro esquema se rechaza sin aplicar nada', () async {
@@ -217,21 +230,26 @@ void main() {
     viejo.listen((req) {
       req.response
         ..headers.contentType = ContentType.json
-        ..write('{"version":1,"esquema":2,"tablas":{"categoria":[],'
-            '"producto":[${_jsonProducto()}],"venta":[],"linea_venta":[]}}')
+        ..write(
+          '{"version":1,"esquema":2,"tablas":{"categoria":[],'
+          '"producto":[${_jsonProducto()}],"venta":[],"linea_venta":[]}}',
+        )
         ..close();
     });
 
     final peerViejo = PeerVisible(
-      deviceId: 'viejo', rol: 'gerente', direccion: '127.0.0.1', puerto: viejo.port,
+      deviceId: 'viejo',
+      rol: 'gerente',
+      direccion: '127.0.0.1',
+      puerto: viejo.port,
     );
 
-    await expectLater(
-      clienteSync().sincronizarCon(peerViejo),
-      throwsA(isA<SyncIncompatible>()),
+    await expectLater(clienteSync().sincronizarCon(peerViejo), throwsA(isA<SyncIncompatible>()));
+    expect(
+      await dbCliente.query('producto'),
+      isEmpty,
+      reason: 'no puede haberse aplicado ni una fila',
     );
-    expect(await dbCliente.query('producto'), isEmpty,
-        reason: 'no puede haberse aplicado ni una fila');
   });
 }
 

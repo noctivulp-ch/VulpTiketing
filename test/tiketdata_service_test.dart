@@ -10,14 +10,14 @@ Map<String, Object?> _producto({
   double precioBase = 800,
   String updatedAt = '2026-01-01T00:00:00.000',
 }) => {
-      'id': id,
-      'nombre': nombre,
-      'imagen': null,
-      'categoria_id': null,
-      'precio_base': precioBase,
-      'updated_at': updatedAt,
-      'deleted_at': null,
-    };
+  'id': id,
+  'nombre': nombre,
+  'imagen': null,
+  'categoria_id': null,
+  'precio_base': precioBase,
+  'updated_at': updatedAt,
+  'deleted_at': null,
+};
 
 void main() {
   late Database db;
@@ -70,7 +70,10 @@ void main() {
     final ruta = '${tempDir.path}/catalogo.tiketdata';
     await servicio.exportarCatalogo(ruta); // el archivo solo tiene p1
 
-    await db.insert('producto', _producto(id: 'p2', nombre: 'Jugo')); // extra local, no en el archivo
+    await db.insert(
+      'producto',
+      _producto(id: 'p2', nombre: 'Jugo'),
+    ); // extra local, no en el archivo
 
     // Fusionar: p2 no se toca.
     await servicio.importarCatalogo(rutaOrigen: ruta, modo: ModoImportacion.fusionar);

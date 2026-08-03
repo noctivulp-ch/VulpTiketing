@@ -98,8 +98,8 @@ void main() {
 
     await medir('detalle del mes', () async {
       final params = ReportesParametros(rango: RangoReporte.mes, fechaReferencia: hoy);
-      contenedor.invalidate(detalleRangoProvider(params));
-      await contenedor.read(detalleRangoProvider(params).future);
+      contenedor.invalidate(detalleRangoProvider(PaginaDetalle(params)));
+      await contenedor.read(detalleRangoProvider(PaginaDetalle(params)).future);
     });
 
     await medir('contar ventas', () async {

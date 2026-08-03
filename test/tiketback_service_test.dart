@@ -43,9 +43,9 @@ void main() {
   });
 
   Future<Database> abrirPrincipal() => databaseFactory.openDatabase(
-        rutaPrincipal,
-        options: OpenDatabaseOptions(singleInstance: false),
-      );
+    rutaPrincipal,
+    options: OpenDatabaseOptions(singleInstance: false),
+  );
 
   /// Monta la topología real: base principal con catálogo e índice, más un
   /// archivo por libro con sus ventas dentro.
@@ -126,9 +126,7 @@ void main() {
         ruta,
         options: OpenDatabaseOptions(singleInstance: false),
       );
-      final r = await libro.rawQuery(
-        'SELECT SUM(precio_aplicado * cantidad) t FROM linea_venta',
-      );
+      final r = await libro.rawQuery('SELECT SUM(precio_aplicado * cantidad) t FROM linea_venta');
       await libro.close();
       total += (r.first['t'] as num?)?.toDouble() ?? 0;
     }
@@ -182,8 +180,11 @@ void main() {
     expect(await totalVendido(), closeTo(8000, 0.01));
     expect(await nombresDeProducto(), equals(['Café']));
     for (final archivo in libros) {
-      expect(File(p.join(dir.path, archivo)).existsSync(), isTrue,
-          reason: '$archivo tiene que volver del backup');
+      expect(
+        File(p.join(dir.path, archivo)).existsSync(),
+        isTrue,
+        reason: '$archivo tiene que volver del backup',
+      );
     }
   });
 
@@ -211,20 +212,29 @@ void main() {
       options: OpenDatabaseOptions(singleInstance: false),
     );
     await libro.insert('venta', {
-      'id': 'v-posterior', 'fecha_hora': '2026-08-01T10:00:00.000',
-      'estado': 'activa', 'updated_at': '2026-08-01T10:00:00.000',
+      'id': 'v-posterior',
+      'fecha_hora': '2026-08-01T10:00:00.000',
+      'estado': 'activa',
+      'updated_at': '2026-08-01T10:00:00.000',
     });
     await libro.insert('linea_venta', {
-      'id': 'l-posterior', 'venta_id': 'v-posterior', 'nombre_libre': 'x',
-      'precio_aplicado': 2000.0, 'cantidad': 1, 'updated_at': '2026-08-01T10:00:00.000',
+      'id': 'l-posterior',
+      'venta_id': 'v-posterior',
+      'nombre_libre': 'x',
+      'precio_aplicado': 2000.0,
+      'cantidad': 1,
+      'updated_at': '2026-08-01T10:00:00.000',
     });
     await libro.close();
 
     await restaurar(AlcanceRestauracion.soloMenu);
 
     expect(await nombresDeProducto(), equals(['Café']), reason: 'el menú vuelve al del backup');
-    expect(await totalVendido(), closeTo(7000, 0.01),
-        reason: 'las ventas posteriores al backup NO pueden desaparecer');
+    expect(
+      await totalVendido(),
+      closeTo(7000, 0.01),
+      reason: 'las ventas posteriores al backup NO pueden desaparecer',
+    );
   });
 
   test('restaurar solo las ventas no toca el menu', () async {
@@ -248,8 +258,11 @@ void main() {
     await restaurar(AlcanceRestauracion.soloVentas);
 
     expect(await totalVendido(), closeTo(5000, 0.01), reason: 'las ventas vuelven');
-    expect(await nombresDeProducto(), equals(['Café', 'Horchata']),
-        reason: 'el producto agregado después del backup tiene que sobrevivir');
+    expect(
+      await nombresDeProducto(),
+      equals(['Café', 'Horchata']),
+      reason: 'el producto agregado después del backup tiene que sobrevivir',
+    );
   });
 
   test('restaurar todo borra los libros que el backup no traia', () async {
@@ -305,8 +318,7 @@ void main() {
       ventasPorLibro: {'ventas-2026-01-01.db': 5000},
     );
     final bytesPrincipal = await File(rutaPrincipal).readAsBytes();
-    final bytesLibro =
-        await File(p.join(dir.path, 'ventas-2026-01-01.db')).readAsBytes();
+    final bytesLibro = await File(p.join(dir.path, 'ventas-2026-01-01.db')).readAsBytes();
 
     await File(rutaBackup).writeAsBytes(
       await _cifrarFormato2(
@@ -343,8 +355,11 @@ void main() {
       throwsA(isA<SecretBoxAuthenticationError>()),
     );
 
-    expect(File(p.join(dir.path, 'ventas-2026-01-01.db')).existsSync(), isFalse,
-        reason: 'una contraseña mala no puede dejar el dispositivo a medio restaurar');
+    expect(
+      File(p.join(dir.path, 'ventas-2026-01-01.db')).existsSync(),
+      isFalse,
+      reason: 'una contraseña mala no puede dejar el dispositivo a medio restaurar',
+    );
   });
 
   test('un backup cortado por la mitad no restaura nada', () async {
@@ -359,10 +374,7 @@ void main() {
     await exportar(libros);
 
     final entero = await File(rutaBackup).readAsBytes();
-    await File(rutaBackup).writeAsBytes(
-      entero.sublist(0, entero.length ~/ 2),
-      flush: true,
-    );
+    await File(rutaBackup).writeAsBytes(entero.sublist(0, entero.length ~/ 2), flush: true);
 
     await expectLater(restaurar(AlcanceRestauracion.todo), throwsA(anything));
 
@@ -401,13 +413,14 @@ void main() {
     await restaurar(AlcanceRestauracion.todo);
     expect(Directory(p.join(dir.path, '.restaurando')).existsSync(), isFalse);
 
-    await expectLater(
-      restaurar(AlcanceRestauracion.todo, clave: 'mala'),
-      throwsA(anything),
+    await expectLater(restaurar(AlcanceRestauracion.todo, clave: 'mala'), throwsA(anything));
+    expect(
+      Directory(p.join(dir.path, '.restaurando')).existsSync(),
+      isFalse,
+      reason:
+          'una carpeta de paso huérfana ocuparía el doble de disco '
+          'y confundiría al siguiente intento',
     );
-    expect(Directory(p.join(dir.path, '.restaurando')).existsSync(), isFalse,
-        reason: 'una carpeta de paso huérfana ocuparía el doble de disco '
-            'y confundiría al siguiente intento');
   });
 
   test('el backup no deja el contenido en claro', () async {
@@ -418,10 +431,7 @@ void main() {
     await exportar(libros);
 
     final crudo = await File(rutaBackup).readAsBytes();
-    expect(
-      utf8.decode(crudo, allowMalformed: true).contains('Marcador-Legible'),
-      isFalse,
-    );
+    expect(utf8.decode(crudo, allowMalformed: true).contains('Marcador-Legible'), isFalse);
   });
 }
 
@@ -433,12 +443,13 @@ Future<List<int>> _cifrarFormato2({
   required Map<String, List<int>> libros,
   required List<int> prefs,
 }) async {
-  final manifiesto = utf8.encode(jsonEncode([
-    {'tipo': 'principal', 'nombre': nombrePrincipal, 'largo': principal.length},
-    for (final e in libros.entries)
-      {'tipo': 'libro', 'nombre': e.key, 'largo': e.value.length},
-    {'tipo': 'preferencias', 'nombre': '', 'largo': prefs.length},
-  ]));
+  final manifiesto = utf8.encode(
+    jsonEncode([
+      {'tipo': 'principal', 'nombre': nombrePrincipal, 'largo': principal.length},
+      for (final e in libros.entries) {'tipo': 'libro', 'nombre': e.key, 'largo': e.value.length},
+      {'tipo': 'preferencias', 'nombre': '', 'largo': prefs.length},
+    ]),
+  );
 
   final bundle = BytesBuilder()
     ..add(utf8.encode('VTBK'))
@@ -472,10 +483,7 @@ Future<List<int>> _envolver(List<int> bundle) async {
     memory: 19456,
     iterations: 2,
     hashLength: 32,
-  ).deriveKeyFromPassword(
-    password: 'clave-correcta',
-    nonce: List<int>.generate(16, (i) => i),
-  );
+  ).deriveKeyFromPassword(password: 'clave-correcta', nonce: List<int>.generate(16, (i) => i));
 
   final caja = await AesGcm.with256bits().encrypt(
     bundle,
@@ -491,5 +499,4 @@ Future<List<int>> _envolver(List<int> bundle) async {
       .takeBytes();
 }
 
-List<int> _u32(int v) =>
-    (ByteData(4)..setUint32(0, v, Endian.big)).buffer.asUint8List();
+List<int> _u32(int v) => (ByteData(4)..setUint32(0, v, Endian.big)).buffer.asUint8List();

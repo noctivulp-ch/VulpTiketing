@@ -88,12 +88,9 @@ void main() {
 
     await simularRestauracion(container);
 
-    await container.read(productoNotifierProvider.notifier).crear(Producto(
-          id: 'p1',
-          nombre: 'Café',
-          precioBase: 800,
-          updatedAt: DateTime(2026),
-        ));
+    await container
+        .read(productoNotifierProvider.notifier)
+        .crear(Producto(id: 'p1', nombre: 'Café', precioBase: 800, updatedAt: DateTime(2026)));
 
     final productos = await container.read(productoNotifierProvider.future);
     expect(productos.map((x) => x.nombre), contains('Café'));
@@ -106,11 +103,9 @@ void main() {
 
     await simularRestauracion(container);
 
-    await container.read(categoriaNotifierProvider.notifier).crear(Categoria(
-          id: 'c1',
-          nombre: 'Bebidas',
-          updatedAt: DateTime(2026),
-        ));
+    await container
+        .read(categoriaNotifierProvider.notifier)
+        .crear(Categoria(id: 'c1', nombre: 'Bebidas', updatedAt: DateTime(2026)));
 
     final categorias = await container.read(categoriaNotifierProvider.future);
     expect(categorias.map((x) => x.nombre), contains('Bebidas'));
@@ -136,12 +131,16 @@ void main() {
     await simularRestauracion(container);
 
     for (var i = 0; i < 3; i++) {
-      await container.read(productoNotifierProvider.notifier).crear(Producto(
-            id: 'p$i',
-            nombre: 'Producto $i',
-            precioBase: 100.0 * i,
-            updatedAt: DateTime(2026),
-          ));
+      await container
+          .read(productoNotifierProvider.notifier)
+          .crear(
+            Producto(
+              id: 'p$i',
+              nombre: 'Producto $i',
+              precioBase: 100.0 * i,
+              updatedAt: DateTime(2026),
+            ),
+          );
     }
 
     expect(await container.read(productoNotifierProvider.future), hasLength(3));

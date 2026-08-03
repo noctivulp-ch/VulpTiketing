@@ -59,7 +59,10 @@ void main() {
 
   test('sin ventas no hay ningun libro ni archivo suelto', () async {
     expect(await servicio.libroAbierto(principal), isNull);
-    final archivos = dir.listSync().map((e) => p.basename(e.path)).where((n) => n.startsWith('ventas-'));
+    final archivos = dir
+        .listSync()
+        .map((e) => p.basename(e.path))
+        .where((n) => n.startsWith('ventas-'));
     expect(archivos, isEmpty, reason: 'una instalación nueva no debe crear libros');
   });
 
@@ -87,8 +90,11 @@ void main() {
     final enPrincipal = await principal.rawQuery(
       "SELECT COUNT(*) c FROM main.sqlite_master WHERE type='table' AND name='venta'",
     );
-    expect(enPrincipal.first['c'], equals(0),
-        reason: 'venta no puede existir en la base principal');
+    expect(
+      enPrincipal.first['c'],
+      equals(0),
+      reason: 'venta no puede existir en la base principal',
+    );
   });
 
   test('varias ventas del mismo dia no suman dias', () async {
@@ -98,8 +104,11 @@ void main() {
     await vender(dia.add(const Duration(hours: 19)));
 
     final libro = await servicio.libroAbierto(principal);
-    expect(libro!.diasConVentas, equals(1),
-        reason: 'un libro se mide en dias CON ventas, no en cantidad de ventas');
+    expect(
+      libro!.diasConVentas,
+      equals(1),
+      reason: 'un libro se mide en dias CON ventas, no en cantidad de ventas',
+    );
   });
 
   test('los dias sin ventas no gastan el libro', () async {
@@ -108,8 +117,11 @@ void main() {
     await vender(DateTime(2026, 3, 15, 12));
 
     final libro = await servicio.libroAbierto(principal);
-    expect(libro!.diasConVentas, equals(2),
-        reason: 'entre enero y marzo hay 64 dias de calendario, pero solo 2 con ventas');
+    expect(
+      libro!.diasConVentas,
+      equals(2),
+      reason: 'entre enero y marzo hay 64 dias de calendario, pero solo 2 con ventas',
+    );
   });
 
   test('al dia 366 se cierra el libro y la venta abre uno nuevo', () async {
@@ -134,12 +146,18 @@ void main() {
 
     expect(cerrado.diasConVentas, equals(diasPorLibro));
     expect(cerrado.fechaFin, isNotNull);
-    expect(cerrado.archivo, contains('_'),
-        reason: 'un libro cerrado se renombra a inicio_final.db');
+    expect(
+      cerrado.archivo,
+      contains('_'),
+      reason: 'un libro cerrado se renombra a inicio_final.db',
+    );
     expect(File(p.join(dir.path, cerrado.archivo)).existsSync(), isTrue);
 
-    expect(abierto.diasConVentas, equals(1),
-        reason: 'el libro nuevo arranca con la venta que lo abrio');
+    expect(
+      abierto.diasConVentas,
+      equals(1),
+      reason: 'el libro nuevo arranca con la venta que lo abrio',
+    );
   });
 
   test('nada se pierde al rotar: cada venta esta en exactamente un libro', () async {
@@ -160,9 +178,11 @@ void main() {
         options: OpenDatabaseOptions(singleInstance: false),
       );
       contadas += (await db.rawQuery('SELECT COUNT(*) c FROM venta')).first['c'] as int;
-      final s = (await db.rawQuery(
-        'SELECT SUM(precio_aplicado * cantidad) t FROM linea_venta',
-      )).first['t'] as num?;
+      final s =
+          (await db.rawQuery(
+                'SELECT SUM(precio_aplicado * cantidad) t FROM linea_venta',
+              )).first['t']
+              as num?;
       suma += s?.toDouble() ?? 0;
       await db.close();
     }
@@ -170,8 +190,11 @@ void main() {
     // La suma esperada: 100+0, 100+1, ... 100+(total-1)
     final esperada = List.generate(total, (i) => 100 + i).reduce((a, b) => a + b);
     expect(contadas, equals(total), reason: 'ninguna venta puede perderse al rotar');
-    expect(suma, closeTo(esperada.toDouble(), 0.01),
-        reason: 'ningun importe puede perderse al rotar');
+    expect(
+      suma,
+      closeTo(esperada.toDouble(), 0.01),
+      reason: 'ningun importe puede perderse al rotar',
+    );
   });
 
   test('un libro cerrado se puede leer sin restaurarlo, junto con el abierto', () async {
@@ -186,9 +209,7 @@ void main() {
     // Lectura en caliente: se adjunta el libro cerrado junto al abierto y se
     // consultan los dos en UNA sentencia. Es la capacidad que justifica que el
     // formato sea SQLite y no uno propio.
-    await principal.execute(
-      "ATTACH DATABASE '${p.join(dir.path, cerrado.archivo)}' AS historico",
-    );
+    await principal.execute("ATTACH DATABASE '${p.join(dir.path, cerrado.archivo)}' AS historico");
     final r = await principal.rawQuery('''
       SELECT SUM(total) t FROM (
         SELECT precio_aplicado * cantidad AS total FROM linea_venta
@@ -198,9 +219,11 @@ void main() {
     ''');
     await principal.execute('DETACH DATABASE historico');
 
-    expect((r.first['t'] as num).toDouble(),
-        closeTo((diasPorLibro + 1) * 1000.0, 0.01),
-        reason: 'la consulta debe sumar el libro abierto y el cerrado');
+    expect(
+      (r.first['t'] as num).toDouble(),
+      closeTo((diasPorLibro + 1) * 1000.0, 0.01),
+      reason: 'la consulta debe sumar el libro abierto y el cerrado',
+    );
   });
 
   test('la migracion v2 a v3 mueve las ventas sin perder nada', () async {
@@ -217,11 +240,18 @@ void main() {
     for (var i = 0; i < 5; i++) {
       final f = DateTime(2026, 2, 1 + i, 12).toIso8601String();
       await vieja.insert('venta', {
-        'id': 'v$i', 'fecha_hora': f, 'estado': 'activa', 'updated_at': f,
+        'id': 'v$i',
+        'fecha_hora': f,
+        'estado': 'activa',
+        'updated_at': f,
       });
       await vieja.insert('linea_venta', {
-        'id': 'l$i', 'venta_id': 'v$i', 'nombre_libre': 'x',
-        'precio_aplicado': 700.0, 'cantidad': 2, 'updated_at': f,
+        'id': 'l$i',
+        'venta_id': 'v$i',
+        'nombre_libre': 'x',
+        'precio_aplicado': 700.0,
+        'cantidad': 2,
+        'updated_at': f,
       });
     }
 
@@ -244,9 +274,11 @@ void main() {
       options: OpenDatabaseOptions(singleInstance: false),
     );
     final ventas = (await libroDb.rawQuery('SELECT COUNT(*) c FROM venta')).first['c'];
-    final suma = (await libroDb.rawQuery(
-      'SELECT SUM(precio_aplicado * cantidad) t FROM linea_venta',
-    )).first['t'] as num;
+    final suma =
+        (await libroDb.rawQuery(
+              'SELECT SUM(precio_aplicado * cantidad) t FROM linea_venta',
+            )).first['t']
+            as num;
     await libroDb.close();
     await vieja.close();
 
