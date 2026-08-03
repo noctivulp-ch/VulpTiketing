@@ -15,6 +15,7 @@ import '../../auth/sesion_notifier.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_notifier.dart';
 import '../../producto/producto_query_provider.dart';
+import '../../producto/ui/lista_productos_agrupada.dart';
 import '../../producto/ui/producto_form_dialog.dart';
 import '../linea_venta_model.dart';
 import '../venta_en_curso_notifier.dart';
@@ -674,7 +675,7 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
 
   @override
   Widget build(BuildContext context) {
-    final productosAsync = ref.watch(productoQueryProvider);
+    final productosAsync = ref.watch(productoAgrupadoProvider);
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
 
     return Column(
@@ -686,8 +687,9 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
         // hacia arriba en vez de leerse de arriba hacia abajo.
         Expanded(
           child: productosAsync.when(
-            data: (productos) => ListView.separated(
-              reverse: true,
+            data: (grupos) => ListaProductosAgrupada(
+              grupos: grupos,
+              invertida: true,
               padding: EdgeInsets.only(
                 left: BentoSpacing.unidad,
                 right: BentoSpacing.unidad,
@@ -698,10 +700,11 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
                 // rompia la cascada invertida.
                 top: bentoInsetSuperior(context),
               ),
-              itemCount: productos.length,
-              separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad / 2),
-              itemBuilder: (context, i) {
-                final producto = productos[i];
+              // Una fila por producto: este panel es angosto y lo que se busca
+              // acá es el nombre, no comparar tarjetas.
+              porFila: 1,
+              altoCelda: bentoObjetivoTactilMin,
+              celda: (producto) {
                 final seleccionado = _seleccionados.contains(producto.id);
                 return ListTile(
                   leading: seleccionado ? const Icon(Icons.check_circle) : null,
@@ -758,8 +761,9 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
                       ),
                       icon: const Icon(Icons.add),
                       label: Text('${_seleccionados.length}'),
-                      onPressed: () =>
-                          _agregarSeleccionados(productosAsync.valueOrNull ?? const []),
+                      onPressed: () => _agregarSeleccionados([
+                        for (final g in productosAsync.valueOrNull ?? const []) ...g.productos,
+                      ]),
                     ),
                   ),
                 Expanded(

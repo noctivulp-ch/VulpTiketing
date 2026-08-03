@@ -112,6 +112,15 @@ void main() {
     ));
     // `pump` con tiempo en vez de `pumpAndSettle`: hay indicadores de progreso
     // que giran para siempre y dejarían el settle esperando indefinidamente.
+    //
+    // Y `runAsync` en medio: los `pump` mueven un reloj FALSO, así que las
+    // consultas a SQLite —que son I/O de verdad— no avanzan con ellos. Las
+    // cargas van en cadena (base → productos → categorías, que hacen falta para
+    // los títulos por categoría) y sin dejar correr el reloj real la última
+    // quedaba a medio camino: el test moría con "a Timer is still pending"
+    // porque el tearDown cerraba la base debajo de una consulta en vuelo.
+    await tester.pump();
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
   }

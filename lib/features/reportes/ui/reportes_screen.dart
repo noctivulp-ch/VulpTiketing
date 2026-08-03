@@ -395,30 +395,36 @@ class _VistaGeneral extends StatelessWidget {
       children: [
         Expanded(
           flex: 3,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // El hero se queda con lo que sobre; turnos y selector piden su
-              // alto natural. Con la cuadrícula normal aquí dentro el alto
-              // intrínseco de hero+turnos excedía la columna y desbordaba 32.
-              Expanded(child: _hero(context, esHoy)),
-              if (rango == RangoReporte.dia) ...[
-                const SizedBox(height: BentoSpacing.pared),
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final (i, celda) in _turnos().indexed) ...[
-                        if (i > 0) const SizedBox(width: BentoSpacing.pared),
-                        Expanded(child: celda),
+          // Esta columna SE DESPLAZA si no entra, en vez de repartir por flex.
+          // Con `Expanded` en el hero, un día de Gerente —cuatro segmentos de
+          // rango en vez de dos— no dejaba nada que repartir y la columna
+          // desbordaba: un `Expanded` que recibe menos que cero no encoge,
+          // desborda. Y repartir entre hero y turnos aplastaba los turnos por
+          // debajo de su texto, que desbordaba 43.
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _hero(context, esHoy),
+                if (rango == RangoReporte.dia) ...[
+                  const SizedBox(height: BentoSpacing.pared),
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final (i, celda) in _turnos().indexed) ...[
+                          if (i > 0) const SizedBox(width: BentoSpacing.pared),
+                          Expanded(child: celda),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
+                ],
+                const SizedBox(height: BentoSpacing.unidad),
+                _selector(),
               ],
-              const SizedBox(height: BentoSpacing.unidad),
-              _selector(),
-            ],
+            ),
           ),
         ),
         const SizedBox(width: BentoSpacing.pared),

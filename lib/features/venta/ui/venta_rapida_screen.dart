@@ -13,6 +13,7 @@ import '../../../core/ui/bento_falla.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_notifier.dart';
 import '../../producto/producto_query_provider.dart';
+import '../../producto/ui/lista_productos_agrupada.dart';
 import 'cobro_rapido_overlay.dart';
 
 /// Ventana 1 — ver docs/pantallas/flujo-descripcion.md#ventana-1--venta-rápida
@@ -24,7 +25,7 @@ class VentaRapidaScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final productosAsync = ref.watch(productoQueryProvider);
+    final productosAsync = ref.watch(productoAgrupadoProvider);
 
     // Una sola bandeja: el buscador y el grid son pozos tallados en ella,
     // separados por paredes de material. Sin AppBar — la barra superior de
@@ -36,44 +37,37 @@ class VentaRapidaScreen extends ConsumerWidget {
           Expanded(
             child: BentoBandeja(
               child: productosAsync.when(
-                data: (productos) => productos.isEmpty
+                data: (grupos) => grupos.every((g) => g.productos.isEmpty)
                     ? const _SinProductos()
-                    : GridView.builder(
+                    : ListaProductosAgrupada(
+                        grupos: grupos,
                         // Padding del SCROLL, no del contenedor: así las
                         // tarjetas suben y se desvanecen bajo el velo en vez
                         // de frenar contra un borde.
                         padding: EdgeInsets.only(top: bentoInsetSuperior(context)),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          // Columnas EXPLÍCITAS: cada producto ocupa 3, 2 o 1
-                          // de las 6 columnas de la retícula, o sea 2 por fila
-                          // en teléfono, 3 en tablet y 6 en escritorio.
-                          //
-                          // Antes era `maxCrossAxisExtent: 190`, donde el
-                          // número de columnas salía de si 190 dp entraban o
-                          // no: la cuadrícula era un efecto secundario del
-                          // ancho, no una decisión, y por eso no se leía como
-                          // una forma deliberada.
-                          crossAxisCount: bentoPorFila(
-                            BentoAncho.de(context),
-                            compacto: 3,
-                            medio: 2,
-                            amplio: 1,
-                          ),
-                          mainAxisSpacing: BentoSpacing.pared,
-                          crossAxisSpacing: BentoSpacing.pared,
-                          // Mas ancho que alto: sin hueco de imagen el pozo
-                          // solo tiene que sostener nombre y precio, y una
-                          // celda alta dejaba un vacio muerto en el medio.
-                          childAspectRatio: 1.25,
+                        // Columnas EXPLÍCITAS: cada producto ocupa 3, 2 o 1
+                        // de las 6 columnas de la retícula, o sea 2 por fila
+                        // en teléfono, 3 en tablet y 6 en escritorio.
+                        //
+                        // Antes era `maxCrossAxisExtent: 190`, donde el
+                        // número de columnas salía de si 190 dp entraban o
+                        // no: la cuadrícula era un efecto secundario del
+                        // ancho, no una decisión, y por eso no se leía como
+                        // una forma deliberada.
+                        porFila: bentoPorFila(
+                          BentoAncho.de(context),
+                          compacto: 3,
+                          medio: 2,
+                          amplio: 1,
                         ),
-                        itemCount: productos.length,
-                        itemBuilder: (context, i) {
-                          final producto = productos[i];
-                          return _TarjetaProducto(
-                            producto: producto,
-                            onTap: () => _abrirCobroRapido(context, ref, producto),
-                          );
-                        },
+                        // Mas ancho que alto: sin hueco de imagen el pozo
+                        // solo tiene que sostener nombre y precio, y una
+                        // celda alta dejaba un vacio muerto en el medio.
+                        relacionCelda: 1.25,
+                        celda: (producto) => _TarjetaProducto(
+                          producto: producto,
+                          onTap: () => _abrirCobroRapido(context, ref, producto),
+                        ),
                       ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, st) => BentoFalla(

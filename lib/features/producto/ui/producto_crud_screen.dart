@@ -13,6 +13,7 @@ import '../../sync/sync_notifier.dart';
 import '../producto_model.dart';
 import '../producto_notifier.dart';
 import '../producto_query_provider.dart';
+import 'lista_productos_agrupada.dart';
 import 'producto_form_dialog.dart';
 
 /// Ventana 3 — ver docs/pantallas/flujo-descripcion.md#ventana-3--crud-de-producto
@@ -27,7 +28,7 @@ class ProductoCrudScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // El catálogo del Gerente SÍ muestra los descontinuados: es la única
     // pantalla desde la que se puede recontinuarlos.
-    final productosAsync = ref.watch(productoCatalogoProvider);
+    final productosAsync = ref.watch(productoCatalogoAgrupadoProvider);
     // `false` mientras se lee: nunca habilitar un borrado físico por no haber
     // terminado de comprobar si hay otros aparatos.
     final sincronizado = ref.watch(dispositivoSinParesProvider).valueOrNull ?? false;
@@ -41,12 +42,13 @@ class ProductoCrudScreen extends ConsumerWidget {
           // arriba desde ahi con `reverse: true`.
           Expanded(
             child: productosAsync.when(
-              data: (productos) => productos.isEmpty
+              data: (grupos) => grupos.every((g) => g.productos.isEmpty)
                   ? const Center(child: Text('Sin productos'))
-                  : GridView.builder(
+                  : ListaProductosAgrupada(
+                      grupos: grupos,
                       // Se conserva la cascada invertida: la lista crece hacia
                       // arriba desde el buscador de la barra inferior.
-                      reverse: true,
+                      invertida: true,
                       // El padding va en coordenadas de pantalla aunque el
                       // scroll este invertido: el velo esta arriba, o sea `top`.
                       padding: EdgeInsets.fromLTRB(
@@ -55,25 +57,19 @@ class ProductoCrudScreen extends ConsumerWidget {
                         BentoSpacing.gapCelda,
                         BentoSpacing.gapCelda,
                       ),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        // Una fila de producto ocupa 6, 3 o 2 columnas: en
-                        // teléfono va a lo ancho, en escritorio caben tres.
-                        crossAxisCount: bentoPorFila(
-                          BentoAncho.de(context),
-                          compacto: 6,
-                          medio: 3,
-                          amplio: 2,
-                        ),
-                        mainAxisSpacing: BentoSpacing.pared,
-                        crossAxisSpacing: BentoSpacing.pared,
-                        // Alto fijo en vez de proporción: estas celdas son
-                        // filas, y su alto lo fija el contenido (miniatura de
-                        // 44 y botones de 48), no el ancho de la columna.
-                        mainAxisExtent: 76,
+                      // Una fila de producto ocupa 6, 3 o 2 columnas: en
+                      // teléfono va a lo ancho, en escritorio caben tres.
+                      porFila: bentoPorFila(
+                        BentoAncho.de(context),
+                        compacto: 6,
+                        medio: 3,
+                        amplio: 2,
                       ),
-                      itemCount: productos.length,
-                      itemBuilder: (context, i) {
-                        final producto = productos[i];
+                      // Alto fijo en vez de proporción: estas celdas son filas,
+                      // y su alto lo fija el contenido (miniatura de 44 y
+                      // botones de 48), no el ancho de la columna.
+                      altoCelda: 76,
+                      celda: (producto) {
                         return _FilaProducto(
                           producto: producto,
                           esGerente: esGerente,
