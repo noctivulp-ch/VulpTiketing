@@ -167,9 +167,6 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
       ),
     );
 
-    // Cambio antes que Recibí, por lo mismo que en la barra de cobro de Ventana
-    // 2: deja los campos que se tocan alineados en la misma columna en vez de
-    // en diagonal.
     final cambio = BentoPozo(
       child: Align(
         alignment: Alignment.centerLeft,
@@ -202,17 +199,28 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
       onCambio: (activo) => setState(() => _sinpe = activo),
     );
 
+    // El cuadro de cobro, en el orden que pidió el dueño:
+    //
+    //     Recibí │ Precio
+    //     Cambio │ SINPE
+    //
+    // Los dos que se ESCRIBEN arriba y los dos que solo se miran o se marcan
+    // abajo, con lo que se teclea en la columna izquierda. Antes iba Cambio
+    // antes que Recibí, que dejaba el campo de escribir en diagonal respecto
+    // del otro.
+    //
     // Acostado el alto es el recurso escaso, así que la retícula se aplana: dos
-    // filas en vez de tres. De pie el alto sobra y la jerarquía se lee mejor con
-    // el total ocupando su propia fila.
+    // filas en vez de tres, y el mismo emparejamiento arriba/abajo se conserva
+    // en las dos últimas columnas. De pie el alto sobra y la jerarquía se lee
+    // mejor con el total ocupando su propia fila.
     final celdas = acostado
         ? <BentoCelda>[
             BentoCelda.fija(2, hijo: hero),
-            BentoCelda.fija(2, hijo: cantidad),
-            BentoCelda.fija(2, hijo: casillaSinpe),
-            BentoCelda.fija(2, hijo: precio),
-            BentoCelda.fija(2, hijo: cambio),
             BentoCelda.fija(2, hijo: recibido),
+            BentoCelda.fija(2, hijo: precio),
+            BentoCelda.fija(2, hijo: cantidad),
+            BentoCelda.fija(2, hijo: cambio),
+            BentoCelda.fija(2, hijo: casillaSinpe),
           ]
         : <BentoCelda>[
             BentoCelda.fija(6, hijo: hero),
@@ -220,9 +228,9 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
             // entran en media fila de 360 dp, y es además el control que más se
             // toca de todo el cobro.
             BentoCelda.fija(6, hijo: cantidad),
+            BentoCelda.fija(3, hijo: recibido),
             BentoCelda.fija(3, hijo: precio),
             BentoCelda.fija(3, hijo: cambio),
-            BentoCelda.fija(3, hijo: recibido),
             BentoCelda.fija(3, hijo: casillaSinpe),
           ];
 

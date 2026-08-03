@@ -114,6 +114,34 @@ void main() {
       }
     }
 
+    testWidgets('el cuadro de cobro sigue el orden pedido: Recibí/Precio, Cambio/SINPE', (
+      tester,
+    ) async {
+      // El orden lo eligió el dueño mirando la pantalla, así que es una
+      // decisión, no un accidente del código: los dos que se ESCRIBEN arriba,
+      // lo que solo se mira o se marca abajo, y lo que se teclea a la
+      // izquierda. Sin esta prueba, cualquier reordenamiento de la retícula lo
+      // deshace en silencio.
+      await montar(tester, const Size(360, 800), CobroRapidoOverlay(producto: producto));
+
+      final recibi = tester.getRect(find.widgetWithText(TextField, 'Recibí'));
+      final precio = tester.getRect(find.widgetWithText(TextField, 'Precio'));
+      final cambio = tester.getRect(find.textContaining('Cambio:'));
+      final sinpe = tester.getRect(find.text('SINPE'));
+
+      // Arriba: Recibí a la izquierda, Precio a la derecha.
+      expect(recibi.left, lessThan(precio.left), reason: 'Recibí va a la izquierda de Precio');
+      expect(recibi.center.dy, closeTo(precio.center.dy, 4), reason: 'van en la misma fila');
+
+      // Abajo: Cambio a la izquierda, SINPE a la derecha.
+      expect(cambio.left, lessThan(sinpe.left), reason: 'Cambio va a la izquierda de SINPE');
+      expect(cambio.center.dy, closeTo(sinpe.center.dy, 8), reason: 'van en la misma fila');
+
+      // Y la fila de abajo, debajo.
+      expect(cambio.top, greaterThan(recibi.top), reason: 'Cambio va bajo Recibí');
+      expect(sinpe.top, greaterThan(precio.top), reason: 'SINPE va bajo Precio');
+    });
+
     testWidgets('acostado los botones van al costado, no debajo', (tester) async {
       await montar(tester, const Size(800, 360), CobroRapidoOverlay(producto: producto));
 
