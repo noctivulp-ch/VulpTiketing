@@ -6,15 +6,16 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/theme/bento_icono_producto.dart';
 import 'imagen_producto_service.dart';
 
 const _uuid = Uuid();
 
-/// Una imagen del banco: o una figura abstracta, o una foto guardada.
+/// Una imagen del banco: o un icono de la casa, o una foto guardada.
 ///
 /// Las dos se referencian con una cadena que va a `producto.imagen`, y ese texto
 /// es la única forma de saber cuál es cuál — no hay tabla ni columna extra. Con
-/// prefijo `abs:` es una figura; sin él, el nombre de un archivo del banco.
+/// prefijo `ico:` es un icono; sin él, el nombre de un archivo del banco.
 /// Elegir el prefijo y no una columna nueva mantiene el esquema, el sync y el
 /// backup exactamente como estaban.
 sealed class ImagenDelBanco {
@@ -24,27 +25,35 @@ sealed class ImagenDelBanco {
   String get referencia;
 
   /// Lee una referencia guardada. Lo que no se entienda cae a `null`, y un
-  /// producto sin imagen reconocible se ve con su figura propia: una referencia
-  /// rota no puede dejar la lista en blanco.
+  /// producto sin imagen reconocible se ve sin ella: una referencia rota no
+  /// puede dejar la lista en blanco.
   static ImagenDelBanco? de(String? referencia) {
     if (referencia == null || referencia.isEmpty) return null;
-    if (referencia.startsWith(FiguraAbstracta.prefijo)) {
-      return FiguraAbstracta(referencia.substring(FiguraAbstracta.prefijo.length));
+    for (final prefijo in IconoDelBanco.prefijos) {
+      if (referencia.startsWith(prefijo)) {
+        return IconoDelBanco(referencia.substring(prefijo.length));
+      }
     }
     return FotoDelBanco(referencia);
   }
 }
 
-/// Una figura generada. No ocupa disco: se dibuja a partir de su [semilla].
-class FiguraAbstracta extends ImagenDelBanco {
-  const FiguraAbstracta(this.semilla);
+/// Un icono de la casa. No ocupa disco: es un glifo de la fuente que la app ya
+/// carga, elegido por su [clave].
+class IconoDelBanco extends ImagenDelBanco {
+  const IconoDelBanco(this.clave);
 
-  static const prefijo = 'abs:';
+  static const prefijo = 'ico:';
 
-  final String semilla;
+  /// Se lee `abs:` además del prefijo actual, y no se escribe nunca: es el que
+  /// usaban las figuras abstractas, y el aparato ya tiene productos guardados
+  /// con él. Dejar de entenderlo les borraría la imagen a todos de golpe.
+  static const prefijos = [prefijo, 'abs:'];
+
+  final String clave;
 
   @override
-  String get referencia => '$prefijo$semilla';
+  String get referencia => '$prefijo$clave';
 }
 
 /// Una foto que alguien agregó desde la galería o la cámara.
@@ -62,29 +71,25 @@ class FotoDelBanco extends ImagenDelBanco {
 
 /// El banco de imágenes: de dónde elige su cara un producto.
 ///
-/// Trae **figuras abstractas de fábrica** —no hay que agregar nada para tener de
-/// dónde elegir, y no pesan— y deja **sumar fotos** desde la galería o la
-/// cámara. Las fotos se guardan una vez y sirven para todos los productos que
-/// las quieran: es un banco, no un adjunto por producto.
+/// Trae **iconos de la casa** —no hay que agregar nada para tener de dónde
+/// elegir, y no pesan— y deja **sumar fotos** desde la galería o la cámara. Las
+/// fotos se guardan una vez y sirven para todos los productos que las quieran:
+/// es un banco, no un adjunto por producto.
 ///
 /// **No entra en el backup** (decisión 0033). El `.tiketback` es la copia de la
 /// contabilidad; meterle las fotos lo multiplicaría de tamaño para proteger algo
 /// que no es un dato contable, y que además se puede volver a sacar con la
-/// cámara. Un producto cuya foto no está en este aparato se ve con una figura,
+/// cámara. Un producto cuya foto no está en este aparato se ve sin imagen,
 /// exactamente igual que uno que nunca tuvo.
 class BancoDeImagenes {
   const BancoDeImagenes();
 
-  /// Cuántas figuras de fábrica ofrece.
-  ///
-  /// Doce: suficientes para que una carta de cuarenta productos no repita cara
-  /// dos veces seguidas en la lista, y pocas como para elegir de un vistazo sin
-  /// desplazar.
-  static const figurasDeFabrica = 12;
+  /// Cuántos iconos de la casa ofrece.
+  int get iconosDeFabrica => iconosDeProducto.length;
 
-  /// Las figuras de fábrica, siempre las mismas y en el mismo orden.
-  List<FiguraAbstracta> figuras() => [
-    for (var i = 0; i < figurasDeFabrica; i++) FiguraAbstracta('figura-$i'),
+  /// Los iconos de la casa, siempre los mismos y en el mismo orden.
+  List<IconoDelBanco> iconos() => [
+    for (final icono in iconosDeProducto) IconoDelBanco(icono.clave),
   ];
 
   Future<Directory> carpeta() async {

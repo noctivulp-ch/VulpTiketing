@@ -50,9 +50,9 @@ class CasillaSinpe extends StatelessWidget {
                 child: Text(
                   'SINPE',
                   maxLines: 1,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: activa ? acento : laca.textoEnBandeja,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: activa ? acento : laca.textoEnBandeja),
                 ),
               ),
             ),

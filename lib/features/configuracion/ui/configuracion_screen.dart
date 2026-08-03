@@ -11,6 +11,7 @@ import '../../import_export/ui/tiketback_panels.dart';
 import '../../import_export/ui/tiketdata_panel.dart';
 import '../../sync/sync_notifier.dart';
 import '../../../core/theme/bento_efectos.dart';
+import '../../../core/theme/bento_fotos.dart';
 import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/bento_falla.dart';
 import '../preferencias_notifier.dart';
@@ -231,19 +232,21 @@ class _PanelOptimizacion extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final apagados =
-        ref.watch(preferenciasNotifierProvider).valueOrNull?.efectosApagados ?? const {};
+    final preferencias = ref.watch(preferenciasNotifierProvider).valueOrNull;
+    final apagados = preferencias?.efectosApagados ?? const <EfectoPesado>{};
+    final sinFotos = preferencias?.fotosApagadasEn ?? const <VentanaConFotos>{};
+    final textos = Theme.of(context).textTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Optimización', style: Theme.of(context).textTheme.titleMedium),
+        Text('Optimización', style: textos.titleMedium),
         const SizedBox(height: BentoSpacing.unidad / 2),
         Text(
           'Apagar un efecto no cambia lo que la app hace, solo cómo se ve. '
           'En un aparato lento se nota al desplazar listas largas.',
-          style: Theme.of(context).textTheme.bodySmall,
+          style: textos.bodySmall,
         ),
         const SizedBox(height: BentoSpacing.unidad),
         for (final efecto in EfectoPesado.values)
@@ -256,6 +259,27 @@ class _PanelOptimizacion extends ConsumerWidget {
             onChanged: (activo) => ref
                 .read(preferenciasNotifierProvider.notifier)
                 .cambiarEfecto(efecto, activo: activo),
+          ),
+        const SizedBox(height: BentoSpacing.gapCelda),
+        Text('Fotos de productos', style: textos.titleSmall),
+        const SizedBox(height: BentoSpacing.unidad / 2),
+        Text(
+          'Una por ventana, porque no cuestan lo mismo en cada una. Apagadas, '
+          'el producto se sigue viendo con el icono de su categoría: se ahorra '
+          'cargar la foto, no se pierde de qué es cada cosa.',
+          style: textos.bodySmall,
+        ),
+        const SizedBox(height: BentoSpacing.unidad),
+        for (final ventana in VentanaConFotos.values)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: !sinFotos.contains(ventana),
+            title: Text(ventana.etiqueta),
+            subtitle: Text(ventana.explicacion),
+            isThreeLine: true,
+            onChanged: (activo) => ref
+                .read(preferenciasNotifierProvider.notifier)
+                .cambiarFotos(ventana, activo: activo),
           ),
       ],
     );

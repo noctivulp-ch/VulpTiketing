@@ -47,8 +47,7 @@ class AtajosDeVentana extends StatelessWidget {
         for (var i = 0; i < cantidad && i < 9; i++)
           SingleActivator(_digitos[i], control: true): () => onCambio(i),
         const SingleActivator(LogicalKeyboardKey.tab, control: true): () => _mover(1),
-        const SingleActivator(LogicalKeyboardKey.tab, control: true, shift: true): () =>
-            _mover(-1),
+        const SingleActivator(LogicalKeyboardKey.tab, control: true, shift: true): () => _mover(-1),
         // Las flechas con Ctrl, porque sin él son de los campos y las listas.
         const SingleActivator(LogicalKeyboardKey.arrowRight, control: true): () => _mover(1),
         const SingleActivator(LogicalKeyboardKey.arrowLeft, control: true): () => _mover(-1),

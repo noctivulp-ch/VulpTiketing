@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/bento_efectos.dart';
+import '../../core/theme/bento_fotos.dart';
 import '../../core/theme/bento_theme.dart';
 
 enum OrdenProducto { alfabetico, precio, categoria }
@@ -13,6 +14,7 @@ const _keyOrden = 'orden_producto';
 const _keyAcento = 'acento_tinte';
 const _keyModoTema = 'modo_tema';
 const _keyEfectosApagados = 'efectos_apagados';
+const _keyFotosApagadas = 'fotos_apagadas';
 
 class Preferencias {
   const Preferencias({
@@ -20,6 +22,7 @@ class Preferencias {
     this.acento = AcentoTinte.oro,
     this.modoTema = ModoTema.sistema,
     this.efectosApagados = const {},
+    this.fotosApagadasEn = const {},
   });
 
   final OrdenProducto ordenProducto;
@@ -31,17 +34,24 @@ class Preferencias {
   /// puede necesitar apagarlos y la tablet no.
   final Set<EfectoPesado> efectosApagados;
 
+  /// Ventanas donde este aparato no dibuja las fotos de los productos. En su
+  /// lugar va el icono de la categoría, así que no se pierde de qué es cada
+  /// celda — solo el coste de decodificar la imagen.
+  final Set<VentanaConFotos> fotosApagadasEn;
+
   Preferencias copyWith({
     OrdenProducto? ordenProducto,
     AcentoTinte? acento,
     ModoTema? modoTema,
     Set<EfectoPesado>? efectosApagados,
+    Set<VentanaConFotos>? fotosApagadasEn,
   }) {
     return Preferencias(
       ordenProducto: ordenProducto ?? this.ordenProducto,
       acento: acento ?? this.acento,
       modoTema: modoTema ?? this.modoTema,
       efectosApagados: efectosApagados ?? this.efectosApagados,
+      fotosApagadasEn: fotosApagadasEn ?? this.fotosApagadasEn,
     );
   }
 }
@@ -68,11 +78,16 @@ class PreferenciasNotifier extends AsyncNotifier<Preferencias> {
         .map((n) => EfectoPesado.values.where((e) => e.name == n).firstOrNull)
         .nonNulls
         .toSet();
+    final sinFotos = (prefs.getStringList(_keyFotosApagadas) ?? const [])
+        .map((n) => VentanaConFotos.values.where((v) => v.name == n).firstOrNull)
+        .nonNulls
+        .toSet();
     return Preferencias(
       ordenProducto: orden,
       acento: acento,
       modoTema: modoTema,
       efectosApagados: apagados,
+      fotosApagadasEn: sinFotos,
     );
   }
 
@@ -90,6 +105,21 @@ class PreferenciasNotifier extends AsyncNotifier<Preferencias> {
     await prefs.setStringList(_keyEfectosApagados, actuales.map((e) => e.name).toList());
     state = AsyncData(
       (state.valueOrNull ?? const Preferencias()).copyWith(efectosApagados: actuales),
+    );
+  }
+
+  /// Enciende o apaga las fotos de UNA ventana.
+  Future<void> cambiarFotos(VentanaConFotos ventana, {required bool activo}) async {
+    final actuales = {...(state.valueOrNull ?? const Preferencias()).fotosApagadasEn};
+    if (activo) {
+      actuales.remove(ventana);
+    } else {
+      actuales.add(ventana);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_keyFotosApagadas, actuales.map((v) => v.name).toList());
+    state = AsyncData(
+      (state.valueOrNull ?? const Preferencias()).copyWith(fotosApagadasEn: actuales),
     );
   }
 

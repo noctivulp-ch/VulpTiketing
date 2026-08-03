@@ -5,6 +5,7 @@ import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/ui/bento_aviso.dart';
 import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/theme/bento_cuadricula.dart';
+import '../../../core/theme/bento_fotos.dart';
 import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_falla.dart';
@@ -34,6 +35,7 @@ class ProductoCrudScreen extends ConsumerWidget {
     // terminado de comprobar si hay otros aparatos.
     final sincronizado = ref.watch(dispositivoSinParesProvider).valueOrNull ?? false;
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
+    final categorias = ref.watch(nombresDeCategoriaProvider);
 
     return Scaffold(
       body: Column(
@@ -73,6 +75,7 @@ class ProductoCrudScreen extends ConsumerWidget {
                       celda: (producto) {
                         return _FilaProducto(
                           producto: producto,
+                          categoria: categorias[producto.categoriaId],
                           esGerente: esGerente,
                           sincronizado: sincronizado,
                           onEditar: () => _editar(context, producto),
@@ -224,6 +227,7 @@ class ProductoCrudScreen extends ConsumerWidget {
 class _FilaProducto extends StatelessWidget {
   const _FilaProducto({
     required this.producto,
+    required this.categoria,
     required this.esGerente,
     required this.sincronizado,
     required this.onEditar,
@@ -232,6 +236,10 @@ class _FilaProducto extends StatelessWidget {
   });
 
   final Producto producto;
+
+  /// El nombre de su categoría: de ahí sale la cara cuando nadie le eligió una.
+  final String? categoria;
+
   final bool esGerente;
   final bool sincronizado;
   final VoidCallback onEditar;
@@ -247,10 +255,10 @@ class _FilaProducto extends StatelessWidget {
           // La miniatura es la señal que se ve sin leer: un producto fuera de
           // la carta se distingue de un vistazo en una lista larga.
           //
-          // Sin imagen elegida va una figura propia de cada producto, no un
-          // icono repetido: treinta y nueve iconos idénticos no ayudan a
-          // encontrar nada, y una figura se reconoce por el rabillo del ojo
-          // antes de leer el nombre.
+          // Aquí el hueco va SIEMPRE, con imagen o sin ella: es una lista de
+          // filas de alto fijo, así que la miniatura no le quita sitio a nada.
+          // En Venta Rápida y en el carrito es al revés — ahí el hueco se lo
+          // disputa el nombre y solo aparece si hay imagen de verdad.
           SizedBox(
             width: bentoMiniatura,
             height: bentoMiniatura,
@@ -259,13 +267,19 @@ class _FilaProducto extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  ImagenDelBancoVista(
-                    referencia: producto.imagen,
-                    semillaPorDefecto: producto.id,
-                    apagada: !producto.activo,
-                  ),
-                  // El aspa de "fuera de la carta" va ENCIMA de lo que haya:
-                  // con imagen o sin ella, el estado tiene que leerse igual.
+                  // El icono neutro se calla cuando hay aspa. Los dos juntos —
+                  // un cubierto y una prohibición del mismo tamaño, uno encima
+                  // del otro— no se leían ni por separado: se veían como un
+                  // borrón. Con imagen elegida sí van los dos, porque ahí el
+                  // de abajo dice algo (qué producto es) y el de arriba dice
+                  // otra cosa (que está fuera de la carta).
+                  if (producto.activo || producto.imagen != null)
+                    ImagenDelBancoVista(
+                      referencia: producto.imagen,
+                      ventana: VentanaConFotos.inventario,
+                      categoria: categoria,
+                      apagada: !producto.activo,
+                    ),
                   if (!producto.activo)
                     Center(
                       child: Icon(

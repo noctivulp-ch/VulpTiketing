@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/ui/bento_aviso.dart';
+import '../../../core/theme/bento_fotos.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/bento_falla.dart';
@@ -11,6 +12,7 @@ import '../categoria_model.dart';
 import '../categoria_notifier.dart';
 import '../producto_model.dart';
 import '../producto_notifier.dart';
+import '../producto_query_provider.dart';
 import 'banco_imagenes_dialog.dart';
 import 'imagen_del_banco_vista.dart';
 
@@ -62,9 +64,9 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
   }
 
   Future<void> _elegirImagen() async {
-    final elegida = await elegirDelBanco(context, semillaProducto: widget.producto?.id ?? 'nuevo');
+    final elegida = await elegirDelBanco(context);
     // `null` es cancelar y no cambia nada; `''` es "sin imagen", que sí es una
-    // elección: devuelve al producto su figura propia.
+    // elección: deja al producto sin cara propia.
     if (elegida == null || !mounted) return;
     setState(() => _imagen = elegida.isEmpty ? null : elegida);
   }
@@ -215,12 +217,12 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _ControlDeImagen(
-            // Sin elegir nada se ve la MISMA figura que va a verse en el
-            // catálogo, no un cuadro vacío: así se sabe de antemano cómo va a
-            // quedar el producto en la lista, y elegir imagen pasa a ser una
-            // decisión en vez de un hueco por llenar.
-            semilla: widget.producto?.id ?? 'nuevo',
+            // Sin elegir nada se ve LO MISMO que va a verse en el catálogo, no
+            // un cuadro vacío: así se sabe de antemano cómo va a quedar el
+            // producto en la lista, y elegir imagen pasa a ser una decisión en
+            // vez de un hueco por llenar.
             imagen: _imagen,
+            categoria: ref.watch(nombresDeCategoriaProvider)[_categoriaId],
             ocupado: _guardando,
             onElegir: _elegirImagen,
           ),
@@ -353,14 +355,14 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
 /// La imagen del producto en el formulario: vista previa y "elegir del banco".
 class _ControlDeImagen extends StatelessWidget {
   const _ControlDeImagen({
-    required this.semilla,
     required this.imagen,
+    required this.categoria,
     required this.ocupado,
     required this.onElegir,
   });
 
-  final String semilla;
   final String? imagen;
+  final String? categoria;
   final bool ocupado;
   final VoidCallback onElegir;
 
@@ -378,7 +380,11 @@ class _ControlDeImagen extends StatelessWidget {
           height: _lado,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(BentoRadius.pozo),
-            child: ImagenDelBancoVista(referencia: imagen, semillaPorDefecto: semilla),
+            child: ImagenDelBancoVista(
+              referencia: imagen,
+              ventana: VentanaConFotos.inventario,
+              categoria: categoria,
+            ),
           ),
         ),
         const SizedBox(width: BentoSpacing.gapCelda),

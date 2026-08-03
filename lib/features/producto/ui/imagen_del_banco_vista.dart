@@ -3,33 +3,44 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/bento_imagen_abstracta.dart';
+import '../../../core/theme/bento_fotos.dart';
+import '../../../core/theme/bento_icono_producto.dart';
+import '../../configuracion/preferencias_notifier.dart';
 import '../banco_imagenes.dart';
 
-/// Pinta una imagen del banco, sea figura o foto.
+/// Pinta la cara de un producto, sea icono de la casa o foto.
 ///
 /// Un solo widget para las dos porque quien lo usa —la miniatura del catálogo,
-/// la vista previa del formulario, la cuadrícula del banco— no tiene por qué
-/// saber de cuál se trata: pide "la imagen de este producto" y se pinta.
+/// la celda de Venta Rápida, la cuadrícula del banco— no tiene por qué saber de
+/// cuál se trata: pide "la imagen de este producto" y se pinta.
 ///
-/// Cuando la referencia no resuelve —una foto borrada del banco, o una base
-/// traída de otro aparato— cae a la figura de [semillaPorDefecto]. No es un
-/// error: es lo mismo que ve un producto que nunca eligió imagen, y un hueco en
-/// blanco se leería como que algo se rompió.
+/// **Siempre hay algo que pintar.** Sin imagen elegida va el icono que le toca
+/// a la [categoria]; si la categoría tampoco dice nada reconocible, el neutro.
+/// Un hueco en blanco se leería como que algo se rompió, y una cuadrícula donde
+/// unas celdas tienen cara y otras no se lee peor que una donde todas la tienen.
+///
+/// Las fotos se pueden apagar **por ventana** desde Configuración →
+/// Optimización. Apagadas, el hueco no queda vacío: se dibuja el icono de la
+/// categoría. Lo que se ahorra es decodificar un JPEG por celda, no el sitio.
 class ImagenDelBancoVista extends ConsumerWidget {
   const ImagenDelBancoVista({
     super.key,
     required this.referencia,
-    required this.semillaPorDefecto,
+    required this.ventana,
+    this.categoria,
     this.apagada = false,
   });
 
   /// Lo guardado en `producto.imagen`.
   final String? referencia;
 
-  /// Con qué dibujar si no hay imagen o no resuelve. El id del producto: así
-  /// cada uno tiene su cara aunque nadie le haya elegido ninguna.
-  final String semillaPorDefecto;
+  /// Dónde se está pintando. Decide si las fotos de este aparato se dibujan.
+  /// Nulo para los sitios que no son ninguna de las tres ventanas —el diálogo
+  /// del banco, donde apagar la foto que se está eligiendo no tendría sentido.
+  final VentanaConFotos? ventana;
+
+  /// El nombre de la categoría del producto, de donde sale el icono por defecto.
+  final String? categoria;
 
   final bool apagada;
 
@@ -37,22 +48,26 @@ class ImagenDelBancoVista extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final imagen = ImagenDelBanco.de(referencia);
 
-    if (imagen is FiguraAbstracta) {
-      return BentoImagenAbstracta(semilla: imagen.semilla, apagada: apagada);
+    if (imagen is IconoDelBanco) {
+      return BentoIconoProducto(clave: imagen.clave, apagada: apagada);
     }
-    if (imagen is! FotoDelBanco) {
-      return BentoImagenAbstracta(semilla: semillaPorDefecto, apagada: apagada);
-    }
+    if (imagen is! FotoDelBanco) return _iconoDeLaCategoria();
+
+    final sinFotos =
+        ventana != null &&
+        (ref.watch(preferenciasNotifierProvider).valueOrNull?.fotosApagadasEn.contains(ventana) ??
+            false);
+    if (sinFotos) return _iconoDeLaCategoria();
 
     return FutureBuilder<File?>(
       future: ref.read(bancoDeImagenesProvider).archivoDe(imagen),
       builder: (context, snapshot) {
         final archivo = snapshot.data;
-        // Mientras resuelve también va la figura: un parpadeo en blanco entre
-        // el hueco y la foto se ve como un fallo de carga.
-        if (archivo == null) {
-          return BentoImagenAbstracta(semilla: semillaPorDefecto, apagada: apagada);
-        }
+        // Mientras resuelve también va el icono: un parpadeo en blanco entre el
+        // hueco y la foto se ve como un fallo de carga. Y si el archivo no está
+        // —una base traída de otro aparato, o una foto borrada del banco— se
+        // queda el icono, que es lo mismo que ve un producto sin foto.
+        if (archivo == null) return _iconoDeLaCategoria();
         return Opacity(
           opacity: apagada ? 0.35 : 1,
           child: Image.file(archivo, fit: BoxFit.cover),
@@ -60,4 +75,7 @@ class ImagenDelBancoVista extends ConsumerWidget {
       },
     );
   }
+
+  Widget _iconoDeLaCategoria() =>
+      BentoIconoProducto(clave: iconoDeCategoria(categoria).clave, apagada: apagada);
 }

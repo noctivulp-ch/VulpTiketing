@@ -17,6 +17,8 @@ import '../../auth/sesion_notifier.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_notifier.dart';
 import '../../producto/producto_query_provider.dart';
+import '../../../core/theme/bento_fotos.dart';
+import '../../producto/ui/imagen_del_banco_vista.dart';
 import '../../producto/ui/lista_productos_agrupada.dart';
 import '../../producto/ui/producto_form_dialog.dart';
 import 'casilla_sinpe.dart';
@@ -357,6 +359,7 @@ class _ListaCarrito extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ventaEnCurso = ref.watch(ventaEnCursoNotifierProvider);
     final productos = ref.watch(productoQueryProvider).valueOrNull ?? const <Producto>[];
+    final categorias = ref.watch(nombresDeCategoriaProvider);
 
     if (ventaEnCurso.lineas.isEmpty) {
       // El texto sigue al panel: en teléfono la costura está ABAJO, y decir "a
@@ -379,9 +382,12 @@ class _ListaCarrito extends ConsumerWidget {
       separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad),
       itemBuilder: (context, i) {
         final linea = ventaEnCurso.lineas[i];
-        final nombre = linea.nombreLibre ?? _buscarNombre(linea.productoId, productos);
+        final producto = _buscarProducto(linea.productoId, productos);
+        final nombre = linea.nombreLibre ?? producto?.nombre ?? _sinProducto(linea.productoId);
         return _FilaLineaVenta(
           nombre: nombre,
+          imagen: producto?.imagen,
+          categoria: categorias[producto?.categoriaId],
           lineaLibre: linea.nombreLibre != null,
           cantidad: linea.cantidad,
           nota: linea.nota,
@@ -393,13 +399,15 @@ class _ListaCarrito extends ConsumerWidget {
     );
   }
 
-  String _buscarNombre(String? productoId, List<Producto> productos) {
-    if (productoId == null) return 'Producto';
+  Producto? _buscarProducto(String? productoId, List<Producto> productos) {
+    if (productoId == null) return null;
     for (final p in productos) {
-      if (p.id == productoId) return p.nombre;
+      if (p.id == productoId) return p;
     }
-    return 'Producto eliminado';
+    return null;
   }
+
+  String _sinProducto(String? productoId) => productoId == null ? 'Producto' : 'Producto eliminado';
 }
 
 /// Recibí · Cambio · Total · Finalizar.
@@ -504,13 +512,21 @@ class _BarraDeCobro extends StatelessWidget {
 }
 
 /// Fila del carrito — mismo lenguaje visual que `_TarjetaProducto` de
-/// Ventana 1 (placeholder cuadrado + nombre + precio), en formato de fila
-/// en vez de tarjeta porque aquí el contexto es una lista angosta, no un
-/// grid (consistencia entre pantallas pedida por la skill
-/// `aesthetic-usability`: la misma "pieza" de producto en toda la app).
+/// Ventana 1 (imagen + nombre + precio), en formato de fila en vez de tarjeta
+/// porque aquí el contexto es una lista angosta, no un grid (consistencia entre
+/// pantallas pedida por la skill `aesthetic-usability`: la misma "pieza" de
+/// producto en toda la app).
+///
+/// Todo producto de la carta trae cara —la que eligió o la de su categoría—, y
+/// la línea libre trae su lápiz, que es lo que la distingue de un producto del
+/// catálogo. El único caso sin miniatura es el producto que ya no existe: no
+/// hay de dónde sacarle categoría, y un icono neutro ahí solo gastaría los 52
+/// dp que el carrito angosto necesita para el nombre.
 class _FilaLineaVenta extends StatelessWidget {
   const _FilaLineaVenta({
     required this.nombre,
+    required this.imagen,
+    required this.categoria,
     required this.lineaLibre,
     required this.cantidad,
     required this.nota,
@@ -520,6 +536,15 @@ class _FilaLineaVenta extends StatelessWidget {
   });
 
   final String nombre;
+
+  /// Lo guardado en `producto.imagen`. Nulo cuando nadie eligió ninguna: la
+  /// cara sale entonces de [categoria].
+  final String? imagen;
+
+  /// El nombre de la categoría del producto. Nulo solo si el producto ya no
+  /// está en el catálogo, y entonces la fila va sin miniatura.
+  final String? categoria;
+
   final bool lineaLibre;
   final int cantidad;
   final String? nota;
@@ -532,19 +557,40 @@ class _FilaLineaVenta extends StatelessWidget {
   /// queda nada.
   static const _anchoMinimoEnUnaFila = 320.0;
 
+  /// Sin miniatura la fila aguanta más angosta antes de partirse en dos: son 52
+  /// dp que se le devuelven al nombre.
+  static const _anchoMinimoSinMiniatura = 268.0;
+
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
 
-    final miniatura = Container(
-      width: bentoMiniatura,
-      height: bentoMiniatura,
-      decoration: BoxDecoration(
-        color: lacaDe(context).pozoContacto,
-        borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
-      ),
-      child: Icon(lineaLibre ? Icons.edit_note : Icons.image_outlined, size: 22),
-    );
+    // La línea libre SÍ lleva marca aunque no tenga imagen: el lápiz es lo que
+    // la distingue de un producto de la carta, o sea es un dato, no un relleno.
+    final miniatura = lineaLibre
+        ? Container(
+            width: bentoMiniatura,
+            height: bentoMiniatura,
+            decoration: BoxDecoration(
+              color: lacaDe(context).pozoContacto,
+              borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
+            ),
+            child: const Icon(Icons.edit_note, size: 22),
+          )
+        : imagen == null && categoria == null
+        ? null
+        : SizedBox(
+            width: bentoMiniatura,
+            height: bentoMiniatura,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
+              child: ImagenDelBancoVista(
+                referencia: imagen,
+                ventana: VentanaConFotos.venta,
+                categoria: categoria,
+              ),
+            ),
+          );
 
     // `maxLines` + elipsis SIEMPRE, no solo cuando el ancho aprieta: sin esto,
     // un `Text` al que le queda un ancho de dos caracteres parte el nombre
@@ -575,11 +621,11 @@ class _FilaLineaVenta extends StatelessWidget {
       padding: const EdgeInsets.all(BentoSpacing.unidad),
       child: LayoutBuilder(
         builder: (context, restricciones) {
-          if (restricciones.maxWidth >= _anchoMinimoEnUnaFila) {
+          final minimo = miniatura == null ? _anchoMinimoSinMiniatura : _anchoMinimoEnUnaFila;
+          if (restricciones.maxWidth >= minimo) {
             return Row(
               children: [
-                miniatura,
-                const SizedBox(width: BentoSpacing.unidad),
+                if (miniatura != null) ...[miniatura, const SizedBox(width: BentoSpacing.unidad)],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -603,8 +649,7 @@ class _FilaLineaVenta extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  miniatura,
-                  const SizedBox(width: BentoSpacing.unidad),
+                  if (miniatura != null) ...[miniatura, const SizedBox(width: BentoSpacing.unidad)],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
