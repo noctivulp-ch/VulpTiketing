@@ -23,8 +23,8 @@ después.
 
 - **Un dedo, arrastre horizontal** → cambia de ventana. A la izquierda, la
   siguiente; a la derecha, la anterior. Como pasar la hoja de un cuaderno.
-- **Dos y tres dedos** → reservados para acciones. Todavía no hay ninguna, pero
-  el gesto de navegación ya se aparta de ellos.
+- **Dos y tres dedos** → acciones. La primera: **dos dedos hacia abajo abren el
+  panel de productos de Ventana 2; hacia arriba lo cierran.**
 
 `NavegacionPorGesto` cuenta los punteros en pantalla con un `Listener` y anula
 el arrastre en cuanto hay más de uno — incluso a mitad del gesto. **No basta con
@@ -47,6 +47,28 @@ Detalles que salieron de usarlo:
 - **`HitTestBehavior.deferToChild`**: lo que ya escucha un toque —un botón, una
   lista— lo sigue recibiendo. El gesto solo entra donde nadie lo reclama.
 
+### Acciones de dos dedos
+
+`GestoDeDosDedos` usa un `ScaleGestureRecognizer`, que es el único reconocedor
+de la casa que sabe **cuántos dedos hay** (`pointerCount`). Un
+`VerticalDragGestureRecognizer` sigue al primer puntero y no distingue uno de
+dos, que es la distinción sobre la que se apoya toda esta convención.
+
+- **Dispara al cruzar el umbral, no al soltar.** La app prioriza velocidad;
+  esperar a que se levanten los dedos agrega una espera que no aporta.
+- **Umbral de 48 dp**, un objetivo táctil: lo bastante como para no saltar al
+  reacomodar el agarre, y lo bastante poco como para hacerse con el pulgar y el
+  índice sin mover la mano.
+- **Una vez por gesto.** Sin eso, seguir arrastrando dispararía en cada frame.
+- **El sentido que no corresponde se pasa como `null`.** Repetir el gesto hacia
+  abajo no puede cerrar lo que acaba de abrir.
+- **El botón de la costura sigue estando.** El gesto es un atajo para quien
+  cobra con una mano todo el día, no la única forma de hacerlo.
+
+Abrir "hacia abajo" es el sentido de desplegar algo recogido, y da igual que el
+panel esté arriba de pie y al costado acostado: lo que se recuerda es el sentido
+del gesto, no dónde aparece la caja.
+
 ## Alternativas descartadas
 
 - **`PageView` en vez de `IndexedStack`**: daría el arrastre con la ventana
@@ -62,8 +84,10 @@ Detalles que salieron de usarlo:
 ## Consecuencias
 
 - El gesto **no mueve la ventana mientras se arrastra**: el cambio ocurre al
-  soltar. Se acepta a cambio de no tocar el shell. Si molesta en uso real, la
-  salida es una animación de transición, no un `PageView`.
+  soltar. **No se va a animar**: el usuario fijó el orden de prioridades de la
+  app —velocidad y usabilidad primero, después ser intuitiva, y la estética al
+  final— y una transición cuesta frames en un teléfono de gama baja para no
+  agregar información.
 - Acostado el gesto es menos intuitivo —las ventanas se leen en horizontal y el
   dedo también va en horizontal—, y el usuario ya lo dio por bueno.
 - Cualquier gesto nuevo tiene que declarar cuántos dedos usa **antes** de

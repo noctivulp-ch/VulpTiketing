@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/nav/gesto_dos_dedos.dart';
 import '../../../core/nav/retroceso.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/ui/bento_aviso.dart';
@@ -102,45 +103,47 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
     // movían debajo del dedo. Arriba, la zona con la que se cobra no se mueve
     // nunca — que es la que importa que esté quieta.
     if (BentoAncho.de(context).esCompacto) {
-      return RetrocesoCierra(
-        activo: _panelAbierto,
-        alRetroceder: () => setState(() => _panelAbierto = false),
-        child: Scaffold(
-          body: Column(
-            children: [
-              // Quién ocupa el borde superior cambia según el panel esté
-              // abierto o cerrado, así que el espacio reservado se decide acá y
-              // no dentro de la costura: con el panel abierto la costura queda
-              // en MEDIO, y ahí un margen superior sería un hueco absurdo.
-              // Un TERCIO, no la mitad: el panel es de donde se saca lo que se
-              // agrega, pero lo que importa mirar es el carrito. Con 3:2 el
-              // panel se quedaba con el 60 % y el carrito se veía encajonado.
-              //
-              // Y con el color de pozo, igual que acostado: es lo que se
-              // despliega ENCIMA de la superficie de trabajo, así que tiene que
-              // leerse por delante. Apilado se había quedado sin esa distinción
-              // y los dos parecían el mismo plano.
-              if (_panelAbierto)
+      return _conGestoDePanel(
+        RetrocesoCierra(
+          activo: _panelAbierto,
+          alRetroceder: () => setState(() => _panelAbierto = false),
+          child: Scaffold(
+            body: Column(
+              children: [
+                // Quién ocupa el borde superior cambia según el panel esté
+                // abierto o cerrado, así que el espacio reservado se decide acá y
+                // no dentro de la costura: con el panel abierto la costura queda
+                // en MEDIO, y ahí un margen superior sería un hueco absurdo.
+                // Un TERCIO, no la mitad: el panel es de donde se saca lo que se
+                // agrega, pero lo que importa mirar es el carrito. Con 3:2 el
+                // panel se quedaba con el 60 % y el carrito se veía encajonado.
+                //
+                // Y con el color de pozo, igual que acostado: es lo que se
+                // despliega ENCIMA de la superficie de trabajo, así que tiene que
+                // leerse por delante. Apilado se había quedado sin esa distinción
+                // y los dos parecían el mismo plano.
+                if (_panelAbierto)
+                  Expanded(
+                    flex: 1,
+                    child: BentoPozo(padding: EdgeInsets.zero, child: _PanelAgregarProducto()),
+                  )
+                else
+                  // El botón de la costura es fijo: si quedara pegado al borde lo
+                  // taparían la muesca de la cámara o una notificación que baje, y
+                  // es el control que abre el panel.
+                  SizedBox(height: bentoInsetSuperior(context)),
+                costura,
                 Expanded(
-                  flex: 1,
-                  child: BentoPozo(padding: EdgeInsets.zero, child: _PanelAgregarProducto()),
-                )
-              else
-                // El botón de la costura es fijo: si quedara pegado al borde lo
-                // taparían la muesca de la cámara o una notificación que baje, y
-                // es el control que abre el panel.
-                SizedBox(height: bentoInsetSuperior(context)),
-              costura,
-              Expanded(
-                flex: _panelAbierto ? 2 : 1,
-                child: Column(
-                  children: [
-                    const Expanded(child: _ListaCarrito()),
-                    barra,
-                  ],
+                  flex: _panelAbierto ? 2 : 1,
+                  child: Column(
+                    children: [
+                      const Expanded(child: _ListaCarrito()),
+                      barra,
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -151,49 +154,73 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
     // botón de la costura caía al costado DE la barra en vez de encima de ella
     // —medio fuera de la pantalla—, y la barra terminaba antes del borde, así
     // que no se leía como la zona de cobro sino como el pie de una lista.
-    return RetrocesoCierra(
-      activo: _panelAbierto,
-      alRetroceder: () => setState(() => _panelAbierto = false),
-      child: Scaffold(
-        body: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                // Más aire a la derecha con el panel cerrado: ahí la costura es
-                // el último elemento y el botón, que sobresale de ella, quedaba
-                // al ras del borde de la pantalla.
-                padding: EdgeInsets.fromLTRB(
-                  BentoSpacing.pared,
-                  BentoSpacing.pared,
-                  _panelAbierto ? BentoSpacing.pared : BentoSpacing.rim,
-                  0,
-                ),
-                child: Row(
-                  children: [
-                    // Los dos NO están al mismo nivel, y eso tiene que verse.
-                    //
-                    // El carrito es la superficie de trabajo: se queda en el
-                    // fondo de bandeja, sin relleno ni cresta propios. El panel
-                    // abatible es lo que aparece encima, y por eso es el único
-                    // con color de pozo y contorno. Darles a los dos el mismo
-                    // pozo separaba, pero los dejaba empatados: dos
-                    // compartimentos gemelos donde hay una base y algo que se
-                    // despliega sobre ella.
-                    Expanded(flex: _panelAbierto ? 3 : 5, child: const _ListaCarrito()),
-                    costura,
-                    if (_panelAbierto)
-                      Expanded(
-                        flex: 4,
-                        child: BentoPozo(padding: EdgeInsets.zero, child: _PanelAgregarProducto()),
-                      ),
-                  ],
+    return _conGestoDePanel(
+      RetrocesoCierra(
+        activo: _panelAbierto,
+        alRetroceder: () => setState(() => _panelAbierto = false),
+        child: Scaffold(
+          body: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  // Más aire a la derecha con el panel cerrado: ahí la costura es
+                  // el último elemento y el botón, que sobresale de ella, quedaba
+                  // al ras del borde de la pantalla.
+                  padding: EdgeInsets.fromLTRB(
+                    BentoSpacing.pared,
+                    BentoSpacing.pared,
+                    _panelAbierto ? BentoSpacing.pared : BentoSpacing.rim,
+                    0,
+                  ),
+                  child: Row(
+                    children: [
+                      // Los dos NO están al mismo nivel, y eso tiene que verse.
+                      //
+                      // El carrito es la superficie de trabajo: se queda en el
+                      // fondo de bandeja, sin relleno ni cresta propios. El panel
+                      // abatible es lo que aparece encima, y por eso es el único
+                      // con color de pozo y contorno. Darles a los dos el mismo
+                      // pozo separaba, pero los dejaba empatados: dos
+                      // compartimentos gemelos donde hay una base y algo que se
+                      // despliega sobre ella.
+                      Expanded(flex: _panelAbierto ? 3 : 5, child: const _ListaCarrito()),
+                      costura,
+                      if (_panelAbierto)
+                        Expanded(
+                          flex: 4,
+                          child: BentoPozo(
+                            padding: EdgeInsets.zero,
+                            child: _PanelAgregarProducto(),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            barra,
-          ],
+              barra,
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  /// Dos dedos hacia abajo abren el panel de productos; hacia arriba lo cierran.
+  ///
+  /// Primera acción de dos dedos de la app (decisión 0030). Abrir "hacia abajo"
+  /// es el sentido de desplegar algo que estaba recogido, y da igual que el
+  /// panel esté arriba de pie y al costado acostado: lo que se recuerda es el
+  /// sentido del gesto, no dónde aparece la caja.
+  ///
+  /// El botón de la costura sigue estando: el gesto es un atajo para quien
+  /// cobra con una mano todo el día, no la única forma de hacerlo.
+  Widget _conGestoDePanel(Widget hijo) {
+    return GestoDeDosDedos(
+      // `!_panelAbierto` en vez de alternar: repetir el gesto en el mismo
+      // sentido no puede cerrar lo que acaba de abrir.
+      alDeslizarAbajo: _panelAbierto ? null : () => setState(() => _panelAbierto = true),
+      alDeslizarArriba: _panelAbierto ? () => setState(() => _panelAbierto = false) : null,
+      child: hijo,
     );
   }
 }
