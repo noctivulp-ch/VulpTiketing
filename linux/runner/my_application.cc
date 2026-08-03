@@ -52,7 +52,7 @@ static void my_application_activate(GApplication* application) {
   const gchar* titulo_entorno = g_getenv("VULP_WINDOW_TITLE");
   const gchar* titulo = (titulo_entorno != nullptr && *titulo_entorno != '\0')
                             ? titulo_entorno
-                            : "vulp_tiketing";
+                            : "VulpTiketing";
 
   // Se fija en la ventana SIEMPRE (no solo en la barra de encabezado): el
   // titulo que ve el compositor es el del toplevel, y es contra ese que
