@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,9 +13,21 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
+    // Corto: lo que se prueba es qué hace la app cuando expira, no cuánto
+    // aguanta. El valor real son 8 s y dejaría la suite esperando de verdad.
+    SesionNotifier.limiteAlmacenSeguro = const Duration(milliseconds: 50);
     FlutterSecureStorage.setMockInitialValues({});
     SharedPreferences.setMockInitialValues({});
   });
+
+  /// Un contenedor cuyo almacén seguro nunca contesta.
+  ProviderContainer contenedorColgado() {
+    final c = ProviderContainer(
+      overrides: [almacenSeguroProvider.overrideWithValue(const _AlmacenColgado())],
+    );
+    addTearDown(c.dispose);
+    return c;
+  }
 
   ProviderContainer contenedor() {
     final c = ProviderContainer();
@@ -81,4 +95,58 @@ void main() {
       reason: 'una pista huérfana volvería a abrir la sesión en el próximo arranque',
     );
   });
+
+  group('cuando el almacén seguro no contesta', () {
+    // El fallo que el usuario reportó como "el login no se mantiene": abrir el
+    // Keystore cuesta 1104–1573 ms medidos, y compitiendo con el arranque
+    // pasaba del límite. Expirar se leía como "no hay sesión", así que la app
+    // mandaba al Login Y borraba la pista: la vez siguiente tampoco arrancaba
+    // abierta.
+    test('la sesión abierta con la pista se conserva', () async {
+      SharedPreferences.setMockInitialValues({'rol_activo_pista': 'gerente'});
+
+      final c = contenedorColgado();
+      await c.read(sesionNotifierProvider.notifier).restaurar();
+      // Más que el límite de la lectura: se quiere ver qué pasa DESPUÉS de que
+      // expire, que es donde estaba el fallo.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      expect(
+        c.read(sesionNotifierProvider),
+        Rol.gerente,
+        reason: 'no poder comprobar no es lo mismo que no tener sesión',
+      );
+      expect(
+        (await SharedPreferences.getInstance()).getString('rol_activo_pista'),
+        'gerente',
+        reason: 'borrar la pista dejaba el próximo arranque igual de roto',
+      );
+    });
+
+    test('sin pista sigue pidiendo credenciales', () async {
+      // La otra mitad de la regla: nunca dar acceso por no poder comprobar.
+      SharedPreferences.setMockInitialValues({});
+      final c = contenedorColgado();
+      await c.read(sesionNotifierProvider.notifier).restaurar();
+
+      expect(c.read(sesionNotifierProvider), isNull);
+    });
+  });
+}
+
+/// No falla ni responde: se queda esperando, que es lo que hace un Keystore que
+/// tarda de más o un backend que no está.
+class _AlmacenColgado extends FlutterSecureStorage {
+  const _AlmacenColgado();
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) => Completer<String?>().future;
 }

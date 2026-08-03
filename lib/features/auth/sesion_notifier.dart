@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +8,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'credenciales_service.dart';
 
 enum Rol { gerente, registradora }
+
+/// El almacén seguro, por provider y no construido a mano dentro del notifier.
+///
+/// Es lo que permite probar qué hace el arranque cuando el almacén NO contesta,
+/// que es el caso que rompía la sesión y el que ninguna prueba podía montar: el
+/// canal nativo del paquete no es interceptable desde un test.
+final almacenSeguroProvider = Provider<FlutterSecureStorage>((ref) => const FlutterSecureStorage());
 
 /// Rol activo, login/logout (decision 0019) — lo que la UI consulta para
 /// renderizar condicionalmente (Authentication.feature). No sabe como se
@@ -30,7 +38,19 @@ class SesionNotifier extends Notifier<Rol?> {
   /// 0 ms, ni el catálogo, que carga en 7.
   static const _keyRolPista = 'rol_activo_pista';
 
-  final _storage = const FlutterSecureStorage();
+  /// Cuánto se espera al almacén seguro antes de seguir sin él.
+  ///
+  /// Ocho segundos y no tres: abrir el Keystore cuesta 1104–1573 ms medidos en
+  /// el teléfono del negocio, y eso con la app tranquila. Compitiendo con el
+  /// arranque —base, catálogo, primer frame— pasaba de tres, y de ahí salía el
+  /// "el login no se mantiene". El límite existe para el almacén ROTO, no para
+  /// el lento.
+  ///
+  /// Ajustable solo desde las pruebas, para no dejarlas esperando de verdad.
+  @visibleForTesting
+  static Duration limiteAlmacenSeguro = const Duration(seconds: 8);
+
+  late final _storage = ref.read(almacenSeguroProvider);
   late final _credenciales = CredencialesService(storage: _storage);
 
   @override
@@ -78,13 +98,17 @@ class SesionNotifier extends Notifier<Rol?> {
       // no abrir.
       guardado = await _storage
           .read(key: _keyRolActivo)
-          .timeout(const Duration(seconds: 3), onTimeout: () => null);
+          .timeout(limiteAlmacenSeguro, onTimeout: () => throw TimeoutException(null));
     } catch (_) {
-      // Sin almacén seguro disponible no hay sesión que recuperar. Pedir
-      // credenciales es el fallback correcto: nunca dar acceso por no poder
-      // comprobar.
-      state = null;
-      await prefs.remove(_keyRolPista);
+      // NO se toca el estado ni se borra la pista. "No pude comprobar" no es
+      // "no hay sesión": tratarlos igual era lo que expulsaba al Login a quien
+      // sí tenía sesión, y encima borraba la pista, así que la vez siguiente
+      // tampoco arrancaba abierta.
+      //
+      // Sin pista el estado ya es null y la app pide credenciales, que sigue
+      // siendo el fallback correcto: nunca dar acceso por no poder comprobar.
+      // Con pista, se sigue con ella — es lo mismo que ya se aceptó al arrancar
+      // de forma optimista.
       return;
     }
     final real = _rolDe(guardado);
@@ -114,7 +138,9 @@ class SesionNotifier extends Notifier<Rol?> {
     try {
       await _storage.write(key: _keyRolActivo, value: rol.name);
     } catch (_) {}
-    (await SharedPreferences.getInstance()).setString(_keyRolPista, rol.name);
+    // Con `await`: sin él, cerrar la app enseguida después de entrar dejaba la
+    // pista sin escribir y el arranque siguiente volvía a ser el lento.
+    await (await SharedPreferences.getInstance()).setString(_keyRolPista, rol.name);
     return true;
   }
 
