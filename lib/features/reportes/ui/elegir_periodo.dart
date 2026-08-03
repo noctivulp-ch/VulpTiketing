@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../reportes_provider.dart';
 
@@ -68,9 +69,9 @@ class _ElegirMesState extends State<_ElegirMes> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Elegí el mes'),
-      content: SizedBox(
+    return BentoDialogo(
+      titulo: const Text('Elegí el mes'),
+      contenido: SizedBox(
         width: 320,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -104,7 +105,11 @@ class _ElegirMesState extends State<_ElegirMes> {
           ],
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))],
+      acciones: BentoAcciones(
+        derecha: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ],
+      ),
     );
   }
 }
@@ -118,9 +123,9 @@ class _ElegirAnio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final anios = [for (var a = hoy.year; a >= 2020; a--) a];
-    return AlertDialog(
-      title: const Text('Elegí el año'),
-      content: SizedBox(
+    return BentoDialogo(
+      titulo: const Text('Elegí el año'),
+      contenido: SizedBox(
         width: 280,
         child: GridView.count(
           shrinkWrap: true,
@@ -139,7 +144,11 @@ class _ElegirAnio extends StatelessWidget {
           ],
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))],
+      acciones: BentoAcciones(
+        derecha: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ],
+      ),
     );
   }
 }

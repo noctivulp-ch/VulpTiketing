@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/ui/bento_aviso.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
@@ -176,19 +177,25 @@ class ProductoCrudScreen extends ConsumerWidget {
   }) async {
     final confirmado = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('¿Purgar este producto?'),
-        content: Text('Esto borra "${producto.nombre}" de forma permanente. No se puede deshacer.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Purgar'),
-          ),
-        ],
+      builder: (dialogContext) => BentoDialogo(
+        titulo: const Text('¿Purgar este producto?'),
+        contenido: Text(
+          'Esto borra "${producto.nombre}" de forma permanente. No se puede deshacer.',
+        ),
+        acciones: BentoAcciones(
+          izquierda: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Purgar'),
+            ),
+          ],
+          derecha: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmado != true || !context.mounted) return;

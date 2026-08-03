@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/nav/retroceso.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/ui/bento_aviso.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_falla.dart';
@@ -553,9 +554,9 @@ class _DialogoEditarLineaState extends ConsumerState<_DialogoEditarLinea> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Editar línea'),
-      content: Column(
+    return BentoDialogo(
+      titulo: const Text('Editar línea'),
+      contenido: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
@@ -588,10 +589,12 @@ class _DialogoEditarLineaState extends ConsumerState<_DialogoEditarLinea> {
           ),
         ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-        FilledButton(onPressed: _guardar, child: const Text('Guardar')),
-      ],
+      acciones: BentoAcciones(
+        izquierda: [FilledButton(onPressed: _guardar, child: const Text('Guardar'))],
+        derecha: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ],
+      ),
     );
   }
 }
@@ -627,9 +630,9 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
     final precioController = TextEditingController();
     final resultado = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Línea libre'),
-        content: Column(
+      builder: (dialogContext) => BentoDialogo(
+        titulo: const Text('Línea libre'),
+        contenido: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
@@ -644,16 +647,20 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Agregar'),
-          ),
-        ],
+        acciones: BentoAcciones(
+          izquierda: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Agregar'),
+            ),
+          ],
+          derecha: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
       ),
     );
     if (resultado != true) return;

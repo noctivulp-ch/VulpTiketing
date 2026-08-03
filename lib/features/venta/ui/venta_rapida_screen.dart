@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/ui/bento_aviso.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_velo.dart';
@@ -301,121 +302,148 @@ class _OverlayCobroRapidoState extends ConsumerState<_OverlayCobroRapido> {
     //
     // La jerarquía es la de la venta: qué se cobra arriba, cuánto en grande, y
     // los ajustes debajo en celdas de la misma retícula que Reportes.
+    // Acostado las acciones se van al COSTADO y la retícula deja de scrollear:
+    // con 360 dp de alto, un scroll para dos botones significa que cobrar pide
+    // un gesto de más en el momento en que hay cola.
+    final acostado = bentoEstaAcostado(context);
+
+    final celdas = <BentoCelda>[
+      BentoCelda.fija(
+        6,
+        hijo: BentoPozo(
+          padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.producto.nombre, style: tema.textTheme.titleMedium),
+              BentoTextoTallado(
+                '\u20a1${total.toStringAsFixed(2)}',
+                sobre: laca.pozo,
+                nivel: TalladoNivel.marcado,
+                estilo: tema.textTheme.displaySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+      BentoCelda.fija(
+        3,
+        hijo: BentoPozo(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove),
+                tooltip: 'Menos',
+                onPressed: _cantidad > 1 ? () => setState(() => _cantidad--) : null,
+              ),
+              Text('$_cantidad', style: tema.textTheme.titleLarge),
+              IconButton(
+                icon: const Icon(Icons.add),
+                tooltip: 'Más',
+                onPressed: () => setState(() => _cantidad++),
+              ),
+            ],
+          ),
+        ),
+      ),
+      BentoCelda.fija(
+        3,
+        hijo: BentoPozo(
+          padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
+          child: TextField(
+            controller: _precioController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Precio',
+              isDense: true,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+            ),
+          ),
+        ),
+      ),
+      // Cambio antes que Recibí, por lo mismo que en la barra de
+      // cobro de Ventana 2: deja los campos que se tocan alineados
+      // en la misma columna en vez de en diagonal.
+      BentoCelda.fija(
+        3,
+        hijo: BentoPozo(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _cambio == null ? 'Cambio: \u2014' : 'Cambio: \u20a1${_cambio!.toStringAsFixed(2)}',
+            ),
+          ),
+        ),
+      ),
+      BentoCelda.fija(
+        3,
+        hijo: BentoPozo(
+          padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
+          child: TextField(
+            controller: _recibidoController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Recib\u00ed',
+              isDense: true,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+            ),
+            onChanged: _onRecibidoChanged,
+          ),
+        ),
+      ),
+    ];
+
+    final cancelar = OutlinedButton(
+      onPressed: () => Navigator.of(context).pop(),
+      child: const Text('Cancelar'),
+    );
+    final completado = FilledButton(onPressed: _completar, child: const Text('Completado'));
+
     return Dialog(
       insetPadding: const EdgeInsets.all(BentoSpacing.gapCelda),
       backgroundColor: laca.bandeja,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
+        // Más ancho acostado: es lo que sobra, y es de donde sale el sitio para
+        // la columna de acciones.
+        constraints: BoxConstraints(maxWidth: acostado ? 720 : 460),
         child: Padding(
           padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-          child: SingleChildScrollView(
-            child: BentoCuadricula(
-              hijos: [
-                BentoCelda.fija(
-                  6,
-                  hijo: BentoPozo(
-                    padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.producto.nombre, style: tema.textTheme.titleMedium),
-                        BentoTextoTallado(
-                          '\u20a1${total.toStringAsFixed(2)}',
-                          sobre: laca.pozo,
-                          nivel: TalladoNivel.marcado,
-                          estilo: tema.textTheme.displaySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                BentoCelda.fija(
-                  3,
-                  hijo: BentoPozo(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove),
-                          tooltip: 'Menos',
-                          onPressed: _cantidad > 1 ? () => setState(() => _cantidad--) : null,
-                        ),
-                        Text('$_cantidad', style: tema.textTheme.titleLarge),
-                        IconButton(
-                          icon: const Icon(Icons.add),
-                          tooltip: 'Más',
-                          onPressed: () => setState(() => _cantidad++),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                BentoCelda.fija(
-                  3,
-                  hijo: BentoPozo(
-                    padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
-                    child: TextField(
-                      controller: _precioController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
-                        labelText: 'Precio',
-                        isDense: true,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
+          child: acostado
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: BentoCuadricula(hijos: celdas)),
+                    const SizedBox(width: BentoSpacing.pared),
+                    // `IntrinsicWidth`: la columna necesita un ancho acotado
+                    // para estirar los dos botones al mismo.
+                    IntrinsicWidth(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          completado,
+                          const SizedBox(height: BentoSpacing.pared),
+                          cancelar,
+                        ],
                       ),
                     ),
+                  ],
+                )
+              : SingleChildScrollView(
+                  child: BentoCuadricula(
+                    hijos: [
+                      ...celdas,
+                      BentoCelda.fija(3, hijo: cancelar),
+                      BentoCelda.fija(3, hijo: completado),
+                    ],
                   ),
                 ),
-                // Cambio antes que Recibí, por lo mismo que en la barra de
-                // cobro de Ventana 2: deja los campos que se tocan alineados
-                // en la misma columna en vez de en diagonal.
-                BentoCelda.fija(
-                  3,
-                  hijo: BentoPozo(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        _cambio == null
-                            ? 'Cambio: \u2014'
-                            : 'Cambio: \u20a1${_cambio!.toStringAsFixed(2)}',
-                      ),
-                    ),
-                  ),
-                ),
-                BentoCelda.fija(
-                  3,
-                  hijo: BentoPozo(
-                    padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
-                    child: TextField(
-                      controller: _recibidoController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Recib\u00ed',
-                        isDense: true,
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                      ),
-                      onChanged: _onRecibidoChanged,
-                    ),
-                  ),
-                ),
-                BentoCelda.fija(
-                  3,
-                  hijo: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancelar'),
-                  ),
-                ),
-                BentoCelda.fija(
-                  3,
-                  hijo: FilledButton(onPressed: _completar, child: const Text('Completado')),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

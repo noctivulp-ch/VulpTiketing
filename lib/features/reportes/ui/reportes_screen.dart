@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../core/nav/retroceso.dart';
 import '../../../core/ui/bento_aviso.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
@@ -768,9 +769,9 @@ class _ElegirFormato extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Exportar reporte'),
-      content: Column(
+    return BentoDialogo(
+      titulo: const Text('Exportar reporte'),
+      contenido: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           for (final formato in FormatoReporte.values)
@@ -782,7 +783,11 @@ class _ElegirFormato extends StatelessWidget {
             ),
         ],
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar'))],
+      acciones: BentoAcciones(
+        derecha: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ],
+      ),
     );
   }
 }

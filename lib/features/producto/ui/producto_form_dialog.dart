@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_theme.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/bento_falla.dart';
 import '../../sync/sync_notifier.dart';
 import '../categoria_model.dart';
@@ -12,10 +13,6 @@ import '../producto_model.dart';
 import '../producto_notifier.dart';
 
 const _uuid = Uuid();
-
-/// Por debajo de este alto la pantalla se considera acostada — el mismo umbral
-/// que usa Reportes.
-const _altoAcostado = 520.0;
 
 /// Formulario de crear/editar Producto — Ventana 3
 /// (docs/pantallas/flujo-descripcion.md#ventana-3--crud-de-producto).
@@ -79,22 +76,26 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
   Future<void> _eliminar() async {
     final confirmado = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('¿Eliminar el producto?'),
-        content: Text(
+      builder: (dialogContext) => BentoDialogo(
+        titulo: const Text('¿Eliminar el producto?'),
+        contenido: Text(
           '"${widget.producto!.nombre}" se borra de verdad, no se puede deshacer. '
           'Si tuvo ventas alguna vez, no se va a poder: su historial lo necesita.',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Eliminar'),
-          ),
-        ],
+        acciones: BentoAcciones(
+          izquierda: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Eliminar'),
+            ),
+          ],
+          derecha: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmado != true || !mounted) return;
@@ -122,16 +123,23 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
     final controller = TextEditingController();
     final nombre = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Nueva categoría'),
-        content: TextField(controller: controller, autofocus: true),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('Crear'),
-          ),
-        ],
+      builder: (dialogContext) => BentoDialogo(
+        titulo: const Text('Nueva categoría'),
+        contenido: TextField(controller: controller, autofocus: true),
+        acciones: BentoAcciones(
+          izquierda: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('Crear'),
+            ),
+          ],
+          derecha: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
       ),
     );
     if (nombre == null || nombre.isEmpty || !mounted) return;
@@ -182,10 +190,6 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
   @override
   Widget build(BuildContext context) {
     final categoriasAsync = ref.watch(categoriaNotifierProvider);
-    // Acostado el alto es el recurso escaso: los campos ya se lo comen y las
-    // acciones abajo desbordaban 95 px. Se van al costado, que es donde SÍ
-    // sobra espacio.
-    final acostado = MediaQuery.sizeOf(context).height < _altoAcostado;
 
     final formulario = Form(
       key: _formKey,
@@ -284,14 +288,14 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
       ),
     );
 
-    final acciones = _Acciones(
-      alProducto: _esEdicion && !widget.producto!.activo
+    final acciones = BentoAcciones(
+      izquierda: _esEdicion && !widget.producto!.activo
           ? [
               TextButton(onPressed: _guardando ? null : _reactivar, child: const Text('Reactivar')),
               TextButton(onPressed: _guardando ? null : _eliminar, child: const Text('Eliminar')),
             ]
           : const [],
-      alFormulario: [
+      derecha: [
         TextButton(
           onPressed: _guardando ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
@@ -309,83 +313,10 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
       ],
     );
 
-    return AlertDialog(
-      title: Text(_esEdicion ? 'Editar producto' : 'Nuevo producto'),
-      content: acostado
-          // Acostado: campos a la izquierda y acciones apiladas a la derecha,
-          // todo dentro del contenido. Dejarlas en `actions` las mandaría
-          // debajo, que es lo que no entra.
-          ? SizedBox(
-              width: 560,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: SingleChildScrollView(child: formulario)),
-                  const SizedBox(width: BentoSpacing.pared),
-                  // `IntrinsicWidth`: la cuadrícula necesita un ancho acotado
-                  // para repartir sus dos columnas dentro de una fila.
-                  IntrinsicWidth(child: acciones),
-                ],
-              ),
-            )
-          : formulario,
-      actions: acostado ? null : [acciones],
-    );
-  }
-}
-
-/// Las acciones del formulario en dos columnas: producto a la izquierda,
-/// formulario a la derecha.
-///
-/// Fila por fila y no una `Row` con los cuatro: en 360 dp no entran de ancho, y
-/// dejar que el diálogo los apile solo los alinea a todos a la derecha —
-/// perdiendo justamente la distinción entre las dos columnas.
-class _Acciones extends StatelessWidget {
-  const _Acciones({required this.alProducto, required this.alFormulario});
-
-  /// Lo que le pasa al producto. Vacío cuando está en la carta: no hay nada que
-  /// reactivar ni conviene ofrecer borrar algo que se está usando.
-  final List<Widget> alProducto;
-
-  /// Lo que le pasa a este formulario. Siempre hay dos: salir y guardar.
-  final List<Widget> alFormulario;
-
-  /// La MISMA cuadrícula en las dos orientaciones. Lo único que cambia acostado
-  /// es dónde se coloca —al costado del formulario en vez de debajo—, no cómo
-  /// se organiza: apilarla en una sola columna perdía la distinción entre lo
-  /// que le pasa al producto y lo que le pasa al formulario.
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var i = 0; i < alFormulario.length; i++)
-          Padding(
-            // Aire entre filas: pegados, los cuatro botones se leían como un
-            // bloque y costaba ver cuál era cuál.
-            padding: EdgeInsets.only(
-              top: i == 0 ? 0 : BentoSpacing.unidad,
-              bottom: BentoSpacing.unidad / 2,
-            ),
-            child: Row(
-              children: [
-                // Dos columnas del MISMO ancho, no dos botones repartidos con
-                // `spaceBetween`: así cada uno se colocaba según su propio
-                // largo y las columnas quedaban descuadradas entre filas.
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: i < alProducto.length ? alProducto[i] : const SizedBox.shrink(),
-                  ),
-                ),
-                const SizedBox(width: BentoSpacing.gapCelda),
-                Expanded(
-                  child: Align(alignment: Alignment.centerRight, child: alFormulario[i]),
-                ),
-              ],
-            ),
-          ),
-      ],
+    return BentoDialogo(
+      titulo: Text(_esEdicion ? 'Editar producto' : 'Nuevo producto'),
+      contenido: formulario,
+      acciones: acciones,
     );
   }
 }

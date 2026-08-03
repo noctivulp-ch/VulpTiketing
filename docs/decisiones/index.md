@@ -31,3 +31,4 @@ Volver a [../index](../index.md)
 | [0025](0025-archivado-anual-rodante.md) | Libros de ventas rodantes en archivos SQLite adjuntables | Aceptada |
 | [0026](0026-cuadricula-bento-y-breakpoints.md) | Retícula bento de 6 columnas y tres tamaños de pantalla | Aceptada |
 | [0027](0027-arranque-optimista-de-sesion.md) | Arranque optimista de sesión: el rol se duplica como pista en preferencias | Aceptada |
+| [0028](0028-acciones-de-dialogo-al-costado-acostado.md) | Las acciones de un diálogo van al costado cuando la pantalla está acostada | Aceptada |
