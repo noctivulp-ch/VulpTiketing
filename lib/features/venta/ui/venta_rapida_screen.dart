@@ -9,6 +9,7 @@ import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/bento_falla.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_notifier.dart';
@@ -63,7 +64,16 @@ class VentaRapidaScreen extends ConsumerWidget {
                         // Mas ancho que alto: sin hueco de imagen el pozo
                         // solo tiene que sostener nombre y precio, y una
                         // celda alta dejaba un vacio muerto en el medio.
-                        relacionCelda: 1.25,
+                        //
+                        // Acostado, más ancho: con 360 dp de alto y la
+                        // proporción de pie entraba UNA fila de productos y
+                        // sobraban 90 dp en blanco. Con 1.8 entran dos filas y
+                        // el nombre conserva sus dos líneas — con 2.6 entraban
+                        // dos y media, pero "Arroz cantones (entero)" se
+                        // cortaba en "Arroz cantones" y dejaba de distinguirse
+                        // del medio: más carta a la vista y menos legible no es
+                        // mejor.
+                        relacionCelda: bentoEstaAcostado(context) ? 1.8 : 1.25,
                         celda: (producto) => _TarjetaProducto(
                           producto: producto,
                           onTap: () => _abrirCobroRapido(context, ref, producto),

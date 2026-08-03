@@ -75,7 +75,7 @@ class _PanelExportarBackupState extends ConsumerState<PanelExportarBackup> {
           contenido: TextField(
             controller: _contrasenaController,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'Contraseña de exportación'),
+            decoration: const InputDecoration(labelText: 'Contraseña del backup'),
             onSubmitted: (_) => _exportar(),
           ),
           acciones: [
@@ -219,7 +219,7 @@ class _PanelRestaurarBackupState extends ConsumerState<PanelRestaurarBackup> {
         controller: _contrasenaController,
         obscureText: true,
         autofocus: true,
-        decoration: const InputDecoration(labelText: 'Contraseña de exportación'),
+        decoration: const InputDecoration(labelText: 'Contraseña del backup'),
         onSubmitted: (_) => _restaurar(),
       ),
       acciones: [

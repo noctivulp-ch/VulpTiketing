@@ -42,13 +42,20 @@ class BentoDialogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final acostado = bentoEstaAcostado(context);
 
+    // El scroll lo pone ESTE widget dentro del contenido, en vez de usar
+    // `AlertDialog(scrollable: true)`.
+    //
+    // `scrollable` envuelve todo en un `IntrinsicWidth`, y un `GridView`
+    // —aunque sea `shrinkWrap`— no sabe dar dimensiones intrínsecas:
+    // "RenderShrinkWrappingViewport does not support returning intrinsic
+    // dimensions", y el diálogo sale VACÍO. Pasó en el aparato con el
+    // calendario y con las cuadrículas de mes y de año: no se veía nada, solo
+    // el velo.
+    //
+    // Con el scroll acá dentro se consigue lo mismo que se buscaba —que el
+    // contenido ceda cuando el teclado se come el alto, en vez de que el
+    // diálogo se parta— sin medir nada intrínseco.
     return AlertDialog(
-      // `scrollable` mueve título, contenido y acciones DENTRO de un mismo
-      // scroll. No es para scrollear siempre —casi nunca hace falta— sino para
-      // el caso en que el alto no da: con el teclado abierto en un teléfono
-      // acostado quedan menos de 200 dp, y ahí un diálogo que no cede desborda.
-      // Sin esto, `AlertDialog` recorta y el usuario ve la caja partida.
-      scrollable: true,
       title: titulo,
       content: acostado
           ? ConstrainedBox(
@@ -56,19 +63,27 @@ class BentoDialogo extends StatelessWidget {
               // más de 560, pero fijarlo obligaría al diálogo a ese ancho aun
               // cuando la ventana sea menor.
               constraints: BoxConstraints(maxWidth: anchoAcostado),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: contenido),
-                  const SizedBox(width: BentoSpacing.pared),
-                  // `IntrinsicWidth`: la cuadrícula de acciones necesita un
-                  // ancho acotado para repartir sus dos columnas dentro de una
-                  // fila.
-                  IntrinsicWidth(child: acciones),
-                ],
+              // El scroll envuelve la FILA entera, contenido y acciones juntos.
+              // Envolviendo solo el contenido, con el teclado abierto la
+              // columna de acciones seguía pidiendo su alto y desbordaba: lo
+              // que tiene que ceder acostado es el bloque completo.
+              child: SingleChildScrollView(
+                child: Row(
+                  // `start` y no `stretch`: dentro de un scroll el alto es
+                  // ilimitado, y estirar a un infinito no significa nada.
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: contenido),
+                    const SizedBox(width: BentoSpacing.pared),
+                    // `IntrinsicWidth`: la cuadrícula de acciones necesita un
+                    // ancho acotado para repartir sus dos columnas dentro de
+                    // una fila.
+                    IntrinsicWidth(child: acciones),
+                  ],
+                ),
               ),
             )
-          : contenido,
+          : SingleChildScrollView(child: contenido),
       actions: acostado ? null : [acciones],
     );
   }

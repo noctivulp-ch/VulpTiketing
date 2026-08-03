@@ -189,34 +189,47 @@ class _Destino extends StatelessWidget {
   final bool seleccionado;
   final VoidCallback onTap;
 
+  /// Cómo se llama cada ventana en voz alta.
+  ///
+  /// La banda de navegación son cinco iconos sin una sola palabra: quien no
+  /// reconozca el dibujo no tiene dónde agarrarse, y para un lector de pantalla
+  /// eran cinco botones sin nombre. El tooltip lo resuelve para las dos cosas —
+  /// mantener presionado lo dice, y `Tooltip` ya publica su texto en el árbol
+  /// de semántica.
+  static const _etiquetas = {
+    'venta_rapida': 'Venta rápida',
+    'panel_venta': 'Panel de venta',
+    'producto': 'Catálogo',
+    'reportes': 'Reportes',
+    'configuracion': 'Configuración',
+  };
+
   @override
   Widget build(BuildContext context) {
     final laca = lacaDe(context);
     final acento = Theme.of(context).colorScheme.primary;
+    final etiqueta = _etiquetas[nombre] ?? nombre;
 
     final icono = Center(
       child: BentoIcon(nombre, color: seleccionado ? acento : laca.textoAtenuadoEnBandeja),
     );
 
-    if (!seleccionado) {
-      return SizedBox(
+    return Tooltip(
+      message: etiqueta,
+      child: SizedBox(
         width: bentoObjetivoTactilMin,
         height: bentoObjetivoTactilMin,
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(BentoRadius.pozo),
-            child: icono,
-          ),
-        ),
-      );
-    }
-
-    return SizedBox(
-      width: bentoObjetivoTactilMin,
-      height: bentoObjetivoTactilMin,
-      child: BentoPozo(onTap: onTap, seleccionado: true, padding: EdgeInsets.zero, child: icono),
+        child: seleccionado
+            ? BentoPozo(onTap: onTap, seleccionado: true, padding: EdgeInsets.zero, child: icono)
+            : Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(BentoRadius.pozo),
+                  child: icono,
+                ),
+              ),
+      ),
     );
   }
 }

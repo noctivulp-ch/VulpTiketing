@@ -652,10 +652,15 @@ class _Ranking extends StatelessWidget {
             child: items.isEmpty
                 ? const Center(child: Text('Sin datos'))
                 : ListView.builder(
+                    // Sin esto el `ListView` hereda el padding del sistema —la
+                    // barra de estado, unos 100 px en este teléfono— y el
+                    // primer producto del ranking aparecía a dos tercios de
+                    // altura, con un hueco muerto encima y el segundo cortado.
+                    padding: EdgeInsets.zero,
                     itemCount: items.length,
                     itemBuilder: (context, i) => ListTile(
                       dense: true,
-                      title: Text(items[i].nombre),
+                      title: Text(items[i].nombre, maxLines: 1, overflow: TextOverflow.ellipsis),
                       trailing: Text('${items[i].cantidad}'),
                     ),
                   ),
@@ -746,6 +751,9 @@ class _VistaDrillDown extends StatelessWidget {
                 : BentoPozo(
                     padding: EdgeInsets.zero,
                     child: ListView.builder(
+                      // Mismo motivo que en el ranking: el padding del sistema
+                      // se cuela y deja un hueco al principio de la lista.
+                      padding: EdgeInsets.zero,
                       itemCount: ventas.length,
                       itemBuilder: (context, i) {
                         final vc = ventas[i];

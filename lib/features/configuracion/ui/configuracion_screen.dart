@@ -11,6 +11,7 @@ import '../../import_export/ui/tiketback_panels.dart';
 import '../../import_export/ui/tiketdata_panel.dart';
 import '../../sync/sync_notifier.dart';
 import '../../../core/theme/bento_efectos.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/bento_falla.dart';
 import '../preferencias_notifier.dart';
 import 'cambiar_contrasena_panel.dart';
@@ -136,23 +137,27 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
       child: _panelPara(_seleccion),
     );
 
-    // En escritorio los tiles van a la izquierda y el detalle a la derecha: con
-    // 1024 dp o más, apilarlos deja media pantalla vacía y obliga a bajar la
-    // vista para leer lo que se acaba de elegir.
-    final cuerpo = ancho == BentoAncho.amplio
+    // Los tiles a la izquierda y el detalle a la derecha cuando hay ancho de
+    // sobra —escritorio— y también cuando el ALTO escasea.
+    //
+    // Acostado era peor que en escritorio: apilado, tocar un tile abría un
+    // panel que quedaba entero fuera de la vista, así que no pasaba nada
+    // visible. Con 360 dp de alto no hay sitio debajo de la rejilla para nada.
+    final ladoALado = ancho == BentoAncho.amplio || bentoEstaAcostado(context);
+
+    final cuerpo = ladoALado
         ? BentoCuadricula(
             llenarAlto: true,
             hijos: [
-              BentoCelda(
-                compacto: 6,
-                medio: 6,
-                amplio: 2,
+              // En escritorio la rejilla se conforma con un tercio; acostado
+              // necesita la mitad, porque con un tercio de 800 dp cada tile
+              // queda en 80 y "Contraseña" se parte en "Contr / aseña".
+              BentoCelda.fija(
+                ancho == BentoAncho.amplio ? 2 : 3,
                 hijo: SingleChildScrollView(child: rejilla),
               ),
-              BentoCelda(
-                compacto: 6,
-                medio: 6,
-                amplio: 4,
+              BentoCelda.fija(
+                ancho == BentoAncho.amplio ? 4 : 3,
                 hijo: SingleChildScrollView(child: panel),
               ),
             ],
@@ -171,7 +176,7 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
       alRetroceder: () => setState(() => _seleccion = null),
       child: Scaffold(
         body: SafeArea(
-          child: ancho == BentoAncho.amplio
+          child: ladoALado
               ? Padding(padding: _margenPagina(context), child: cuerpo)
               // La página entera scrollea, que es el arreglo del desborde.
               : SingleChildScrollView(padding: _margenPagina(context), child: cuerpo),

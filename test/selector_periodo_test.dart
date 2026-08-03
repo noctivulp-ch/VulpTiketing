@@ -10,7 +10,9 @@ import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/core/theme/bento_bandeja.dart';
 import 'package:vulp_tiketing/core/theme/bento_theme.dart';
 import 'package:vulp_tiketing/features/reportes/periodos_con_datos_provider.dart';
+import 'package:vulp_tiketing/features/reportes/reportes_provider.dart';
 import 'package:vulp_tiketing/features/reportes/ui/calendario_periodo.dart';
+import 'package:vulp_tiketing/features/reportes/ui/elegir_periodo.dart';
 import 'package:vulp_tiketing/features/venta/libro_ventas.dart';
 
 /// Elegir un período era a ciegas: se tocaba un día, se esperaba la carga y
@@ -159,5 +161,65 @@ void main() {
       final pozos = tester.widgetList<BentoPozo>(find.byType(BentoPozo)).toList();
       expect(pozos.where((p) => p.onTap == null), hasLength(31 - 20));
     });
+  });
+
+  group('el diálogo de período se abre de verdad', () {
+    // La prueba que faltaba y que dejó pasar un diálogo VACÍO al aparato:
+    // `AlertDialog(scrollable: true)` mide el ancho intrínseco de su contenido,
+    // y un `GridView` no sabe darlo. No fallaba con un contenido normal, así
+    // que había que montar justamente estos.
+    Future<void> abrirPeriodo(
+      WidgetTester tester,
+      RangoReporte rango, {
+      Size tamano = const Size(360, 800),
+    }) async {
+      tester.view.physicalSize = tamano;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [databaseProvider.overrideWith((ref) async => db)],
+          child: MaterialApp(
+            theme: buildBentoTheme(AcentoTinte.oro),
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () =>
+                        elegirPeriodo(context, rango: rango, actual: DateTime(2026, 3, 4)),
+                    child: const Text('abrir'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('abrir'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await tester.pump();
+    }
+
+    for (final (rango, titulo) in [
+      (RangoReporte.dia, 'Elegí el día'),
+      (RangoReporte.semana, 'Elegí la semana'),
+      (RangoReporte.mes, 'Elegí el mes'),
+      (RangoReporte.anio, 'Elegí el año'),
+    ]) {
+      for (final tamano in [const Size(360, 800), const Size(800, 360)]) {
+        testWidgets('$titulo se ve y no revienta en $tamano', (tester) async {
+          await abrirPeriodo(tester, rango, tamano: tamano);
+
+          expect(tester.takeException(), isNull, reason: '$titulo revienta en $tamano');
+          expect(find.text(titulo), findsOneWidget, reason: '$titulo sale vacío en $tamano');
+          // Y con algo dentro: un diálogo con título pero sin cuadrícula sería
+          // el mismo fallo con otra cara.
+          expect(find.byType(BentoPozo), findsWidgets);
+        });
+      }
+    }
   });
 }
