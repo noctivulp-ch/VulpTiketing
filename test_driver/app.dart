@@ -269,6 +269,11 @@ Future<dynamic> _ejecutar(
             'id': venta['id'],
             'fecha_hora': venta['fecha_hora'],
             'estado': venta['estado'],
+            // Con el método y la referencia: si el cargador los ignorara, la
+            // base de pruebas mostraría todo en efectivo y el desglose de
+            // Reportes no aparecería nunca.
+            'metodo_pago': venta['metodo_pago'] ?? 'efectivo',
+            'referencia_pago': venta['referencia_pago'],
             'updated_at': venta['updated_at'],
           });
           for (final linea in (venta['lineas'] as List).cast<Map<String, dynamic>>()) {

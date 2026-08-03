@@ -51,11 +51,28 @@ CREATE TABLE venta (
   estado            TEXT NOT NULL DEFAULT 'activa'
                      CHECK (estado IN ('activa', 'revertida')),
   motivo_reversion  TEXT,               -- JSON, solo si estado='revertida' (0010)
+  metodo_pago       TEXT NOT NULL DEFAULT 'efectivo'
+                     CHECK (metodo_pago IN ('efectivo', 'sinpe')),
+  referencia_pago   TEXT,               -- identificador de la transferencia, anotado después (0032)
   updated_at        TEXT NOT NULL
   -- sin deleted_at a propósito: una Venta nunca se borra, solo cambia de estado (0009)
   -- sin campo de total a propósito: se calcula sumando linea_venta, nunca se duplica aquí (ver nota abajo)
 );
 ```
+
+**Por qué el método de pago vive acá y no en una tabla `pago`:** es una relación
+1:1 obligatoria con dos campos. Una tabla aparte obligaría al sync a conocer una
+quinta tabla, a cada libro a crearla y migrarla, y a toda consulta de ventas a
+cargar con una junta — sin dar nada hoy. Si algún día hace falta un pago **mixto**
+(parte efectivo, parte transferencia), la tabla se agrega entonces y estas dos
+columnas se migran a ella. Ver [decisión 0032](../decisiones/0032-metodo-de-pago-en-la-venta.md).
+
+**`referencia_pago` es la única columna que se escribe después de guardar la
+venta**, aparte de la reversión. No es una edición de la venta: es una anotación
+sobre cómo entró la plata, y no toca importes, líneas ni estado. Los libros ya
+escritos ganan las dos columnas **al adjuntarse** —un libro es un archivo suelto
+que puede venir de otro aparato o de un backup viejo—, con `ADD COLUMN`, que en
+SQLite no reescribe las filas existentes.
 
 **Por qué no hay un campo de total:** guardar un total en `venta` sería un valor derivado y redundante frente a la suma de sus líneas — con datos duplicados, un bug en cualquier punto que actualice uno y no el otro genera un total mentiroso, justo el tipo de error que una app de contabilidad no se puede permitir. Se calcula con `SUM(precio_aplicado * cantidad)` al leer. Si algún día el volumen de datos lo justificara, se podría agregar como columna de caché — pero para una soda pequeña con SQLite local no hay necesidad real de esa optimización.
 
