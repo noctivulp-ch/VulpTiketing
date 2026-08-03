@@ -47,56 +47,81 @@ class ProductoCrudScreen extends ConsumerWidget {
             child: productosAsync.when(
               data: (grupos) => grupos.every((g) => g.productos.isEmpty)
                   ? const Center(child: Text('Sin productos'))
-                  : ListaProductosAgrupada(
-                      grupos: grupos,
-                      // Se conserva la cascada invertida: la lista crece hacia
-                      // arriba desde el buscador de la barra inferior.
-                      invertida: true,
-                      // El padding va en coordenadas de pantalla aunque el
-                      // scroll este invertido: el velo esta arriba, o sea `top`.
-                      padding: EdgeInsets.fromLTRB(
-                        BentoSpacing.gapCelda,
-                        bentoInsetSuperior(context),
-                        BentoSpacing.gapCelda,
-                        BentoSpacing.gapCelda,
-                      ),
-                      // Una fila de producto ocupa 6, 3 o 2 columnas: en
-                      // teléfono va a lo ancho, en escritorio caben tres.
-                      porFila: bentoPorFila(
-                        BentoAncho.de(context),
-                        compacto: 6,
-                        medio: 3,
-                        amplio: 2,
-                      ),
-                      // Alto fijo en vez de proporción: estas celdas son filas,
-                      // y su alto lo fija el contenido (miniatura de 44 y
-                      // botones de 48), no el ancho de la columna.
-                      altoCelda: 76,
-                      celda: (producto) {
-                        return _FilaProducto(
-                          producto: producto,
-                          categoria: categorias[producto.categoriaId],
-                          esGerente: esGerente,
-                          sincronizado: sincronizado,
-                          onEditar: () => _editar(context, producto),
-                          onDescontinuar: () async {
-                            final notifier = ref.read(productoNotifierProvider.notifier);
-                            if (producto.activo) {
-                              await notifier.descontinuar(producto.id);
-                            } else {
-                              await notifier.recontinuar(producto.id);
-                            }
-                            if (context.mounted) {
-                              mostrarAviso(
+                  : LayoutBuilder(
+                      builder: (context, restricciones) {
+                        final porFila = bentoPorFila(
+                          BentoAncho.de(context),
+                          compacto: 6,
+                          medio: 3,
+                          amplio: 2,
+                        );
+                        // Una sola a lo ancho —el teléfono— deja que cada fila
+                        // mida lo suyo. Con varias columnas no se puede: las
+                        // celdas de una línea miden todas igual, así que ahí sí
+                        // hay que calcular un alto común.
+                        final unaPorLinea = porFila == 1;
+                        final medida = unaPorLinea
+                            ? null
+                            : _altoDeFila(
                                 context,
-                                producto.activo
-                                    ? '✓ Producto descontinuado'
-                                    : '✓ Producto de vuelta en la carta',
+                                grupos: grupos,
+                                anchoDisponible: restricciones.maxWidth,
+                                porFila: porFila,
+                                esGerente: esGerente,
                               );
-                            }
+                        return ListaProductosAgrupada(
+                          grupos: grupos,
+                          // Se conserva la cascada invertida: la lista crece
+                          // hacia arriba desde el buscador de la barra inferior.
+                          invertida: true,
+                          // El padding va en coordenadas de pantalla aunque el
+                          // scroll esté invertido: el velo está arriba, o sea
+                          // `top`.
+                          padding: EdgeInsets.fromLTRB(
+                            BentoSpacing.gapCelda,
+                            bentoInsetSuperior(context),
+                            BentoSpacing.gapCelda,
+                            BentoSpacing.gapCelda,
+                          ),
+                          // Una fila de producto ocupa 6, 3 o 2 columnas: en
+                          // teléfono va a lo ancho, en escritorio caben tres.
+                          porFila: porFila,
+                          // El alto lo fija el contenido (miniatura de 44,
+                          // botones de 48 y las líneas del nombre), nunca el
+                          // ancho de la columna.
+                          altoCelda: medida?.alto,
+                          celda: (producto) {
+                            return _FilaProducto(
+                              producto: producto,
+                              categoria: categorias[producto.categoriaId],
+                              lineasDelNombre: medida?.lineasDelNombre,
+                              esGerente: esGerente,
+                              sincronizado: sincronizado,
+                              onEditar: () => _editar(context, producto),
+                              onDescontinuar: () async {
+                                final notifier = ref.read(productoNotifierProvider.notifier);
+                                if (producto.activo) {
+                                  await notifier.descontinuar(producto.id);
+                                } else {
+                                  await notifier.recontinuar(producto.id);
+                                }
+                                if (context.mounted) {
+                                  mostrarAviso(
+                                    context,
+                                    producto.activo
+                                        ? '✓ Producto descontinuado'
+                                        : '✓ Producto de vuelta en la carta',
+                                  );
+                                }
+                              },
+                              onPurgar: () => _confirmarYPurgar(
+                                context,
+                                ref,
+                                producto,
+                                sincronizado: sincronizado,
+                              ),
+                            );
                           },
-                          onPurgar: () =>
-                              _confirmarYPurgar(context, ref, producto, sincronizado: sincronizado),
                         );
                       },
                     ),
@@ -144,6 +169,48 @@ class ProductoCrudScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Cuánto mide una fila del catálogo, dadas las líneas que pide el nombre
+  /// más largo.
+  ///
+  /// Hay que descontar del ancho todo lo que NO es el nombre —la miniatura, los
+  /// botones, los aires— porque es lo único que queda para el texto, y de ahí
+  /// sale cuántas líneas hacen falta.
+  static AltoDeFila _altoDeFila(
+    BuildContext context, {
+    required List<GrupoDeProductos> grupos,
+    required double anchoDisponible,
+    required int porFila,
+    required bool esGerente,
+  }) {
+    // `porFila` es cuántas celdas entran en una línea, no cuántas columnas de
+    // la retícula ocupa cada una.
+    final anchoCelda =
+        (anchoDisponible - BentoSpacing.gapCelda * 2 - BentoSpacing.pared * (porFila - 1)) /
+        porFila;
+
+    // Un botón siempre (editar); el Gerente ve además purgar, y descontinuar
+    // solo si el producto está activo — se cuenta el caso peor, que es el que
+    // deja menos sitio al nombre.
+    final botones = esGerente ? 3 : 1;
+    final anchoDelTexto =
+        anchoCelda -
+        BentoSpacing.unidad * 2 - // el padding del pozo
+        bentoMiniatura -
+        BentoSpacing.unidad - // la separación de la miniatura
+        bentoObjetivoTactilMin * botones;
+
+    return altoDeFilaSegunNombre(
+      grupos: grupos,
+      estilo: Theme.of(context).textTheme.bodyLarge!,
+      escala: MediaQuery.textScalerOf(context),
+      // Nunca menos de un ancho mínimo: con la ventana muy angosta el cálculo
+      // puede dar negativo, y un `maxWidth` negativo revienta el `TextPainter`.
+      anchoDelTexto: anchoDelTexto < 40 ? 40 : anchoDelTexto,
+      // 76 era el alto de siempre, con el nombre en una línea.
+      altoConUnaLinea: 76,
     );
   }
 
@@ -228,6 +295,7 @@ class _FilaProducto extends StatelessWidget {
   const _FilaProducto({
     required this.producto,
     required this.categoria,
+    required this.lineasDelNombre,
     required this.esGerente,
     required this.sincronizado,
     required this.onEditar,
@@ -239,6 +307,12 @@ class _FilaProducto extends StatelessWidget {
 
   /// El nombre de su categoría: de ahí sale la cara cuando nadie le eligió una.
   final String? categoria;
+
+  /// Cuántas líneas se le dieron al nombre, cuando la lista tiene varias
+  /// columnas y hay que darles a todas el mismo alto. **Nulo con una sola fila
+  /// a lo ancho**: ahí cada nombre toma las que necesite, que es lo que se
+  /// quiere y lo que una cuadrícula no puede dar.
+  final int? lineasDelNombre;
 
   final bool esGerente;
   final bool sincronizado;
@@ -310,14 +384,15 @@ class _FilaProducto extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // La celda tiene alto fijo (es una fila de una cuadrícula), así
-                // que el nombre se corta en vez de envolver: dos líneas de un
-                // nombre largo desbordarían la celda.
+                // El nombre entero, en las líneas que haga falta. Con una sola
+                // línea, "Arroz con pollo, tipo chino (entero)" y "…(medio)"
+                // quedaban los dos en "Arroz con pollo, tipo chi…":
+                // indistinguibles justo donde hay que elegir cuál es cuál.
                 Text(
                   producto.nombre,
                   style: Theme.of(context).textTheme.bodyLarge,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: lineasDelNombre,
+                  overflow: lineasDelNombre == null ? null : TextOverflow.ellipsis,
                 ),
                 Text(
                   // El PRECIO primero: cuando el subtítulo no entra, la elipsis

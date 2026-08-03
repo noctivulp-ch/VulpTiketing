@@ -855,17 +855,20 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
               padding: EdgeInsets.only(
                 left: BentoSpacing.unidad,
                 right: BentoSpacing.unidad,
-                // El padding de un scroll va en COORDENADAS DE PANTALLA, tambien
-                // con `reverse: true` — verificado. Antes esto decia `bottom`
-                // creyendo lo contrario, y el resultado era que la lista se
-                // despegaba del buscador y se iba hacia arriba: justo lo que
-                // rompia la cascada invertida.
+                // El padding de un scroll va en COORDENADAS DE PANTALLA,
+                // tambien con `reverse: true` — verificado. Antes esto decia
+                // `bottom` creyendo lo contrario, y el resultado era que la
+                // lista se despegaba del buscador y se iba hacia arriba: justo
+                // lo que rompia la cascada invertida.
                 top: bentoInsetSuperior(context),
               ),
               // Una fila por producto: este panel es angosto y lo que se busca
               // acá es el nombre, no comparar tarjetas.
               porFila: 1,
-              altoCelda: bentoObjetivoTactilMin,
+              // Sin alto: cada fila mide lo que pida su nombre. El nombre es lo
+              // ÚNICO que se lee acá para elegir, y con una sola línea
+              // "Arroz con pollo, tipo chino (entero)" y "…(medio)" quedaban
+              // idénticos en pantalla.
               celda: (producto) {
                 final seleccionado = _seleccionados.contains(producto.id);
                 return ListTile(
