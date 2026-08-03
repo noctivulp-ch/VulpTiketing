@@ -1,4 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- La cámara solo para sacarle la foto a un producto (decisión 0033). No
+         se pide almacenamiento: las fotos de galería llegan por el selector del
+         sistema, que ya entrega el archivo sin que la app pueda leer el resto. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Sin cámara la app sigue sirviendo entera: solo se pierde el atajo de
+         sacar la foto en el momento, y queda la galería. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
         android:label="vulp_tiketing"
         android:name="${applicationName}"

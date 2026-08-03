@@ -13,6 +13,7 @@ import '../../sync/sync_notifier.dart';
 import '../producto_model.dart';
 import '../producto_notifier.dart';
 import '../producto_query_provider.dart';
+import 'imagen_del_banco_vista.dart';
 import 'lista_productos_agrupada.dart';
 import 'producto_form_dialog.dart';
 
@@ -243,19 +244,38 @@ class _FilaProducto extends StatelessWidget {
       padding: const EdgeInsets.all(BentoSpacing.unidad),
       child: Row(
         children: [
-          Container(
+          // La miniatura es la señal que se ve sin leer: un producto fuera de
+          // la carta se distingue de un vistazo en una lista larga.
+          //
+          // Sin imagen elegida va una figura propia de cada producto, no un
+          // icono repetido: treinta y nueve iconos idénticos no ayudan a
+          // encontrar nada, y una figura se reconoce por el rabillo del ojo
+          // antes de leer el nombre.
+          SizedBox(
             width: bentoMiniatura,
             height: bentoMiniatura,
-            decoration: BoxDecoration(
-              color: lacaDe(context).pozoContacto,
+            child: ClipRRect(
               borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
-            ),
-            // La miniatura es la señal que se ve sin leer: un producto fuera
-            // de la carta se distingue de un vistazo en una lista larga.
-            child: Icon(
-              producto.activo ? Icons.image_outlined : Icons.block,
-              size: 22,
-              color: producto.activo ? null : Theme.of(context).colorScheme.onSurfaceVariant,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ImagenDelBancoVista(
+                    referencia: producto.imagen,
+                    semillaPorDefecto: producto.id,
+                    apagada: !producto.activo,
+                  ),
+                  // El aspa de "fuera de la carta" va ENCIMA de lo que haya:
+                  // con imagen o sin ella, el estado tiene que leerse igual.
+                  if (!producto.activo)
+                    Center(
+                      child: Icon(
+                        Icons.block,
+                        size: 22,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: BentoSpacing.unidad),

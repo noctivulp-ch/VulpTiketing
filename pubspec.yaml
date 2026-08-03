@@ -80,6 +80,7 @@ dependencies:
   shelf: ^1.4.2
   cryptography_flutter: ^2.3.4
   pdf: ^3.12.0
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:

@@ -36,3 +36,4 @@ Volver a [../index](../index.md)
 | [0030](0030-gestos-un-dedo-navega-varios-actuan.md) | Gestos: un dedo navega, dos o tres actúan | Aceptada |
 | [0031](0031-paridad-de-escritorio-teclado-y-touchpad.md) | Paridad de escritorio: teclado y touchpad | Aceptada |
 | [0032](0032-metodo-de-pago-en-la-venta.md) | Método de pago en la venta, con referencia opcional anotada después | Aceptada |
+| [0033](0033-banco-de-imagenes.md) | Banco de imágenes: figuras de fábrica y fotos propias | Aceptada |

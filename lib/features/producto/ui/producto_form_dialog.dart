@@ -11,18 +11,23 @@ import '../categoria_model.dart';
 import '../categoria_notifier.dart';
 import '../producto_model.dart';
 import '../producto_notifier.dart';
+import 'banco_imagenes_dialog.dart';
+import 'imagen_del_banco_vista.dart';
 
 const _uuid = Uuid();
 
 /// Formulario de crear/editar Producto — Ventana 3
 /// (docs/pantallas/flujo-descripcion.md#ventana-3--crud-de-producto).
 ///
-/// La imagen queda fuera de este formulario a propósito: sincronizar el
-/// archivo de imagen entre dispositivos (no solo la ruta guardada en
-/// `producto.imagen`) es una pregunta de arquitectura sin resolver todavía
-/// — agregar un selector de imagen ahora resolvería solo la mitad del
-/// problema y dejaría una promesa rota (foto elegida que nunca llega al
-/// otro dispositivo). Se deja anotado como pendiente real, no un olvido.
+/// **La imagen se elige acá y solo acá**: es gestión de inventario. En las
+/// pantallas de venta no hay foto — se probó al diseñarlas y una por tarjeta
+/// dejaba el nombre y el precio, que es lo que se lee al cobrar, sin sitio.
+///
+/// Se elige del **banco** (decisión 0033): figuras de fábrica que no pesan, más
+/// las fotos que se hayan sumado desde la galería o la cámara. El banco **no
+/// viaja** en el backup ni en la sincronización, así que un producto cuya foto
+/// no está en este aparato se ve con su figura propia — lo mismo que uno que
+/// nunca eligió imagen. Nada se rompe y nada miente.
 class ProductoFormDialog extends ConsumerStatefulWidget {
   const ProductoFormDialog({super.key, this.producto});
 
@@ -40,6 +45,9 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
   String? _categoriaId;
   bool _guardando = false;
 
+  /// La referencia elegida, tal como irá a `producto.imagen`.
+  String? _imagen;
+
   bool get _esEdicion => widget.producto != null;
 
   @override
@@ -50,6 +58,15 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
       text: widget.producto?.precioBase.toStringAsFixed(2) ?? '',
     );
     _categoriaId = widget.producto?.categoriaId;
+    _imagen = widget.producto?.imagen;
+  }
+
+  Future<void> _elegirImagen() async {
+    final elegida = await elegirDelBanco(context, semillaProducto: widget.producto?.id ?? 'nuevo');
+    // `null` es cancelar y no cambia nada; `''` es "sin imagen", que sí es una
+    // elección: devuelve al producto su figura propia.
+    if (elegida == null || !mounted) return;
+    setState(() => _imagen = elegida.isEmpty ? null : elegida);
   }
 
   @override
@@ -162,7 +179,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
         Producto(
           id: widget.producto!.id,
           nombre: _nombreController.text.trim(),
-          imagen: widget.producto!.imagen,
+          imagen: _imagen,
           categoriaId: _categoriaId,
           precioBase: precio,
           updatedAt: ahora,
@@ -178,6 +195,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
         Producto(
           id: _uuid.v4(),
           nombre: _nombreController.text.trim(),
+          imagen: _imagen,
           categoriaId: _categoriaId,
           precioBase: precio,
           updatedAt: ahora,
@@ -196,6 +214,17 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          _ControlDeImagen(
+            // Sin elegir nada se ve la MISMA figura que va a verse en el
+            // catálogo, no un cuadro vacío: así se sabe de antemano cómo va a
+            // quedar el producto en la lista, y elegir imagen pasa a ser una
+            // decisión en vez de un hueco por llenar.
+            semilla: widget.producto?.id ?? 'nuevo',
+            imagen: _imagen,
+            ocupado: _guardando,
+            onElegir: _elegirImagen,
+          ),
+          const SizedBox(height: BentoSpacing.unidad),
           TextFormField(
             controller: _nombreController,
             decoration: const InputDecoration(labelText: 'Nombre'),
@@ -317,6 +346,53 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
       titulo: Text(_esEdicion ? 'Editar producto' : 'Nuevo producto'),
       contenido: formulario,
       acciones: acciones,
+    );
+  }
+}
+
+/// La imagen del producto en el formulario: vista previa y "elegir del banco".
+class _ControlDeImagen extends StatelessWidget {
+  const _ControlDeImagen({
+    required this.semilla,
+    required this.imagen,
+    required this.ocupado,
+    required this.onElegir,
+  });
+
+  final String semilla;
+  final String? imagen;
+  final bool ocupado;
+  final VoidCallback onElegir;
+
+  /// Cuánto ocupa la vista previa. Un cuadro y no una franja ancha: es lo que se
+  /// va a ver en la lista, y mostrarlo con otra forma prometería algo que
+  /// después no se cumple.
+  static const _lado = 72.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: _lado,
+          height: _lado,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(BentoRadius.pozo),
+            child: ImagenDelBancoVista(referencia: imagen, semillaPorDefecto: semilla),
+          ),
+        ),
+        const SizedBox(width: BentoSpacing.gapCelda),
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: ocupado ? null : onElegir,
+              icon: const Icon(Icons.image_outlined),
+              label: Text(imagen == null ? 'Elegir imagen' : 'Cambiar imagen'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

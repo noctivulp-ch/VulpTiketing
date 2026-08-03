@@ -81,6 +81,20 @@ De pie ocupa su propia fila a lo ancho: es lo que hay que acordarse de marcar
 
 ## Ventana 3 — CRUD de Producto
 
+La imagen del producto se elige de un **banco de imágenes**
+([decisión 0033](../decisiones/0033-banco-de-imagenes.md)): doce figuras
+abstractas de fábrica —que no pesan y están siempre— más las fotos que se sumen
+desde la galería o la cámara. Una foto agregada sirve para todos los productos
+que la quieran.
+
+Un producto **sin imagen elegida** no se ve con un icono genérico: se ve con una
+figura derivada de su propio id, distinta para cada uno. En una lista larga, esa
+figura se reconoce antes de leer el nombre.
+
+El banco es local y **no viaja** en el backup ni en la sincronización: un
+producto cuya foto no está en este aparato se ve con su figura, igual que uno que
+nunca eligió imagen.
+
 Listado de productos con las acciones: **agregar**, **editar**, **descontinuar**, y **purgar** (borrado físico real) — esto corresponde 1:1 con `Operations.feature` y el ciclo de vida de `ProductoNotifier` en [gestion-estado.md](../arquitectura/gestion-estado.md). Mismo orden/agrupación y búsqueda que el resto de la app ([decisión 0018](../decisiones/0018-orden-y-busqueda-de-producto.md)).
 
 **Purgar** ([decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md)) resuelve el punto que planteó el usuario sobre acumulación de productos duplicados/creados por error que nunca se van a usar: solo está disponible para Gerente, y solo habilitado cuando el producto ya está descontinuado, tiene cero ventas asociadas, y se confirma que todos los dispositivos conocidos están sincronizados (la UI debe deshabilitar el botón mientras esa condición no se cumpla, con un mensaje indicando por qué). Para casos custom de un solo uso (ej. un descuento puntual para un cliente específico) que nunca deberían haber sido un Producto de catálogo en primer lugar, ver la **línea libre** en la Ventana 2 — evita el problema desde la raíz en vez de crear y purgar después.

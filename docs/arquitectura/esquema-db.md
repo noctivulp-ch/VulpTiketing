@@ -41,6 +41,13 @@ CREATE TABLE producto (
 
 **Ciclo de vida completo:** crear, leer, actualizar, **descontinuar** (soft-delete, arriba), y **purgar** — borrado físico real, solo Gerente, solo si ya está descontinuado, tiene cero `linea_venta` que lo referencien, y todos los dispositivos conocidos están sincronizados. Ver [decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md).
 
+**`producto.imagen`** guarda una **referencia al banco de imágenes**, no una
+ruta: `abs:<semilla>` para una figura de fábrica, o el **nombre** de un archivo
+del banco. Solo el nombre porque el directorio de datos cambia entre
+instalaciones y entre sistemas. El banco es local y no se sincroniza; una
+referencia que no resuelve se ve como la figura propia del producto. Ver
+[decisión 0033](../decisiones/0033-banco-de-imagenes.md).
+
 ## Venta
 
 ```sql
