@@ -29,7 +29,9 @@ import 'package:uuid/uuid.dart';
 import 'package:vulp_tiketing/app.dart';
 import 'package:vulp_tiketing/core/crypto/cifrado_nativo.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
+import 'package:vulp_tiketing/features/import_export/tiketback_notifier.dart';
 import 'package:vulp_tiketing/features/import_export/tiketback_service.dart';
+import 'package:vulp_tiketing/features/import_export/tiketdata_notifier.dart';
 import 'package:vulp_tiketing/features/import_export/tiketdata_service.dart';
 import 'package:vulp_tiketing/features/producto/categoria_notifier.dart';
 import 'package:vulp_tiketing/features/producto/categoria_model.dart';
@@ -117,6 +119,21 @@ Future<dynamic> _ejecutar(
       final db = await container.read(databaseProvider.future);
       await TiketdataService(db).exportarCatalogo(args['path'] as String);
       return null;
+
+    // El camino REAL de exportar, el que usa el botón: escribe en la carpeta
+    // privada y publica en Descargas. `export_tiketdata` escribe a una ruta
+    // dada y se salta justo la parte que hay que comprobar.
+    case 'exportar_catalogo':
+      final (resultado, donde) = await container
+          .read(tiketdataNotifierProvider.notifier)
+          .exportarCatalogo();
+      return {'resultado': resultado.name, 'donde': donde};
+
+    case 'exportar_backup':
+      final (r, donde) = await container
+          .read(tiketbackNotifierProvider.notifier)
+          .exportar(args['password'] as String? ?? 'pruebas');
+      return {'resultado': r.name, 'donde': donde};
 
     case 'export_tiketback':
       final db = await container.read(databaseProvider.future);

@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
 
 import '../../../core/nav/retroceso.dart';
 import '../../../core/ui/bento_aviso.dart';
@@ -14,6 +13,7 @@ import '../../../core/theme/bento_velo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 import '../../../core/ui/bento_falla.dart';
+import '../../import_export/almacen_publico.dart';
 import '../../import_export/carpeta_exportacion.dart';
 import '../reporte_export_service.dart';
 import '../reportes_provider.dart';
@@ -118,9 +118,10 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         '.${formato.extension}',
       );
       await destino.writeAsBytes(bytes);
+      final donde = await const AlmacenPublico().publicar(destino);
       // Con el nombre en el aviso: sin selector, si no se dice dónde quedó,
       // nadie lo encuentra.
-      if (mounted) mostrarAviso(context, '✓ ${p.basename(destino.path)}');
+      if (mounted) mostrarAviso(context, '✓ $donde');
     } catch (_) {
       if (mounted) mostrarAviso(context, '✗ No se pudo guardar el reporte');
     }

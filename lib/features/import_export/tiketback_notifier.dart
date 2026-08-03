@@ -1,6 +1,7 @@
 import 'package:cryptography/cryptography.dart';
 import 'package:file_picker/file_picker.dart';
 
+import 'almacen_publico.dart';
 import 'carpeta_exportacion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
@@ -45,7 +46,7 @@ class TiketbackNotifier extends Notifier<void> {
         archivosDeLibro: (await libros.todos(db)).map((l) => l.archivo).toList(),
         rutaDestino: ruta,
       );
-      return (ResultadoTiketback.ok, ruta);
+      return (ResultadoTiketback.ok, await const AlmacenPublico().publicar(destino));
     } catch (_) {
       return (ResultadoTiketback.error, null);
     }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,12 +9,16 @@ import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_aviso.dart';
 import '../carpeta_exportacion.dart';
 
-/// Muestra dónde exporta la app y deja cambiarlo.
+/// Dice dónde queda lo que la app exporta, y deja cambiarlo donde eso tenga
+/// sentido.
 ///
-/// La carpeta se elige UNA vez y vale para backups, catálogos y reportes.
-/// Antes cada exportación abría el selector del sistema — un paso de más
-/// siempre, y en Android encima roto: `saveFile` exige los bytes del archivo
-/// por adelantado, y un backup puede pesar más que la memoria libre.
+/// En Android **no** se puede elegir: todo va a `Descargas/VulpTiketing` por
+/// MediaStore, que es la única carpeta visible en la que la app puede escribir
+/// sin pedir permisos. Ofrecer un selector ahí sería ofrecer algo que no
+/// funciona — es lo que pasaba antes, con las exportaciones cayendo en
+/// `Android/data/`, invisible salvo conectando el teléfono a una computadora.
+///
+/// En escritorio sí se elige, porque ahí `dart:io` escribe donde le digan.
 class CarpetaExportacionControl extends ConsumerWidget {
   const CarpetaExportacionControl({super.key});
 
@@ -26,9 +32,8 @@ class CarpetaExportacionControl extends ConsumerWidget {
     if (!context.mounted) return;
 
     ref.invalidate(carpetaExportacionProvider);
-    // Se comprueba escribiendo de verdad: en Android una carpeta compartida por
-    // SAF llega como `content://` y `dart:io` no sabe abrirla. Descubrirlo al
-    // exportar un backup sería tarde.
+    // Se comprueba escribiendo de verdad: que una carpeta exista no implica que
+    // la app pueda escribir en ella, y descubrirlo al exportar sería tarde.
     mostrarAviso(context, ok ? '✓ Carpeta cambiada' : '✗ No se puede escribir en esa carpeta');
   }
 
@@ -41,8 +46,9 @@ class CarpetaExportacionControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final carpeta = ref.watch(carpetaExportacionProvider);
     final textos = Theme.of(context).textTheme;
+    final enAndroid = Platform.isAndroid;
+    final carpeta = ref.watch(carpetaExportacionProvider);
 
     return BentoPozo(
       child: Column(
@@ -52,26 +58,35 @@ class CarpetaExportacionControl extends ConsumerWidget {
           Text('Se guarda en', style: textos.labelLarge),
           const SizedBox(height: BentoSpacing.unidad / 2),
           Text(
-            carpeta.valueOrNull?.path ?? 'Resolviendo…',
+            enAndroid ? 'Descargas › VulpTiketing' : carpeta.valueOrNull?.path ?? 'Resolviendo…',
             style: textos.bodySmall,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: BentoSpacing.unidad),
-          Wrap(
-            spacing: BentoSpacing.unidad,
-            children: [
-              TextButton.icon(
-                icon: const Icon(Icons.folder_open_outlined),
-                label: const Text('Cambiar'),
-                onPressed: () => _cambiar(context, ref),
-              ),
-              TextButton(
-                onPressed: () => _restablecer(context, ref),
-                child: const Text('Por defecto'),
-              ),
-            ],
-          ),
+          if (enAndroid) ...[
+            const SizedBox(height: BentoSpacing.unidad / 2),
+            Text(
+              'Backups, catálogos y reportes quedan ahí, con el gestor de '
+              'archivos del teléfono.',
+              style: textos.bodySmall?.copyWith(color: lacaDe(context).textoAtenuadoEnBandeja),
+            ),
+          ] else ...[
+            const SizedBox(height: BentoSpacing.unidad),
+            Wrap(
+              spacing: BentoSpacing.unidad,
+              children: [
+                TextButton.icon(
+                  icon: const Icon(Icons.folder_open_outlined),
+                  label: const Text('Cambiar'),
+                  onPressed: () => _cambiar(context, ref),
+                ),
+                TextButton(
+                  onPressed: () => _restablecer(context, ref),
+                  child: const Text('Por defecto'),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

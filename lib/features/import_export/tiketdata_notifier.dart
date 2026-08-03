@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/db/db_providers.dart';
 import '../producto/categoria_notifier.dart';
 import '../producto/producto_notifier.dart';
+import 'almacen_publico.dart';
 import 'carpeta_exportacion.dart';
 import 'tiketdata_service.dart';
 
@@ -23,7 +24,8 @@ class TiketdataNotifier extends Notifier<void> {
     try {
       final destino = await const CarpetaExportacion().archivoPara('catalogo.tiketdata');
       await destino.writeAsBytes(await TiketdataService(db).generarCatalogo());
-      return (ResultadoTiketdata.ok, destino.path);
+      // Y a Descargas, que es donde el dueño del teléfono lo puede encontrar.
+      return (ResultadoTiketdata.ok, await const AlmacenPublico().publicar(destino));
     } catch (_) {
       return (ResultadoTiketdata.error, null);
     }
