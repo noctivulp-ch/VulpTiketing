@@ -475,38 +475,103 @@ class _FilaLineaVenta extends StatelessWidget {
   final VoidCallback onEditar;
   final VoidCallback onQuitar;
 
+  /// Por debajo de este ancho la fila no entra de una: la miniatura (44), los
+  /// dos botones (48+48) y el subtotal ya se comen casi todo, y al nombre no le
+  /// queda nada.
+  static const _anchoMinimoEnUnaFila = 320.0;
+
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+
+    final miniatura = Container(
+      width: bentoMiniatura,
+      height: bentoMiniatura,
+      decoration: BoxDecoration(
+        color: lacaDe(context).pozoContacto,
+        borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
+      ),
+      child: Icon(lineaLibre ? Icons.edit_note : Icons.image_outlined, size: 22),
+    );
+
+    // `maxLines` + elipsis SIEMPRE, no solo cuando el ancho aprieta: sin esto,
+    // un `Text` al que le queda un ancho de dos caracteres parte el nombre
+    // LETRA POR LETRA en vertical. Es lo que se veía en el carrito con el panel
+    // abierto: "F / r / ap / p / é" encima del precio.
+    final titulo = Text(
+      nombre,
+      style: tema.textTheme.bodyLarge,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      softWrap: false,
+    );
+    final detalle = Text(
+      'x$cantidad${nota != null && nota!.isNotEmpty ? ' · $nota' : ''}',
+      style: tema.textTheme.bodySmall,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+    final precio = Text(
+      '₡${subtotal.toStringAsFixed(2)}',
+      style: tema.textTheme.labelLarge,
+      maxLines: 1,
+    );
+    final editar = IconButton(icon: const Icon(Icons.edit_outlined), onPressed: onEditar);
+    final quitar = IconButton(icon: const Icon(Icons.delete_outline), onPressed: onQuitar);
+
     return BentoPozo(
       padding: const EdgeInsets.all(BentoSpacing.unidad),
-      child: Row(
-        children: [
-          Container(
-            width: bentoMiniatura,
-            height: bentoMiniatura,
-            decoration: BoxDecoration(
-              color: lacaDe(context).pozoContacto,
-              borderRadius: BorderRadius.circular(BentoRadius.pozo - BentoSpacing.unidad / 2),
-            ),
-            child: Icon(lineaLibre ? Icons.edit_note : Icons.image_outlined, size: 22),
-          ),
-          const SizedBox(width: BentoSpacing.unidad),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: LayoutBuilder(
+        builder: (context, restricciones) {
+          if (restricciones.maxWidth >= _anchoMinimoEnUnaFila) {
+            return Row(
               children: [
-                Text(nombre, style: Theme.of(context).textTheme.bodyLarge),
-                Text(
-                  'x$cantidad${nota != null && nota!.isNotEmpty ? ' · $nota' : ''}',
-                  style: Theme.of(context).textTheme.bodySmall,
+                miniatura,
+                const SizedBox(width: BentoSpacing.unidad),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [titulo, detalle],
+                  ),
                 ),
+                precio,
+                editar,
+                quitar,
               ],
-            ),
-          ),
-          Text('₡${subtotal.toStringAsFixed(2)}', style: Theme.of(context).textTheme.labelLarge),
-          IconButton(icon: const Icon(Icons.edit_outlined), onPressed: onEditar),
-          IconButton(icon: const Icon(Icons.delete_outline), onPressed: onQuitar),
-        ],
+            );
+          }
+
+          // Angosto —el carrito con el panel de productos abierto— en dos
+          // líneas: qué es arriba, cuánto y qué hacer con ello abajo. Los
+          // botones conservan sus 48 dp táctiles, que es lo que no se puede
+          // negociar.
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  miniatura,
+                  const SizedBox(width: BentoSpacing.unidad),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [titulo, detalle],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: BentoSpacing.unidad / 2),
+              Row(
+                children: [
+                  Expanded(child: precio),
+                  editar,
+                  quitar,
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

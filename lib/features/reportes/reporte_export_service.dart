@@ -178,6 +178,16 @@ class ReporteExportService {
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
+        // El paquete corta en 20 páginas por defecto y lanza
+        // `PdfTooBigPageException`. Con una fila por VENTA cabía justo; desde
+        // que el detalle va línea por línea, un reporte anual —hasta 300 ventas
+        // de varias líneas— se pasa, y exportar el año en PDF fallaba con un
+        // "no se pudo guardar" que no decía nada.
+        //
+        // El límite del paquete es un guardarraíl contra un widget que se
+        // repite infinito, no un tope de diseño: acá el número de páginas está
+        // acotado por `limiteDetalleRango`, así que basta con dejarle sitio.
+        maxPages: 500,
         build: (context) => [
           pw.Header(level: 0, text: titulo),
           pw.Text(

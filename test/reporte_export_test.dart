@@ -207,4 +207,50 @@ void main() {
 
     expect(File(ruta).existsSync(), isTrue);
   });
+
+  test('el PDF de un año entero no revienta por el tope de páginas', () async {
+    // El fallo que el usuario encontró en el aparato: exportar el año en PDF
+    // decía "no se pudo guardar el reporte". El generador corta en 20 páginas y
+    // lanza `PdfTooBigPageException`; con una fila por VENTA cabía justo, y
+    // desde que el detalle va línea por línea, no.
+    //
+    // 300 ventas es el tope real de `limiteDetalleRango`, y dos líneas por
+    // venta es el promedio de la base de pruebas.
+    final muchas = [
+      for (var i = 0; i < 300; i++)
+        VentaConLineas(
+          venta: Venta(
+            id: 'v$i',
+            fechaHora: DateTime(2026, 1 + (i % 12), 1 + (i % 28), 8 + (i % 12)),
+            estado: EstadoVenta.activa,
+            updatedAt: DateTime(2026),
+          ),
+          lineas: [
+            for (var j = 0; j < 2; j++)
+              LineaDetallada(
+                descripcion: 'Casado con chuleta cerdo encebollada $j',
+                linea: LineaVenta(
+                  id: 'l$i-$j',
+                  ventaId: 'v$i',
+                  productoId: 'p1',
+                  precioAplicado: 2500,
+                  cantidad: 1 + (j % 3),
+                  updatedAt: DateTime(2026),
+                ),
+              ),
+          ],
+        ),
+    ];
+
+    final bytes = await const ReporteExportService().generar(
+      formato: FormatoReporte.pdf,
+      titulo: 'Ventas del año · 2026',
+      total: 1500000,
+      porTurno: {Turno.manana: 500000, Turno.tarde: 700000, Turno.noche: 300000},
+      ventas: muchas,
+    );
+
+    expect(bytes.length, greaterThan(10000));
+    expect(String.fromCharCodes(bytes.take(4)), '%PDF');
+  });
 }

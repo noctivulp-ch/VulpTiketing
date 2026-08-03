@@ -29,6 +29,10 @@ import 'package:uuid/uuid.dart';
 import 'package:vulp_tiketing/app.dart';
 import 'package:vulp_tiketing/core/crypto/cifrado_nativo.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
+import 'package:vulp_tiketing/features/reportes/reporte_export_service.dart';
+import 'package:vulp_tiketing/features/reportes/reportes_provider.dart';
+import 'package:vulp_tiketing/features/import_export/carpeta_exportacion.dart';
+import 'package:vulp_tiketing/features/import_export/almacen_publico.dart';
 import 'package:vulp_tiketing/features/import_export/tiketback_notifier.dart';
 import 'package:vulp_tiketing/features/import_export/tiketback_service.dart';
 import 'package:vulp_tiketing/features/import_export/tiketdata_notifier.dart';
@@ -128,6 +132,37 @@ Future<dynamic> _ejecutar(
           .read(tiketdataNotifierProvider.notifier)
           .exportarCatalogo();
       return {'resultado': resultado.name, 'donde': donde};
+
+    // El reporte de un período, por el mismo camino que el botón: se calcula,
+    // se genera el archivo y se publica en Descargas. Exportar el AÑO en PDF
+    // fallaba por el tope de páginas del generador y el aviso de la app no
+    // decía por qué.
+    case 'exportar_reporte':
+      final rango = RangoReporte.values.firstWhere(
+        (r) => r.name == (args['rango'] as String? ?? 'anio'),
+      );
+      final formato = FormatoReporte.values.firstWhere(
+        (f) => f.name == (args['formato'] as String? ?? 'pdf'),
+      );
+      final params = ReportesParametros(rango: rango, fechaReferencia: DateTime.now());
+      final reporte = await container.read(reportesProvider(params).future);
+      final detalle = await container.read(detalleRangoProvider(params).future);
+      final bytes = await const ReporteExportService().generar(
+        formato: formato,
+        titulo: 'Ventas · ${rango.name}',
+        total: reporte.total,
+        porTurno: reporte.porTurno,
+        ventas: detalle.ventas,
+      );
+      final destino = await const CarpetaExportacion().archivoPara(
+        'reporte-${rango.name}.${formato.extension}',
+      );
+      await destino.writeAsBytes(bytes);
+      return {
+        'donde': await const AlmacenPublico().publicar(destino),
+        'ventas': detalle.ventas.length,
+        'bytes': bytes.length,
+      };
 
     case 'exportar_backup':
       final (r, donde) = await container

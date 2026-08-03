@@ -122,9 +122,22 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       // Con el nombre en el aviso: sin selector, si no se dice dónde quedó,
       // nadie lo encuentra.
       if (mounted) mostrarAviso(context, '✓ $donde');
-    } catch (_) {
-      if (mounted) mostrarAviso(context, '✗ No se pudo guardar el reporte');
+    } catch (e) {
+      // Con el motivo, no solo "no se pudo": exportar el año en PDF falló por
+      // el tope de páginas del generador y el aviso a secas no daba por dónde
+      // empezar a mirar.
+      if (mounted) mostrarAviso(context, '✗ No se pudo exportar: ${_motivo(e)}');
     }
+  }
+
+  /// Lo que se le puede decir al usuario de un fallo de exportación, en una
+  /// línea. El texto crudo de una excepción no le sirve a nadie.
+  String _motivo(Object error) {
+    final texto = error.toString();
+    if (texto.contains('TooBigPage')) return 'el reporte no cabe en el PDF';
+    if (texto.contains('No space left')) return 'no queda espacio en el teléfono';
+    if (texto.contains('Permission denied')) return 'sin permiso para escribir';
+    return 'error inesperado';
   }
 
   String _tituloPeriodo() {
