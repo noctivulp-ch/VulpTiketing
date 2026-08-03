@@ -37,12 +37,43 @@ class ReportesParametros {
       Object.hash(rango, fechaReferencia.year, fechaReferencia.month, fechaReferencia.day);
 }
 
+/// Una línea con QUÉ se vendió, no solo cuánto.
+///
+/// El nombre no está en `linea_venta`: la línea de catálogo guarda el
+/// `producto_id` y la línea libre el `nombre_libre` (decisión 0016). Resolverlo
+/// aquí, en la consulta, es lo que permite que el detalle y las exportaciones
+/// digan "Casado con pollo" en vez de "2 línea(s)" — que era todo lo que
+/// mostraban.
+class LineaDetallada {
+  const LineaDetallada({required this.linea, required this.descripcion});
+
+  final LineaVenta linea;
+
+  /// El nombre del producto, o el nombre libre. Nunca vacío.
+  final String descripcion;
+
+  double get subtotal => linea.precioAplicado * linea.cantidad;
+
+  factory LineaDetallada.fromMap(Map<String, Object?> row) => LineaDetallada(
+    linea: LineaVenta.fromMap(row),
+    // Un producto purgado no puede tener ventas (0015), así que el nombre
+    // siempre resuelve. El literal es red de seguridad para una base traída de
+    // otro aparato a medio sincronizar, no un caso esperado.
+    descripcion: (row['descripcion'] as String?) ?? 'Producto sin nombre',
+  );
+}
+
 class VentaConLineas {
   const VentaConLineas({required this.venta, required this.lineas});
   final Venta venta;
-  final List<LineaVenta> lineas;
+  final List<LineaDetallada> lineas;
 
-  double get total => lineas.fold(0, (s, l) => s + l.precioAplicado * l.cantidad);
+  double get total => lineas.fold(0, (s, l) => s + l.subtotal);
+
+  /// Qué se vendió, para leerlo de un vistazo: "2× Casado, Fresco".
+  String get resumen => lineas
+      .map((l) => l.linea.cantidad > 1 ? '${l.linea.cantidad}× ${l.descripcion}' : l.descripcion)
+      .join(', ');
 }
 
 class RankingItem {
@@ -106,6 +137,14 @@ const _sqlTurno = '''
   END''';
 
 const _sqlRangoActivo = "v.estado = 'activa' AND v.fecha_hora >= ? AND v.fecha_hora < ?";
+
+/// El nombre de lo vendido, venga del catálogo o de una línea libre (0016).
+///
+/// `main.producto` calificado a propósito: las ventas viven en el libro
+/// adjunto (0025) y el catálogo en la base principal, así que sin calificar la
+/// consulta dependería de en qué base mire SQLite primero.
+const _sqlDescripcionLinea = 'COALESCE(p.nombre, lv.nombre_libre) AS descripcion';
+const _sqlJoinProducto = 'LEFT JOIN main.producto p ON p.id = lv.producto_id';
 
 Turno _turnoDeNombre(String nombre) => switch (nombre) {
   'manana' => Turno.manana,
@@ -200,14 +239,16 @@ final reportesProvider = FutureProvider.family<ReporteResultado, ReportesParamet
     // Todas las líneas del rango en UNA consulta, agrupadas en Dart — no una
     // consulta por venta.
     final lineasRows = await db.rawQuery('''
-      SELECT lv.* FROM linea_venta lv
+      SELECT lv.*, $_sqlDescripcionLinea
+      FROM linea_venta lv
       JOIN venta v ON v.id = lv.venta_id
+      $_sqlJoinProducto
       WHERE $_sqlRangoActivo
     ''', args);
 
-    final lineasPorVenta = <String, List<LineaVenta>>{};
+    final lineasPorVenta = <String, List<LineaDetallada>>{};
     for (final row in lineasRows) {
-      (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaVenta.fromMap(row));
+      (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaDetallada.fromMap(row));
     }
 
     for (final row in ventasRows) {
@@ -273,10 +314,13 @@ final detalleRangoProvider = FutureProvider.family<DetalleRango, ReportesParamet
 
   // Las líneas de ESAS ventas en una sola consulta, no una por venta.
   final ids = ventasRows.map((r) => "'${r['id']}'").join(',');
-  final lineasRows = await db.rawQuery('SELECT * FROM linea_venta WHERE venta_id IN ($ids)');
-  final lineasPorVenta = <String, List<LineaVenta>>{};
+  final lineasRows = await db.rawQuery(
+    'SELECT lv.*, $_sqlDescripcionLinea FROM linea_venta lv $_sqlJoinProducto '
+    'WHERE lv.venta_id IN ($ids)',
+  );
+  final lineasPorVenta = <String, List<LineaDetallada>>{};
   for (final row in lineasRows) {
-    (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaVenta.fromMap(row));
+    (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaDetallada.fromMap(row));
   }
 
   return DetalleRango(

@@ -745,9 +745,11 @@ class _VistaDrillDown extends StatelessWidget {
                         final vc = ventas[i];
                         final f = vc.venta.fechaHora;
                         final hora = TimeOfDay.fromDateTime(f).format(context);
+                        // Qué se vendió, no cuántas líneas tenía: "2 línea(s)"
+                        // no le sirve a nadie para reconocer una venta.
                         return ListTile(
-                          title: Text('${f.day}/${f.month} $hora'),
-                          subtitle: Text('${vc.lineas.length} l\u00ednea(s)'),
+                          title: Text(vc.resumen, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          subtitle: Text('${f.day}/${f.month} · $hora'),
                           trailing: Text('\u20a1${vc.total.toStringAsFixed(2)}'),
                         );
                       },

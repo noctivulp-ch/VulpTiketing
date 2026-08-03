@@ -14,16 +14,27 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  VentaConLineas venta(String id, DateTime cuando, double precio) => VentaConLineas(
+  VentaConLineas venta(
+    String id,
+    DateTime cuando,
+    double precio, {
+    String descripcion = 'Casado con pollo',
+    int cantidad = 1,
+    String? nota,
+  }) => VentaConLineas(
     venta: Venta(id: id, fechaHora: cuando, estado: EstadoVenta.activa, updatedAt: cuando),
     lineas: [
-      LineaVenta(
-        id: '$id-1',
-        ventaId: id,
-        productoId: 'p1',
-        precioAplicado: precio,
-        cantidad: 1,
-        updatedAt: cuando,
+      LineaDetallada(
+        descripcion: descripcion,
+        linea: LineaVenta(
+          id: '$id-1',
+          ventaId: id,
+          productoId: 'p1',
+          precioAplicado: precio,
+          cantidad: cantidad,
+          nota: nota,
+          updatedAt: cuando,
+        ),
       ),
     ],
   );
@@ -31,11 +42,7 @@ void main() {
   final reporte = ReporteResultado(
     total: 3000,
     porTurno: {Turno.manana: 1000, Turno.tarde: 2000, Turno.noche: 0},
-    ventasPorTurno: {
-      Turno.manana: const [],
-      Turno.tarde: const [],
-      Turno.noche: const [],
-    },
+    ventasPorTurno: {Turno.manana: const [], Turno.tarde: const [], Turno.noche: const []},
     masVendidos: const [],
     menosVendidos: const [],
   );
@@ -63,13 +70,42 @@ void main() {
     return File(ruta).readAsString();
   }
 
-  test('el CSV lleva el total, los turnos y una fila por venta', () async {
+  test('el CSV lleva el total, los turnos y una fila por línea', () async {
     final csv = await exportarCsv();
 
     expect(csv, contains('"Total","3000.00"'));
     expect(csv, contains('"Mañana","1000.00"'));
-    expect(csv, contains('"04/03/2026","09:05","1","1000.00"'));
-    expect(csv, contains('"04/03/2026","14:30","1","2000.00"'));
+    // QUÉ se vendió, no cuántas líneas tenía la venta: el reporte decía
+    // "2 línea(s)" y con eso no se puede revisar un día raro ni cuadrar caja.
+    expect(csv, contains('"04/03/2026","09:05","Casado con pollo","1","1000.00","1000.00"'));
+    expect(csv, contains('"04/03/2026","14:30","Casado con pollo","1","2000.00","2000.00"'));
+  });
+
+  test('el CSV trae cantidad, nota y el id que agrupa las líneas', () async {
+    final ruta = '${dir.path}/detalle.csv';
+    await const ReporteExportService().exportar(
+      rutaDestino: ruta,
+      formato: FormatoReporte.csv,
+      titulo: 'Detalle',
+      total: 7500,
+      ventas: [
+        venta(
+          'v9',
+          DateTime(2026, 3, 4, 12),
+          2500,
+          descripcion: 'Batido de mora',
+          cantidad: 3,
+          nota: 'sin azúcar',
+        ),
+      ],
+    );
+    final csv = await File(ruta).readAsString();
+
+    expect(csv, contains('"Batido de mora","3","2500.00","7500.00","sin azúcar","v9"'));
+    // El encabezado dice qué es cada columna: un CSV sin encabezado obliga a
+    // adivinar cuál de los dos montos es el unitario.
+    expect(csv, contains('"Producto","Cantidad","Precio unitario","Subtotal"'));
+    expect(csv, contains('"Artículos","3"'), reason: 'tres unidades, no una línea');
   });
 
   test('el CSV abre bien en Excel: BOM y saltos CRLF', () async {

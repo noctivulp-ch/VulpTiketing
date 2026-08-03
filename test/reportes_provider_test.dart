@@ -61,10 +61,9 @@ void main() {
     );
     addTearDown(container.dispose);
     return container.read(
-      reportesProvider(ReportesParametros(
-        rango: RangoReporte.dia,
-        fechaReferencia: DateTime(2026, 3, 10),
-      )).future,
+      reportesProvider(
+        ReportesParametros(rango: RangoReporte.dia, fechaReferencia: DateTime(2026, 3, 10)),
+      ).future,
     );
   }
 
@@ -161,16 +160,14 @@ void main() {
     addTearDown(container.dispose);
 
     final dia = await container.read(
-      reportesProvider(ReportesParametros(
-        rango: RangoReporte.dia,
-        fechaReferencia: DateTime(2026, 3, 10),
-      )).future,
+      reportesProvider(
+        ReportesParametros(rango: RangoReporte.dia, fechaReferencia: DateTime(2026, 3, 10)),
+      ).future,
     );
     final anio = await container.read(
-      reportesProvider(ReportesParametros(
-        rango: RangoReporte.anio,
-        fechaReferencia: DateTime(2026, 3, 10),
-      )).future,
+      reportesProvider(
+        ReportesParametros(rango: RangoReporte.anio, fechaReferencia: DateTime(2026, 3, 10)),
+      ).future,
     );
 
     // El dia lo necesita para el drill-down; el anio no lo usa y llenarlo
@@ -179,5 +176,60 @@ void main() {
     expect(anio.ventasPorTurno.values.every((l) => l.isEmpty), isTrue);
     // Pero el total del anio sigue siendo correcto.
     expect(anio.total, closeTo(800, 0.001));
+  });
+
+  test('el detalle dice QUÉ se vendió, no cuántas líneas', () async {
+    // Lo que el reporte mostraba era "2 línea(s)": el nombre no está en
+    // `linea_venta` —la de catálogo guarda producto_id y la libre nombre_libre
+    // (0016)— y nadie lo resolvía.
+    final db = await abrirDb();
+    addTearDown(db.close);
+
+    await db.insert('producto', {
+      'id': 'p1',
+      'nombre': 'Casado con pollo',
+      'precio_base': 3500,
+      'updated_at': DateTime(2026).toIso8601String(),
+    });
+    await sembrar(db, 9, 3500, productoId: 'p1');
+    await sembrar(db, 10, 900); // línea libre
+
+    final reporte = await reporteDelDia(db);
+    final manana = reporte.ventasPorTurno[Turno.manana]!;
+
+    expect(manana, hasLength(2));
+    expect(
+      manana.map((v) => v.lineas.single.descripcion),
+      containsAll(['Casado con pollo', 'linea libre']),
+      reason: 'tanto el producto de catálogo como la línea libre tienen nombre',
+    );
+  });
+
+  test('el detalle de un rango también trae el nombre', () async {
+    // Es OTRA consulta —`detalleRangoProvider`, la del total del período— y se
+    // le había olvidado el mismo JOIN.
+    final db = await abrirDb();
+    addTearDown(db.close);
+
+    await db.insert('producto', {
+      'id': 'p1',
+      'nombre': 'Batido de mora',
+      'precio_base': 1200,
+      'updated_at': DateTime(2026).toIso8601String(),
+    });
+    await sembrar(db, 15, 1200, productoId: 'p1');
+
+    final container = ProviderContainer(
+      overrides: [databaseProvider.overrideWith((ref) async => db)],
+    );
+    addTearDown(container.dispose);
+    final detalle = await container.read(
+      detalleRangoProvider(
+        ReportesParametros(rango: RangoReporte.mes, fechaReferencia: DateTime(2026, 3, 10)),
+      ).future,
+    );
+
+    expect(detalle.ventas.single.lineas.single.descripcion, 'Batido de mora');
+    expect(detalle.ventas.single.resumen, 'Batido de mora');
   });
 }
