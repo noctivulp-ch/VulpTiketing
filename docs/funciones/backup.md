@@ -12,7 +12,8 @@ Dos tipos de archivo con propósitos distintos — ver [decisión 0017](../decis
 - Exportar: disponible para cualquier rol. Restaurar: **solo Gerente** (aplicado en `ConfiguracionScreen`).
 - Esquema de encriptación: contraseña de exportación propia (distinta del login) → clave derivada con Argon2id → AES-256-GCM (`package:cryptography`). Ver [seguridad](../arquitectura/seguridad.md) y [decisión 0006](../decisiones/0006-encriptacion-backup.md).
 - Restaurar es **siempre un reemplazo completo** del estado local — no existe modo "fusionar" para este archivo (fusionar dos historiales de ventas no tiene sentido contable). La UI pide confirmación explícita antes de pedir la contraseña, por ser irreversible.
-- Selector de archivo: `file_picker` (nativo, verificado que compila en los tres targets).
+- **Dónde queda el archivo**: en **Descargas › VulpTiketing**, sin selector — se exporta con un toque y el aviso dice el nombre. Antes caía en `Android/data/<paquete>/`, visible solo conectando el teléfono a una computadora: un backup así no es un backup. Va por MediaStore con código nativo, que es la única vía sin pedir permisos desde Android 10 ([decisión 0029](../decisiones/0029-exportar-a-descargas-por-mediastore.md)).
+- **Para IMPORTAR** sí se abre el selector nativo (`file_picker`): ahí el usuario tiene que decir qué archivo, y eso no se puede adivinar.
 
 ## `.tiketdata` — paquete de catálogo (sin cifrar)
 
@@ -25,4 +26,5 @@ Dos tipos de archivo con propósitos distintos — ver [decisión 0017](../decis
   - **Reemplazar** — descontinúa (soft-delete, nunca borrado físico) todo lo local activo que no esté en el archivo, y aplica upsert de lo que sí viene.
   - **Fusionar** — aplica upsert solo de lo que viene en el archivo, sin tocar el resto del catálogo. La UI pide confirmación explícita solo para "Reemplazar" (afecta datos existentes).
   - Ambos modos reutilizan `RowSyncEngine.resolver()` fila por fila — el mismo mecanismo LWW de la sync entre dispositivos (0005), no es un algoritmo de merge nuevo.
-- Selector de archivo: `file_picker`, igual que `.tiketback`.
+- Exportar deja el archivo en **Descargas › VulpTiketing**, igual que el backup. Importar abre el selector nativo (`file_picker`), también igual.
+- El catálogo se publica como `application/octet-stream` **aunque sea JSON por dentro**: MediaStore renombra el archivo para que la extensión case con el tipo, y con `application/json` salía `catalogo.tiketdata.json` — y la extensión es lo que hace que el selector de importar lo reconozca.

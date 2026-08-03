@@ -17,3 +17,24 @@ Esto significa: el diseño de permisos por rol prioriza que cada quien vea la UI
 ## Multi-dispositivo
 
 El esquema no asume un único Gerente ni una única Registradora: puede haber una Gerente principal y varias Registradoras (cada una en su propio dispositivo). Ver [sincronización](../arquitectura/sincronizacion.md) para cómo eso afecta el diseño de sync.
+
+## La sesión se conserva entre aperturas
+
+El Login se ve **solo la primera vez o después de cerrar sesión** — cerrar
+sesión no es rutinario, es para cambiar de rol en un aparato compartido.
+
+El rol vive en el almacén seguro, igual que las contraseñas, y se duplica como
+**pista** en las preferencias simples para poder abrir sin esperar
+([decisión 0027](../decisiones/0027-arranque-optimista-de-sesion.md)).
+
+**Qué pasa si el almacén no contesta.** Abrir el Keystore cuesta 1104–1573 ms
+medidos en el teléfono del negocio, y compitiendo con el arranque puede tardar
+más. La lectura tiene un límite de 8 s, y si expira **no se toca nada**: con
+pista se sigue con ella, sin pista se piden credenciales. "No pude comprobar" no
+es "no hay sesión" — tratarlos igual expulsaba al Login a quien sí tenía sesión
+y encima borraba la pista, así que el arranque siguiente tampoco abría. El
+límite existe para el almacén *roto*, no para el lento.
+
+Lo que no cambia: **nunca se da acceso por no poder comprobar**. Sin pista, la
+app pide la contraseña.
+
