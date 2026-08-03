@@ -35,3 +35,4 @@ Volver a [../index](../index.md)
 | [0029](0029-exportar-a-descargas-por-mediastore.md) | Exportar a Descargas por MediaStore, con código nativo | Aceptada |
 | [0030](0030-gestos-un-dedo-navega-varios-actuan.md) | Gestos: un dedo navega, dos o tres actúan | Aceptada |
 | [0031](0031-paridad-de-escritorio-teclado-y-touchpad.md) | Paridad de escritorio: teclado y touchpad | Aceptada |
+| [0032](0032-metodo-de-pago-en-la-venta.md) | Método de pago en la venta, con referencia opcional anotada después | Aceptada |

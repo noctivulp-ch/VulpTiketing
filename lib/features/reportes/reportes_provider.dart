@@ -88,6 +88,7 @@ class ReporteResultado {
   const ReporteResultado({
     required this.total,
     required this.porTurno,
+    this.porSinpe = 0,
     required this.masVendidos,
     required this.menosVendidos,
     required this.ventasPorTurno,
@@ -95,6 +96,15 @@ class ReporteResultado {
 
   final double total;
   final Map<Turno, double> porTurno;
+
+  /// Cuánto entró por SINPE. Lo demás es efectivo, que es lo normal.
+  ///
+  /// Un solo número y no un mapa por método: mientras haya dos formas de cobrar,
+  /// "cuánto por transferencia" contesta la pregunta entera —el efectivo es la
+  /// resta— y un mapa obligaría a recorrerlo en cada sitio que lo muestre.
+  final double porSinpe;
+
+  double get porEfectivo => total - porSinpe;
   final List<RankingItem> masVendidos;
   final List<RankingItem> menosVendidos;
 
@@ -190,6 +200,17 @@ final reportesProvider = FutureProvider.family<ReporteResultado, ReportesParamet
   }
   final total = porTurno.values.fold(0.0, (a, b) => a + b);
 
+  // Cuánto entró por transferencia. Se agrega en SQL como todo lo demás: traer
+  // las ventas para sumarlas en Dart es justo lo que se corrigió al construir
+  // este reporte.
+  final sinpeRows = await db.rawQuery('''
+    SELECT SUM(lv.precio_aplicado * lv.cantidad) AS total
+    FROM linea_venta lv
+    JOIN venta v ON v.id = lv.venta_id
+    WHERE $_sqlRangoActivo AND v.metodo_pago = 'sinpe'
+  ''', args);
+  final porSinpe = (sinpeRows.first['total'] as num?)?.toDouble() ?? 0;
+
   // 2. Ranking, con el nombre resuelto en la misma consulta (antes era una
   //    consulta por producto distinto). Las líneas libres quedan fuera a
   //    propósito: el ranking existe para decisiones de catálogo, y una línea
@@ -263,6 +284,7 @@ final reportesProvider = FutureProvider.family<ReporteResultado, ReportesParamet
   return ReporteResultado(
     total: total,
     porTurno: porTurno,
+    porSinpe: porSinpe,
     masVendidos: masVendidos,
     menosVendidos: menosVendidos,
     ventasPorTurno: ventasPorTurno,

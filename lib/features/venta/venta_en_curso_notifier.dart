@@ -11,15 +11,24 @@ import 'venta_notifier.dart';
 const _uuid = Uuid();
 
 class VentaEnCurso {
-  const VentaEnCurso({this.lineas = const [], this.detalle});
+  const VentaEnCurso({this.lineas = const [], this.detalle, this.metodoPago = MetodoPago.efectivo});
 
   final List<LineaVenta> lineas;
   final String? detalle;
 
+  /// Con qué se está cobrando. Efectivo salvo que se marque SINPE.
+  final MetodoPago metodoPago;
+
   double get total => lineas.fold(0, (suma, l) => suma + l.precioAplicado * l.cantidad);
 
-  VentaEnCurso copyWith({List<LineaVenta>? lineas, String? detalle}) {
-    return VentaEnCurso(lineas: lineas ?? this.lineas, detalle: detalle ?? this.detalle);
+  VentaEnCurso copyWith({List<LineaVenta>? lineas, String? detalle, MetodoPago? metodoPago}) {
+    // El método se ARRASTRA: agregar una línea a una venta ya marcada como
+    // SINPE no puede devolverla a efectivo por el camino.
+    return VentaEnCurso(
+      lineas: lineas ?? this.lineas,
+      detalle: detalle ?? this.detalle,
+      metodoPago: metodoPago ?? this.metodoPago,
+    );
   }
 }
 
@@ -117,6 +126,15 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
   }
 
   /// Persiste el borrador como Venta "activa" y arranca un carrito nuevo.
+  /// Marca o desmarca SINPE en la venta que se está armando.
+  ///
+  /// El identificador de la transferencia NO se pide acá: al cobrar hay cola y
+  /// nadie transcribe doce dígitos con el cliente delante. Lo que no puede
+  /// perderse es *que* fue SINPE, y eso es un toque.
+  void marcarSinpe({required bool activo}) {
+    state = state.copyWith(metodoPago: activo ? MetodoPago.sinpe : MetodoPago.efectivo);
+  }
+
   Future<void> guardar() async {
     if (state.lineas.isEmpty) return;
 
@@ -135,6 +153,7 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
       fechaHora: ahora,
       detalle: state.detalle,
       estado: EstadoVenta.activa,
+      metodoPago: state.metodoPago,
       updatedAt: ahora,
     );
     await dao.guardar(venta, state.lineas);

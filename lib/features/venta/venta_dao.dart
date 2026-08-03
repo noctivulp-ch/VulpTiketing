@@ -30,6 +30,28 @@ class VentaDao {
   }
 
   /// Unica transicion permitida sobre una Venta ya guardada (decision 0009).
+  /// Anota el identificador de la transferencia de una venta ya cobrada.
+  ///
+  /// Es la ÚNICA columna de `venta` que se puede escribir después de guardarla,
+  /// aparte de la reversión. No toca importes, líneas ni estado: es una
+  /// anotación sobre cómo entró la plata, no una corrección de la venta. Ver la
+  /// decisión 0032 y el porqué en `VentaNotifier.anotarReferenciaDePago`.
+  ///
+  /// Vacío se guarda como `NULL`: "sin referencia" es la ausencia del dato, no
+  /// una cadena vacía que después haya que distinguir en cada consulta.
+  Future<void> anotarReferenciaDePago(String id, String? referencia, DateTime cuando) {
+    final limpia = referencia?.trim();
+    return _db.update(
+      'venta',
+      {
+        'referencia_pago': limpia == null || limpia.isEmpty ? null : limpia,
+        'updated_at': cuando.toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<void> revertir(String id, String motivoReversionJson, DateTime cuando) {
     return _db.update(
       'venta',

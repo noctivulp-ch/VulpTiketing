@@ -20,6 +20,26 @@ class VentaNotifier extends AsyncNotifier<List<Venta>> {
     return VentaDao(db).listar();
   }
 
+  /// Anota el identificador de la transferencia de una venta SINPE.
+  ///
+  /// **Sí, esto escribe sobre una venta guardada**, y la decisión 0009 dice que
+  /// Venta solo se crea o se revierte. La excepción es deliberada y acotada:
+  /// la referencia no es un dato de la venta sino del cobro —no cambia importes,
+  /// líneas ni estado— y el flujo real la exige, porque al cobrar hay cola y
+  /// nadie transcribe doce dígitos con el cliente delante.
+  ///
+  /// Lo que 0009 protege es que una venta no se pueda "arreglar" después. Eso
+  /// sigue igual: no hay `actualizar()` ni `eliminar()`, y esta operación no
+  /// puede convertirse en uno — escribe una sola columna y nada más.
+  ///
+  /// Pasar `null` o vacío la borra: alguien anota mal un número y tiene que
+  /// poder dejarlo como estaba.
+  Future<void> anotarReferenciaDePago(String ventaId, String? referencia) async {
+    final dao = await _dao;
+    await dao.anotarReferenciaDePago(ventaId, referencia, DateTime.now());
+    state = AsyncData(await dao.listar());
+  }
+
   /// Exige motivo estructurado (decision 0010): tipo, detalle, quien, cuando.
   Future<void> revertir({
     required String ventaId,

@@ -19,6 +19,8 @@ import '../../../core/ui/bento_falla.dart';
 import '../../import_export/almacen_publico.dart';
 import '../../import_export/carpeta_exportacion.dart';
 import '../reporte_export_service.dart';
+import '../../venta/venta_model.dart';
+import '../../venta/venta_notifier.dart';
 import '../reportes_provider.dart';
 import 'elegir_periodo.dart';
 
@@ -177,6 +179,49 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
   List<RangoReporte> _rangosDe(bool esGerente) =>
       esGerente ? RangoReporte.values : const [RangoReporte.dia, RangoReporte.semana];
 
+  /// Pide el identificador de la transferencia de una venta SINPE.
+  ///
+  /// Se anota **después** de cobrar, con calma: al cobrar hay cola y nadie
+  /// transcribe doce dígitos con el cliente delante. Por eso el campo llega
+  /// vacío o con lo que ya hubiera, y guardarlo en blanco lo borra.
+  Future<void> _anotarReferencia(Venta venta) async {
+    final controlador = TextEditingController(text: venta.referenciaPago ?? '');
+    final anotada = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => BentoDialogo(
+        titulo: const Text('Referencia del SINPE'),
+        contenido: TextField(
+          controller: controlador,
+          autofocus: true,
+          keyboardType: TextInputType.text,
+          decoration: const InputDecoration(labelText: 'Identificador de la transferencia'),
+          onSubmitted: (v) => Navigator.pop(dialogContext, v),
+        ),
+        acciones: BentoAcciones(
+          izquierda: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, controlador.text),
+              child: const Text('Guardar'),
+            ),
+          ],
+          derecha: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (anotada == null || !mounted) return;
+
+    await ref.read(ventaNotifierProvider.notifier).anotarReferenciaDePago(venta.id, anotada);
+    if (!mounted) return;
+    // Se invalida el detalle, no todo el reporte: los totales no cambiaron.
+    ref.invalidate(detalleRangoProvider);
+    mostrarAviso(context, anotada.trim().isEmpty ? '✓ Referencia borrada' : '✓ Referencia anotada');
+  }
+
   /// Un paso en las tandas del detalle.
   ///
   /// Se apoya en lo que el provider ya trajo —cuántas hay en total— en vez de
@@ -319,6 +364,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                       peticion: PaginaDetalle(params, pagina: _paginaDetalle),
                       titulo: _tituloDelRango(),
                       onVolver: volver,
+                      onAnotarReferencia: _anotarReferencia,
                     )
                   : reporteAsync.when(
                       data: (reporte) => _turnoSeleccionado != null
@@ -328,6 +374,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                               total: reporte.porTurno[_turnoSeleccionado]!,
                               vacio: 'Sin ventas en este turno',
                               onVolver: volver,
+                              onAnotarReferencia: _anotarReferencia,
                             )
                           : _VistaGeneral(
                               rango: _rango,
@@ -369,11 +416,17 @@ String _nombreTurno(Turno turno) => switch (turno) {
 /// Carga el detalle del rango bajo demanda: pedirlo por adelantado haría que
 /// abrir Reportes trajera el año entero aunque nadie mire la lista.
 class _DetalleDelRango extends ConsumerWidget {
-  const _DetalleDelRango({required this.peticion, required this.titulo, required this.onVolver});
+  const _DetalleDelRango({
+    required this.peticion,
+    required this.titulo,
+    required this.onVolver,
+    required this.onAnotarReferencia,
+  });
 
   final PaginaDetalle peticion;
   final String titulo;
   final VoidCallback onVolver;
+  final ValueChanged<Venta> onAnotarReferencia;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -385,6 +438,7 @@ class _DetalleDelRango extends ConsumerWidget {
             ventas: detalle.ventas,
             total: detalle.ventas.fold<double>(0, (s, v) => s + v.total),
             onVolver: onVolver,
+            onAnotarReferencia: onAnotarReferencia,
             // Dónde está parado, no una disculpa. Antes decía "mostrando las
             // 300 más recientes de 2.847" y ahí se acababa el asunto: no había
             // forma de ver las otras 2.547.
@@ -662,6 +716,19 @@ class _VistaGeneral extends StatelessWidget {
             nivel: TalladoNivel.marcado,
             estilo: Theme.of(context).textTheme.displaySmall,
           ),
+          // El desglose solo aparece cuando hubo transferencias: en un día en
+          // que todo entró en efectivo, "SINPE ₡0" es una línea que no dice
+          // nada y le quita sitio al número que sí importa.
+          if (reporte.porSinpe > 0)
+            Text(
+              'Efectivo ₡${reporte.porEfectivo.toStringAsFixed(2)}'
+              '  ·  SINPE ₡${reporte.porSinpe.toStringAsFixed(2)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: lacaDe(context).textoAtenuadoEnBandeja),
+            ),
         ],
       ),
     );
@@ -840,6 +907,7 @@ class _VistaDrillDown extends StatelessWidget {
     required this.ventas,
     required this.total,
     required this.onVolver,
+    required this.onAnotarReferencia,
     this.vacio = 'Sin ventas en este período',
     this.nota,
   });
@@ -848,6 +916,11 @@ class _VistaDrillDown extends StatelessWidget {
   final List<VentaConLineas> ventas;
   final double total;
   final VoidCallback onVolver;
+
+  /// Qué hacer al tocar una venta de SINPE. La lista no sabe guardar nada: solo
+  /// avisa cuál se tocó.
+  final ValueChanged<Venta> onAnotarReferencia;
+
   final String vacio;
 
   /// Aviso cuando la lista no trae todo lo que hay (ver [limiteDetalleRango]).
@@ -919,10 +992,24 @@ class _VistaDrillDown extends StatelessWidget {
                         final hora = TimeOfDay.fromDateTime(f).format(context);
                         // Qué se vendió, no cuántas líneas tenía: "2 línea(s)"
                         // no le sirve a nadie para reconocer una venta.
+                        final sinpe = vc.venta.metodoPago == MetodoPago.sinpe;
                         return ListTile(
                           title: Text(vc.resumen, maxLines: 2, overflow: TextOverflow.ellipsis),
-                          subtitle: Text('${f.day}/${f.month} · $hora'),
+                          subtitle: Text(
+                            // El método solo se nombra cuando NO es el normal:
+                            // poner "Efectivo" en nueve de cada diez ventas es
+                            // ruido que hace más difícil ver la que sí importa.
+                            sinpe
+                                ? '${f.day}/${f.month} · $hora · SINPE'
+                                      '${vc.venta.referenciaPago == null ? '' : ' · ${vc.venta.referenciaPago}'}'
+                                : '${f.day}/${f.month} · $hora',
+                          ),
                           trailing: Text('\u20a1${vc.total.toStringAsFixed(2)}'),
+                          // Solo las de SINPE se tocan: es donde hay algo que
+                          // anotar. Una venta en efectivo no tiene referencia
+                          // que agregar, y abrir un diálogo vacío sería una
+                          // promesa rota.
+                          onTap: sinpe ? () => onAnotarReferencia(vc.venta) : null,
                         );
                       },
                     ),

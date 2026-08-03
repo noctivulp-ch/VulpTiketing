@@ -19,7 +19,9 @@ import '../../producto/producto_notifier.dart';
 import '../../producto/producto_query_provider.dart';
 import '../../producto/ui/lista_productos_agrupada.dart';
 import '../../producto/ui/producto_form_dialog.dart';
+import 'casilla_sinpe.dart';
 import '../linea_venta_model.dart';
+import '../venta_model.dart';
 import '../venta_en_curso_notifier.dart';
 
 /// Ventana 2 — ver docs/pantallas/flujo-descripcion.md#ventana-2--panel-de-venta-carrito-completo
@@ -87,6 +89,9 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
       cambio: _cambio,
       total: total,
       habilitado: hayLineas && !_finalizando,
+      sinpe: ref.watch(ventaEnCursoNotifierProvider).metodoPago == MetodoPago.sinpe,
+      onSinpe: (activo) =>
+          ref.read(ventaEnCursoNotifierProvider.notifier).marcarSinpe(activo: activo),
       onRecibidoChanged: (v) => _onRecibidoChanged(v, total),
       onFinalizar: _finalizar,
     );
@@ -412,6 +417,8 @@ class _BarraDeCobro extends StatelessWidget {
     required this.cambio,
     required this.total,
     required this.habilitado,
+    required this.sinpe,
+    required this.onSinpe,
     required this.onRecibidoChanged,
     required this.onFinalizar,
   });
@@ -420,6 +427,8 @@ class _BarraDeCobro extends StatelessWidget {
   final double? cambio;
   final double total;
   final bool habilitado;
+  final bool sinpe;
+  final ValueChanged<bool> onSinpe;
   final ValueChanged<String> onRecibidoChanged;
   final VoidCallback onFinalizar;
 
@@ -445,6 +454,7 @@ class _BarraDeCobro extends StatelessWidget {
       alignment: vertical ? Alignment.centerLeft : Alignment.centerRight,
       child: Text('₡${total.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleMedium),
     );
+    final casillaSinpe = CasillaSinpe(activa: sinpe, onCambio: onSinpe);
     final finalizar = FilledButton(
       onPressed: habilitado ? onFinalizar : null,
       // Una línea: en la celda de 1/6 de la retícula "Finalizar" se partía en
@@ -470,16 +480,21 @@ class _BarraDeCobro extends StatelessWidget {
             // primero se escribe, después se lee el resultado.
             hijos: vertical
                 ? [
+                    // SINPE en su propia fila y a lo ancho: es lo que hay que
+                    // acordarse de marcar ANTES de cobrar, y una casilla
+                    // apretada en media celda se pasa por alto.
+                    BentoCelda(compacto: 6, medio: 6, amplio: 6, hijo: casillaSinpe),
                     BentoCelda(compacto: 3, medio: 3, amplio: 3, hijo: textoCambio),
                     BentoCelda(compacto: 3, medio: 3, amplio: 3, hijo: recibido),
                     BentoCelda(compacto: 3, medio: 3, amplio: 3, hijo: textoTotal),
                     BentoCelda(compacto: 3, medio: 3, amplio: 3, hijo: finalizar),
                   ]
                 : [
-                    BentoCelda(compacto: 3, medio: 2, amplio: 2, hijo: recibido),
-                    BentoCelda(compacto: 3, medio: 2, amplio: 2, hijo: textoCambio),
-                    BentoCelda(compacto: 3, medio: 1, amplio: 1, hijo: textoTotal),
-                    BentoCelda(compacto: 3, medio: 1, amplio: 1, hijo: finalizar),
+                    BentoCelda(compacto: 1, medio: 1, amplio: 1, hijo: casillaSinpe),
+                    BentoCelda(compacto: 2, medio: 2, amplio: 2, hijo: recibido),
+                    BentoCelda(compacto: 1, medio: 1, amplio: 1, hijo: textoCambio),
+                    BentoCelda(compacto: 1, medio: 1, amplio: 1, hijo: textoTotal),
+                    BentoCelda(compacto: 1, medio: 1, amplio: 1, hijo: finalizar),
                   ],
           ),
         ),

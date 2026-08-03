@@ -81,6 +81,9 @@ const esquemaLibro = [
       estado            TEXT NOT NULL DEFAULT 'activa'
                          CHECK (estado IN ('activa', 'revertida')),
       motivo_reversion  TEXT,
+      metodo_pago       TEXT NOT NULL DEFAULT 'efectivo'
+                         CHECK (metodo_pago IN ('efectivo', 'sinpe')),
+      referencia_pago   TEXT,
       updated_at        TEXT NOT NULL
     );
   ''',
@@ -105,6 +108,39 @@ const esquemaLibro = [
   'CREATE INDEX IF NOT EXISTS idx_venta_fecha ON venta(fecha_hora);',
   'CREATE INDEX IF NOT EXISTS idx_linea_venta_producto ON linea_venta(producto_id);',
 ];
+
+/// Columnas que se agregaron a `venta` después de que hubiera libros escritos.
+///
+/// Un libro es un archivo suelto que puede venir de otro aparato o de un backup
+/// viejo, así que su esquema se pone al día **al adjuntarlo**, no en la
+/// migración de la base principal: esa solo ve el libro abierto de este
+/// dispositivo y no los cerrados de años anteriores.
+///
+/// `ADD COLUMN` con `DEFAULT` no reescribe las filas existentes en SQLite —
+/// solo toca la cabecera de la tabla—, así que aplicarlo sobre un libro con
+/// 100.000 ventas es instantáneo.
+const _columnasNuevasDeVenta = {
+  'metodo_pago': "ALTER TABLE venta ADD COLUMN metodo_pago TEXT NOT NULL DEFAULT 'efectivo'",
+  'referencia_pago': 'ALTER TABLE venta ADD COLUMN referencia_pago TEXT',
+};
+
+/// Pone al día el esquema de un libro ya escrito.
+///
+/// Se consulta qué columnas tiene en vez de llevar un número de versión por
+/// libro: los libros no tienen tabla de metadatos propia y agregarle una para
+/// esto sería más frágil que preguntar. `PRAGMA table_info` cuesta lo mismo que
+/// un `SELECT` de una fila.
+Future<void> ponerAlDiaEsquemaDeLibro(DatabaseExecutor db, {String? alias}) async {
+  final tabla = alias == null ? 'venta' : '$alias.venta';
+  final columnas = await db.rawQuery('PRAGMA ${alias == null ? '' : '$alias.'}table_info(venta)');
+  if (columnas.isEmpty) return; // El libro todavía no tiene tablas.
+
+  final presentes = {for (final c in columnas) c['name'] as String};
+  for (final entrada in _columnasNuevasDeVenta.entries) {
+    if (presentes.contains(entrada.key)) continue;
+    await db.execute(entrada.value.replaceFirst('venta', tabla));
+  }
+}
 
 /// `linea_venta.producto_id` NO lleva REFERENCES a `producto`: el catálogo vive
 /// en otra base. Un libro tiene que poder abrirse y leerse por su cuenta —
@@ -228,6 +264,9 @@ class LibroVentasService {
     } catch (_) {
       if (!await estaAdjunto(db)) rethrow;
     }
+    // Al adjuntar, y no antes: un libro puede venir de otro aparato o de un
+    // backup viejo, y el esquema se pone al día donde se lo encuentra.
+    await ponerAlDiaEsquemaDeLibro(db, alias: aliasLibro);
   }
 
   /// Suelta el libro adjunto, si lo hay. Público porque cerrar la base también

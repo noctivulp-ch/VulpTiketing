@@ -10,6 +10,7 @@ import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_dialogo.dart';
 import '../../producto/producto_model.dart';
 import '../venta_en_curso_notifier.dart';
+import 'casilla_sinpe.dart';
 
 /// Overlay de cobro de un solo producto (0018 cantidad default 1, precio
 /// editable con el base como punto de partida, cambio con debounce 400 ms
@@ -29,6 +30,7 @@ class CobroRapidoOverlay extends ConsumerStatefulWidget {
 }
 
 class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
+  bool _sinpe = false;
   late final TextEditingController _precioController;
   final _recibidoController = TextEditingController();
   int _cantidad = 1;
@@ -62,6 +64,9 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
 
   Future<void> _completar() async {
     final precio = double.tryParse(_precioController.text) ?? widget.producto.precioBase;
+    // Antes de agregar la línea: `marcarSinpe` reemplaza el estado, y hacerlo
+    // después de agregar dejaría el método puesto sobre un carrito ya cerrado.
+    ref.read(ventaEnCursoNotifierProvider.notifier).marcarSinpe(activo: _sinpe);
     ref
         .read(ventaEnCursoNotifierProvider.notifier)
         .agregarLineaDeCatalogo(
@@ -113,6 +118,10 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
     );
 
     final cantidad = BentoPozo(
+      // Sin padding propio: los dos `IconButton` ya traen sus 48 dp táctiles, y
+      // el padding del pozo encima dejaba el control sin sitio en la celda más
+      // angosta —desbordaba 11 px a 640 dp de ancho—.
+      padding: EdgeInsets.zero,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -188,13 +197,19 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
       ),
     );
 
+    final casillaSinpe = CasillaSinpe(
+      activa: _sinpe,
+      onCambio: (activo) => setState(() => _sinpe = activo),
+    );
+
     // Acostado el alto es el recurso escaso, así que la retícula se aplana: dos
     // filas en vez de tres. De pie el alto sobra y la jerarquía se lee mejor con
     // el total ocupando su propia fila.
     final celdas = acostado
         ? <BentoCelda>[
-            BentoCelda.fija(3, hijo: hero),
-            BentoCelda.fija(3, hijo: cantidad),
+            BentoCelda.fija(2, hijo: hero),
+            BentoCelda.fija(2, hijo: cantidad),
+            BentoCelda.fija(2, hijo: casillaSinpe),
             BentoCelda.fija(2, hijo: precio),
             BentoCelda.fija(2, hijo: cambio),
             BentoCelda.fija(2, hijo: recibido),
@@ -207,7 +222,8 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
             BentoCelda.fija(6, hijo: cantidad),
             BentoCelda.fija(3, hijo: precio),
             BentoCelda.fija(3, hijo: cambio),
-            BentoCelda.fija(6, hijo: recibido),
+            BentoCelda.fija(3, hijo: recibido),
+            BentoCelda.fija(3, hijo: casillaSinpe),
           ];
 
     final cancelar = OutlinedButton(

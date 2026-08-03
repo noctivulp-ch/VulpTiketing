@@ -101,10 +101,14 @@ void main() {
     );
     final csv = await File(ruta).readAsString();
 
-    expect(csv, contains('"Batido de mora","3","2500.00","7500.00","sin azúcar","v9"'));
+    expect(
+      csv,
+      contains('"Batido de mora","3","2500.00","7500.00","sin azúcar","Efectivo","","v9"'),
+    );
     // El encabezado dice qué es cada columna: un CSV sin encabezado obliga a
     // adivinar cuál de los dos montos es el unitario.
     expect(csv, contains('"Producto","Cantidad","Precio unitario","Subtotal"'));
+    expect(csv, contains('"Pago","Referencia"'), reason: 'lo que se cruza con el banco');
     expect(csv, contains('"Artículos","3"'), reason: 'tres unidades, no una línea');
   });
 

@@ -37,3 +37,28 @@ Este ciclo de vida es independiente del de Producto — no comparten lógica de 
 
 - **Impresión de tickets**: existe la idea de soportar una impresora genérica a futuro, pero no hay impresora disponible aún ni es necesaria para la función contable — pospuesto. Ver [decisión 0004](../decisiones/0004-alcance-base-vs-futuro.md).
 - **Inventario de materias primas/insumos**: feature próxima (no base) pensada para calcular gastos del local (entradas/salidas de dinero) y reportes más completos. Ver [decisión 0004](../decisiones/0004-alcance-base-vs-futuro.md).
+
+## Método de pago
+
+En la soda se cobra de dos formas y **efectivo es la normal**, así que es el
+valor por defecto y no hay que hacer nada para usarlo. SINPE se marca con una
+**casilla** —no un selector de dos opciones— en las dos pantallas de venta:
+Venta Rápida y el Panel de Venta. Ver
+[decisión 0032](../decisiones/0032-metodo-de-pago-en-la-venta.md).
+
+**El identificador de la transferencia se anota después**, tocando la venta en
+el detalle de Reportes. Es opcional a propósito: al cobrar hay cola y nadie
+transcribe doce dígitos con el cliente delante. Lo que no puede perderse es *que*
+fue SINPE; el número se completa con calma, o no se completa.
+
+- Solo las ventas de SINPE se pueden tocar en el detalle: una en efectivo no
+  tiene referencia que agregar.
+- Guardar el campo en blanco borra la referencia — alguien anota mal un número y
+  tiene que poder dejarlo como estaba.
+- Es la **segunda excepción** a "una venta no se edita" ([0009](../decisiones/0009-cruds-independientes-por-entidad.md)),
+  junto con revertir, y está acotada a esa sola columna.
+
+Reportes muestra **cuánto entró por SINPE** cuando hubo alguna, y las
+exportaciones llevan las columnas `Pago` y `Referencia`: es lo que se cruza
+contra el estado de cuenta al cerrar el mes.
+

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../venta/venta_model.dart';
 import 'reportes_provider.dart';
 
 /// En qué se exporta un reporte.
@@ -129,6 +130,8 @@ class ReporteExportService {
     'Precio unitario',
     'Subtotal',
     'Nota',
+    'Pago',
+    'Referencia',
     'Venta',
   ];
 
@@ -140,6 +143,11 @@ class ReporteExportService {
     l.linea.precioAplicado.toStringAsFixed(2),
     l.subtotal.toStringAsFixed(2),
     l.linea.nota ?? '',
+    // Cómo entró la plata y con qué referencia: es lo que se cruza contra el
+    // estado de cuenta al cerrar el mes, y sin esas dos columnas habría que
+    // volver a la app venta por venta.
+    venta.venta.metodoPago.etiqueta,
+    venta.venta.referenciaPago ?? '',
     // El id de la venta agrupa las líneas: sin él, dos ventas de la misma hora
     // se confunden al ordenar la tabla en Excel.
     venta.venta.id,
@@ -235,6 +243,11 @@ class ReporteExportService {
       0,
       (s, v) => s + v.lineas.fold<int>(0, (t, l) => t + l.linea.cantidad),
     );
+    // Del detalle que se está exportando, no de otra consulta: el archivo tiene
+    // que cuadrar consigo mismo.
+    final sinpe = ventas
+        .where((v) => v.venta.metodoPago == MetodoPago.sinpe)
+        .fold<double>(0, (s, v) => s + v.total);
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -250,6 +263,14 @@ class ReporteExportService {
             style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
           ),
           pw.Text('${ventas.length} venta(s) · $articulos artículo(s)'),
+          // Cuánto entró por transferencia: es lo que se cruza contra el estado
+          // de cuenta. Solo si hubo alguna — en un período sin SINPE la línea
+          // no aporta.
+          if (sinpe > 0)
+            pw.Text(
+              'Efectivo ₡${(total - sinpe).toStringAsFixed(2)}  ·  '
+              'SINPE ₡${sinpe.toStringAsFixed(2)}',
+            ),
           pw.SizedBox(height: 8),
           if (porTurno != null) ...[
             pw.TableHelper.fromTextArray(
@@ -283,7 +304,7 @@ class ReporteExportService {
             // Una fila por LÍNEA: antes decía "2 línea(s)" y no había forma de
             // saber qué se había vendido.
             pw.TableHelper.fromTextArray(
-              headers: const ['Fecha', 'Hora', 'Producto', 'Cant.', 'Unitario', 'Subtotal'],
+              headers: const ['Fecha', 'Hora', 'Producto', 'Cant.', 'Unitario', 'Subtotal', 'Pago'],
               cellAlignments: const {
                 3: pw.Alignment.centerRight,
                 4: pw.Alignment.centerRight,
@@ -299,6 +320,12 @@ class ReporteExportService {
                       '${l.linea.cantidad}',
                       '₡${l.linea.precioAplicado.toStringAsFixed(2)}',
                       '₡${l.subtotal.toStringAsFixed(2)}',
+                      // Solo se nombra lo que NO es lo normal, y con la
+                      // referencia cuando está: en una columna de doscientas
+                      // filas repetir "Efectivo" es ruido.
+                      venta.venta.metodoPago == MetodoPago.sinpe
+                          ? 'SINPE${venta.venta.referenciaPago == null ? '' : ' ${venta.venta.referenciaPago}'}'
+                          : '',
                     ],
               ],
             ),
