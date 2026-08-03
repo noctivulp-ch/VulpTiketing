@@ -98,6 +98,16 @@ Lo que se ahorra es decodificar y escalar un JPEG por celda; un glifo no cuesta
 nada. Así la pantalla sigue diciendo qué es cada cosa — es una optimización, no
 una función que se quita.
 
+### 5. El aspa de "fuera de la carta", a una esquina
+
+Centrada y del mismo tamaño que el icono de abajo, las dos marcas se pisaban y
+no se leía ninguna — un cubierto y una prohibición superpuestos son un borrón,
+no dos datos. Y son dos datos que hacen falta a la vez: qué es el producto y que
+está fuera de la carta. La respuesta es apartarlas, no callar una.
+
+El aspa pasa a insignia pequeña en la esquina inferior derecha, con fondo propio
+porque encima de una foto clara desaparecía.
+
 ## Alternativas descartadas
 
 **Una columna `icono` en `categoria`.** Correcta en abstracto y más flexible,
@@ -115,16 +125,6 @@ distintas del mismo aparato.
 
 **Apagar las fotos dejando el hueco vacío.** Ahorraría también el espacio, pero
 convierte una opción de rendimiento en una pérdida de información.
-
-### 5. El aspa de "fuera de la carta", a una esquina
-
-Centrada y del mismo tamaño que el icono de abajo, las dos marcas se pisaban y
-no se leía ninguna — un cubierto y una prohibición superpuestos son un borrón,
-no dos datos. Y son dos datos que hacen falta a la vez: qué es el producto y que
-está fuera de la carta. La respuesta es apartarlas, no callar una.
-
-El aspa pasa a insignia pequeña en la esquina inferior derecha, con fondo propio
-porque encima de una foto clara desaparecía.
 
 ## Qué queda sin resolver
 
