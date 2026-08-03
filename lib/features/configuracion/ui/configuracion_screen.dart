@@ -16,6 +16,7 @@ import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/bento_falla.dart';
 import '../preferencias_notifier.dart';
 import 'cambiar_contrasena_panel.dart';
+import 'token_mcp_panel.dart';
 
 enum _Opcion {
   contrasena,
@@ -28,6 +29,7 @@ enum _Opcion {
   acento,
   modoTema,
   optimizacion,
+  tokenMcp,
 }
 
 /// Ventana 5 — ver docs/pantallas/flujo-descripcion.md#ventana-5--configuración.
@@ -128,6 +130,18 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
             seleccionado: _seleccion == _Opcion.optimizacion,
             onTap: () => setState(() => _seleccion = _Opcion.optimizacion),
           ),
+          // Solo el Gerente: es la llave que deja manejar la app entera desde
+          // fuera, o sea cobrar y borrar en nombre de quien la tenga.
+          if (esGerente)
+            _TileConfiguracion(
+              icono: Icons.vpn_key_outlined,
+              // "Herramientas" se parte en "Herramienta / s": el tile mide
+              // ~101 dp a 360 y las etiquetas de esta rejilla son de una
+              // palabra corta. El icono de llave ya dice de qué va.
+              etiqueta: 'Acceso',
+              seleccionado: _seleccion == _Opcion.tokenMcp,
+              onTap: () => setState(() => _seleccion = _Opcion.tokenMcp),
+            ),
         ])
           BentoCelda(compacto: 2, medio: 2, amplio: 2, hijo: tile),
       ],
@@ -218,6 +232,8 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
         return const _PanelModoTema();
       case _Opcion.optimizacion:
         return const _PanelOptimizacion();
+      case _Opcion.tokenMcp:
+        return const PanelTokenMcp();
     }
   }
 }

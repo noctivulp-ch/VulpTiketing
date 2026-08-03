@@ -38,3 +38,4 @@ Volver a [../index](../index.md)
 | [0032](0032-metodo-de-pago-en-la-venta.md) | Método de pago en la venta, con referencia opcional anotada después | Aceptada |
 | [0033](0033-banco-de-imagenes.md) | Banco de imágenes: figuras de fábrica y fotos propias | Sustituida en parte por la [0034](0034-iconos-por-categoria-y-fotos-apagables.md) |
 | [0034](0034-iconos-por-categoria-y-fotos-apagables.md) | La cara de un producto: iconos por categoría, y fotos apagables por ventana | Aceptada |
+| [0035](0035-token-para-el-harness-del-mcp.md) | Token aleatorio para el harness del MCP | Aceptada |

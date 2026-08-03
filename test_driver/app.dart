@@ -47,6 +47,8 @@ import 'package:vulp_tiketing/features/venta/venta_notifier.dart';
 import 'package:vulp_tiketing/features/producto/producto_model.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
 
+import 'package:vulp_tiketing/features/configuracion/token_mcp_service.dart';
+
 import 'diagnostico.dart';
 
 const _uuid = Uuid();
@@ -92,11 +94,38 @@ void main() {
   runApp(UncontrolledProviderScope(container: container, child: const VulpTiketingApp()));
 }
 
+/// Cada comando directo trae el token y se comprueba **acá**, contra el que la
+/// app tiene guardado.
+///
+/// La comprobación no puede hacerse una vez al arrancar: leer el llavero es
+/// asíncrono y `enableFlutterDriverExtension` tiene que ser la PRIMERA llamada
+/// de `main()` —instala su propio binding y cualquier cosa antes se lo impide—,
+/// así que no hay dónde esperar. Comprobar en cada mensaje sale más barato de
+/// razonar y además cubre el caso de revocar el token con la app abierta: deja
+/// de funcionar en el acto, sin reiniciar nada.
+///
+/// **Hasta dónde llega esto.** Los comandos directos son los que tocan datos
+/// —sembrar, exportar, borrar—, y esos quedan cerrados sin token. Los de UI
+/// (tocar, leer texto) los sirve la extensión estándar de flutter_driver, que
+/// no pasa por acá: a esos los protege el bridge, que exige el mismo token. Un
+/// atacante con acceso al VM service del aparato podría saltarse el bridge y
+/// mover la pantalla, pero no tocar la base. Y llegar al VM service ya requiere
+/// acceso físico con depuración habilitada.
 Future<String> _manejarComandoDirecto(ProviderContainer container, String? mensaje) async {
   try {
     final peticion = jsonDecode(mensaje ?? '{}') as Map<String, dynamic>;
     final cmd = peticion['cmd'] as String? ?? '';
     final args = (peticion['args'] as Map?)?.cast<String, dynamic>() ?? const {};
+
+    if (!await container.read(tokenMcpServiceProvider).verificar(peticion['token'] as String?)) {
+      return jsonEncode({
+        'ok': false,
+        'error':
+            'Token inválido o ausente. Pedile a la persona que atiende el aparato '
+                'que lo genere en Configuración → Herramientas y te lo dé.',
+      });
+    }
+
     final resultado = await _ejecutar(container, cmd, args);
     return jsonEncode({'ok': true, 'resultado': resultado});
   } catch (e) {
@@ -110,6 +139,11 @@ Future<dynamic> _ejecutar(
   Map<String, dynamic> args,
 ) async {
   switch (cmd) {
+    // Solo sirve para que el bridge confirme el token al arrancar. Que no haga
+    // nada es el punto: comprobar la llave no puede tener efectos.
+    case 'ping':
+      return 'pong';
+
     case 'import_tiketdata':
       final db = await container.read(databaseProvider.future);
       final modo = args['modo'] == 'reemplazar'

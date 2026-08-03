@@ -20,21 +20,61 @@ const _puertoBridge = 8765;
 
 FlutterDriver? _driver;
 
+/// El token que la persona del aparato generó en Configuración → Herramientas.
+/// Sin él el bridge no arranca: no hay modo "sin autenticar".
+String? _token;
+
 void main(List<String> args) async {
   final vmService = _leerArg(args, '--vm-service');
-  if (vmService == null) {
-    stderr.writeln('Uso: dart run test_driver/bridge.dart --vm-service=<url>');
+  final token = _leerArg(args, '--token');
+  if (vmService == null || token == null) {
+    stderr.writeln('Uso: dart run test_driver/bridge.dart --vm-service=<url> --token=<token>');
+    stderr.writeln();
+    stderr.writeln('El token lo genera la persona que atiende el aparato, en');
+    stderr.writeln('Configuracion -> Herramientas. Hay que pedirselo: no se puede');
+    stderr.writeln('deducir de la contrasena ni de ningun otro dato de la app.');
     exit(1);
   }
+  _token = token;
 
   stdout.writeln('Conectando a $vmService ...');
   _driver = await FlutterDriver.connect(dartVmServiceUrl: vmService);
-  stdout.writeln('Conectado. Bridge escuchando en http://127.0.0.1:$_puertoBridge');
+
+  // Se comprueba ANTES de abrir el puerto, contra la app: así un token
+  // equivocado falla acá con un mensaje claro, y no más tarde y disfrazado de
+  // "el comando no hizo nada".
+  final prueba = jsonDecode(
+    await _driver!.requestData(jsonEncode({'cmd': 'ping', 'token': token})),
+  );
+  if (prueba['ok'] != true) {
+    stderr.writeln('Token rechazado por la app: ${prueba['error']}');
+    exit(2);
+  }
+
+  stdout.writeln('Token aceptado. Bridge escuchando en http://127.0.0.1:$_puertoBridge');
 
   final handler = const Pipeline()
       .addMiddleware(logRequests())
+      .addMiddleware(_exigirToken)
       .addHandler(_router);
   await shelf_io.serve(handler, InternetAddress.loopbackIPv4, _puertoBridge);
+}
+
+/// Cada petición trae el token en `X-Vulp-Token`.
+///
+/// El bridge escucha solo en loopback, así que esto no protege de la red — de
+/// eso se encarga el bind. Protege de OTRO proceso de esta misma computadora:
+/// sin esto, cualquier cosa que corra acá podía manejar la caja con un `curl`.
+Handler _exigirToken(Handler siguiente) {
+  return (Request request) async {
+    if (request.headers['x-vulp-token'] != _token) {
+      return Response.forbidden(
+        jsonEncode({'ok': false, 'error': 'Falta la cabecera X-Vulp-Token o no coincide'}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return siguiente(request);
+  };
 }
 
 String? _leerArg(List<String> args, String nombre) {
@@ -123,7 +163,7 @@ Future<Response> _router(Request request) async {
         return _json({'ok': true});
 
       case 'POST direct':
-        final body = await _body(request);
+        final body = {...await _body(request), 'token': _token};
         final respuesta = await driver.runUnsynchronized(
           () => driver.requestData(jsonEncode(body)),
         );

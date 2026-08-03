@@ -153,6 +153,15 @@ class SesionNotifier extends Notifier<Rol?> {
     return true;
   }
 
+  /// Confirma que quien está delante sabe la contraseña, **sin** cambiar nada.
+  ///
+  /// No es `iniciarSesion` ni el primer paso de `cambiarContrasena`: es volver a
+  /// preguntar "¿sos vos?" en medio de una sesión ya abierta, antes de enseñar
+  /// algo que no debería verse por dejar el teléfono desbloqueado — hoy, el
+  /// token del MCP.
+  Future<bool> confirmarContrasena(Rol rol, String contrasena) =>
+      _credenciales.verificar(rol, contrasena);
+
   /// No es rutinario (no se dispara al cerrar la app) — es para cambio de
   /// rol en un dispositivo compartido. Ver docs/pantallas/flujo-descripcion.md
   /// y el addendum de la decision 0007.
