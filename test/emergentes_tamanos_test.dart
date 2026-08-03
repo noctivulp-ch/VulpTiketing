@@ -169,4 +169,74 @@ void main() {
       }
     }
   });
+
+  group('un panel de Configuración', () {
+    // Los paneles inline no son diálogos, pero son "ventanas emergentes" para
+    // quien usa la app, y apilaban sus botones debajo del texto: acostado, eso
+    // es justo lo que no entra.
+    Widget panel() => BentoPanel(
+      titulo: '¿Reemplazar catálogo?',
+      contenido: const Text(
+        'Todo producto o categoría activa que no esté en el archivo se descontinuará '
+        '(no se borra, queda como descontinuado — se puede revisar en el listado).',
+      ),
+      acciones: [
+        FilledButton(onPressed: null, child: const Text('Continuar')),
+        TextButton(onPressed: null, child: const Text('Cancelar')),
+      ],
+    );
+
+    for (final tamano in tamanos.entries) {
+      testWidgets('no desborda en ${tamano.key}', (tester) async {
+        tester.view.physicalSize = tamano.value;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: buildBentoTheme(AcentoTinte.oro),
+            home: Scaffold(body: SingleChildScrollView(child: panel())),
+          ),
+        );
+        await tester.pump();
+
+        expect(tester.takeException(), isNull, reason: 'el panel desborda en ${tamano.key}');
+      });
+    }
+
+    testWidgets('acostado los botones van al costado del texto', (tester) async {
+      tester.view.physicalSize = const Size(800, 360);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildBentoTheme(AcentoTinte.oro),
+          home: Scaffold(body: panel()),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        tester.getRect(find.text('Continuar')).left,
+        greaterThan(tester.getRect(find.text('¿Reemplazar catálogo?')).right),
+      );
+    });
+
+    testWidgets('de pie siguen debajo', (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildBentoTheme(AcentoTinte.oro),
+          home: Scaffold(body: panel()),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        tester.getRect(find.text('Continuar')).top,
+        greaterThan(tester.getRect(find.text('¿Reemplazar catálogo?')).bottom),
+      );
+    });
+  });
 }

@@ -3,7 +3,7 @@ import 'package:path/path.dart' as p;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/bento_aviso.dart';
-import '../../../core/theme/bento_theme.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../tiketdata_notifier.dart';
 import '../tiketdata_service.dart';
 
@@ -63,17 +63,13 @@ class _PanelCatalogoState extends ConsumerState<PanelCatalogo> {
   Widget build(BuildContext context) {
     switch (_paso) {
       case _PasoCatalogo.elegirAccion:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Catálogo (.tiketdata)', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: BentoSpacing.gapCelda),
+        return BentoPanel(
+          titulo: 'Catálogo (.tiketdata)',
+          acciones: [
             FilledButton(
               onPressed: _procesando ? null : _exportar,
               child: const Text('Exportar catálogo actual'),
             ),
-            const SizedBox(height: BentoSpacing.unidad),
             OutlinedButton(
               onPressed: _procesando
                   ? null
@@ -84,52 +80,34 @@ class _PanelCatalogoState extends ConsumerState<PanelCatalogo> {
         );
 
       case _PasoCatalogo.elegirModo:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('¿Reemplazar o fusionar?', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: BentoSpacing.gapCelda),
+        return BentoPanel(
+          titulo: '¿Reemplazar o fusionar?',
+          acciones: [
             FilledButton(
               onPressed: () => _importar(ModoImportacion.fusionar),
               child: const Text('Fusionar — agrega/actualiza, no toca el resto'),
             ),
-            const SizedBox(height: BentoSpacing.unidad),
             OutlinedButton(
               onPressed: () => setState(() => _paso = _PasoCatalogo.confirmarReemplazo),
               child: const Text('Reemplazar — descontinúa lo que no venga en el archivo'),
             ),
-            const SizedBox(height: BentoSpacing.unidad),
             TextButton(onPressed: _reiniciar, child: const Text('Cancelar')),
           ],
         );
 
       case _PasoCatalogo.confirmarReemplazo:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('¿Reemplazar catálogo?', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: BentoSpacing.unidad),
-            const Text(
-              'Todo producto o categoría activa que no esté en el archivo se descontinuará '
-              '(no se borra, queda como descontinuado — se puede revisar en el listado).',
+        return BentoPanel(
+          titulo: '¿Reemplazar catálogo?',
+          contenido: const Text(
+            'Todo producto o categoría activa que no esté en el archivo se descontinuará '
+            '(no se borra, queda como descontinuado — se puede revisar en el listado).',
+          ),
+          acciones: [
+            FilledButton(
+              onPressed: _procesando ? null : () => _importar(ModoImportacion.reemplazar),
+              child: const Text('Continuar'),
             ),
-            const SizedBox(height: BentoSpacing.gapCelda),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _procesando ? null : _reiniciar,
-                  child: const Text('Cancelar'),
-                ),
-                const SizedBox(width: BentoSpacing.unidad),
-                FilledButton(
-                  onPressed: _procesando ? null : () => _importar(ModoImportacion.reemplazar),
-                  child: const Text('Continuar'),
-                ),
-              ],
-            ),
+            TextButton(onPressed: _procesando ? null : _reiniciar, child: const Text('Cancelar')),
           ],
         );
     }

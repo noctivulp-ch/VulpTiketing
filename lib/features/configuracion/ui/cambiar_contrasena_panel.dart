@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/bento_aviso.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../auth/sesion_notifier.dart';
 
@@ -64,46 +65,45 @@ class _PanelCambiarContrasenaState extends ConsumerState<PanelCambiarContrasena>
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('Cambiar contraseña', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: BentoSpacing.gapCelda),
-          TextFormField(
-            controller: _actualController,
-            obscureText: true,
-            decoration: InputDecoration(labelText: 'Contraseña actual', errorText: _error),
-            validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
-          ),
-          const SizedBox(height: BentoSpacing.unidad),
-          TextFormField(
-            controller: _nuevaController,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Nueva contraseña'),
-            validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
-          ),
-          const SizedBox(height: BentoSpacing.unidad),
-          TextFormField(
-            controller: _confirmarController,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Confirmar nueva contraseña'),
-            validator: (v) =>
-                v != _nuevaController.text ? 'No coincide con la nueva contraseña' : null,
-          ),
-          const SizedBox(height: BentoSpacing.gapCelda),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton(
-              onPressed: _guardando ? null : _confirmar,
-              child: _guardando
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Guardar'),
+      child: BentoPanel(
+        titulo: 'Cambiar contraseña',
+        contenido: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _actualController,
+              obscureText: true,
+              decoration: InputDecoration(labelText: 'Contraseña actual', errorText: _error),
+              validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
             ),
+            const SizedBox(height: BentoSpacing.unidad),
+            TextFormField(
+              controller: _nuevaController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Nueva contraseña'),
+              validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
+            ),
+            const SizedBox(height: BentoSpacing.unidad),
+            TextFormField(
+              controller: _confirmarController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Confirmar nueva contraseña'),
+              validator: (v) =>
+                  v != _nuevaController.text ? 'No coincide con la nueva contraseña' : null,
+            ),
+          ],
+        ),
+        acciones: [
+          FilledButton(
+            onPressed: _guardando ? null : _confirmar,
+            child: _guardando
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Guardar'),
           ),
         ],
       ),

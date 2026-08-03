@@ -5,6 +5,7 @@ import 'carpeta_exportacion_control.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/ui/bento_aviso.dart';
+import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../tiketback_notifier.dart';
 import '../tiketback_service.dart';
@@ -69,21 +70,17 @@ class _PanelExportarBackupState extends ConsumerState<PanelExportarBackup> {
       children: [
         const CarpetaExportacionControl(),
         const SizedBox(height: BentoSpacing.unidad),
-        Text('Exportar backup', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: BentoSpacing.gapCelda),
-        TextField(
-          controller: _contrasenaController,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'Contraseña de exportación'),
-          onSubmitted: (_) => _exportar(),
-        ),
-        const SizedBox(height: BentoSpacing.gapCelda),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton(
-            onPressed: _exportando ? null : _exportar,
-            child: const Text('Exportar'),
+        BentoPanel(
+          titulo: 'Exportar backup',
+          contenido: TextField(
+            controller: _contrasenaController,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Contraseña de exportación'),
+            onSubmitted: (_) => _exportar(),
           ),
+          acciones: [
+            FilledButton(onPressed: _exportando ? null : _exportar, child: const Text('Exportar')),
+          ],
         ),
       ],
     );
@@ -181,15 +178,11 @@ class _PanelRestaurarBackupState extends ConsumerState<PanelRestaurarBackup> {
   }
 
   Widget _pasoElegirAlcance(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('Restaurar backup', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: BentoSpacing.unidad),
-        const Text('¿Qué querés traer del backup?'),
-        const SizedBox(height: BentoSpacing.gapCelda),
-        for (final alcance in AlcanceRestauracion.values) ...[
+    return BentoPanel(
+      titulo: 'Restaurar backup',
+      contenido: const Text('¿Qué querés traer del backup?'),
+      acciones: [
+        for (final alcance in AlcanceRestauracion.values)
           _BotonAlcance(
             texto: _textoDe(alcance),
             onPressed: () => setState(() {
@@ -197,73 +190,45 @@ class _PanelRestaurarBackupState extends ConsumerState<PanelRestaurarBackup> {
               _paso = _PasoRestaurar.confirmar;
             }),
           ),
-          const SizedBox(height: BentoSpacing.unidad),
-        ],
       ],
     );
   }
 
   Widget _pasoConfirmar(BuildContext context) {
     final texto = _textoDe(_alcance);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('Restaurar: ${texto.titulo}', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: BentoSpacing.unidad),
-        Text(texto.advertencia),
-        const SizedBox(height: BentoSpacing.gapCelda),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () => setState(() => _paso = _PasoRestaurar.elegirAlcance),
-              child: const Text('Atrás'),
-            ),
-            const SizedBox(width: BentoSpacing.unidad),
-            FilledButton(
-              onPressed: () => setState(() => _paso = _PasoRestaurar.contrasena),
-              child: const Text('Continuar'),
-            ),
-          ],
+    return BentoPanel(
+      titulo: 'Restaurar: ${texto.titulo}',
+      contenido: Text(texto.advertencia),
+      acciones: [
+        FilledButton(
+          onPressed: () => setState(() => _paso = _PasoRestaurar.contrasena),
+          child: const Text('Continuar'),
+        ),
+        TextButton(
+          onPressed: () => setState(() => _paso = _PasoRestaurar.elegirAlcance),
+          child: const Text('Atrás'),
         ),
       ],
     );
   }
 
   Widget _pasoContrasena(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Restaurar: ${_textoDe(_alcance).titulo}',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: BentoSpacing.gapCelda),
-        TextField(
-          controller: _contrasenaController,
-          obscureText: true,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Contraseña de exportación'),
-          onSubmitted: (_) => _restaurar(),
-        ),
-        const SizedBox(height: BentoSpacing.gapCelda),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: _restaurando
-                  ? null
-                  : () => setState(() => _paso = _PasoRestaurar.elegirAlcance),
-              child: const Text('Cancelar'),
-            ),
-            const SizedBox(width: BentoSpacing.unidad),
-            FilledButton(
-              onPressed: _restaurando ? null : _restaurar,
-              child: const Text('Restaurar'),
-            ),
-          ],
+    return BentoPanel(
+      titulo: 'Restaurar: ${_textoDe(_alcance).titulo}',
+      contenido: TextField(
+        controller: _contrasenaController,
+        obscureText: true,
+        autofocus: true,
+        decoration: const InputDecoration(labelText: 'Contraseña de exportación'),
+        onSubmitted: (_) => _restaurar(),
+      ),
+      acciones: [
+        FilledButton(onPressed: _restaurando ? null : _restaurar, child: const Text('Restaurar')),
+        TextButton(
+          onPressed: _restaurando
+              ? null
+              : () => setState(() => _paso = _PasoRestaurar.elegirAlcance),
+          child: const Text('Cancelar'),
         ),
       ],
     );

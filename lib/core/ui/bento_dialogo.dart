@@ -136,3 +136,71 @@ class BentoAcciones extends StatelessWidget {
     );
   }
 }
+
+/// Un paso de un panel inline de Configuración: título, algo de contenido y sus
+/// acciones.
+///
+/// Misma regla que [BentoDialogo] y por el mismo motivo, pero para lo que NO es
+/// un diálogo: los paneles de Configuración —catálogo, backup, restaurar,
+/// contraseña— apilaban sus botones debajo del texto, y acostado eso es lo que
+/// no entra. Acá van al costado.
+///
+/// La columna de acciones se lleva 2 de 5 partes en vez de medir su contenido:
+/// estos botones llevan frases enteras ("Reemplazar — descontinúa lo que no
+/// venga en el archivo") y un `IntrinsicWidth` les habría dado media pantalla.
+class BentoPanel extends StatelessWidget {
+  const BentoPanel({super.key, required this.titulo, this.contenido, required this.acciones});
+
+  final String titulo;
+
+  /// Explicación, campos, lo que el paso necesite. Puede no haber.
+  final Widget? contenido;
+
+  /// En el orden en que se leen. Acostado quedan en columna al costado; de pie,
+  /// apilados debajo, que es como estaban.
+  final List<Widget> acciones;
+
+  @override
+  Widget build(BuildContext context) {
+    final cuerpo = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(titulo, style: Theme.of(context).textTheme.titleMedium),
+        if (contenido != null) ...[const SizedBox(height: BentoSpacing.gapCelda), contenido!],
+      ],
+    );
+
+    final botones = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < acciones.length; i++) ...[
+          if (i > 0) const SizedBox(height: BentoSpacing.unidad),
+          acciones[i],
+        ],
+      ],
+    );
+
+    if (!bentoEstaAcostado(context)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          cuerpo,
+          const SizedBox(height: BentoSpacing.gapCelda),
+          botones,
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: 3, child: cuerpo),
+        const SizedBox(width: BentoSpacing.pared),
+        Expanded(flex: 2, child: botones),
+      ],
+    );
+  }
+}
