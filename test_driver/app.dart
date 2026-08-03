@@ -19,6 +19,7 @@ import 'dart:io';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:cryptography/dart.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_driver/driver_extension.dart';
@@ -312,6 +313,59 @@ Future<dynamic> _ejecutar(
     case 'listar_categorias':
       final categorias = await container.read(categoriaNotifierProvider.future);
       return categorias.map((c) => {'id': c.id, 'nombre': c.nombre}).toList();
+
+    // Un gesto de VARIOS dedos, inyectado en el motor.
+    //
+    // Hace falta porque no hay otra forma de probarlos desde fuera: `adb shell
+    // input` solo manda un puntero —no tiene `motionevent` hasta Android 11—,
+    // `sendevent` necesita permisos sobre /dev/input que un teléfono de
+    // producción no da, y `scrcpy` simula el pellizco con Ctrl y el mouse, o
+    // sea que necesita ventana.
+    //
+    // Los eventos entran por `handlePointerEvent`, el mismo sitio por el que
+    // el motor mete los dedos de verdad: pasan por la arena de gestos completa,
+    // así que esto prueba la app, no una maqueta.
+    case 'gesto':
+      final dedos = (args['dedos'] as num?)?.toInt() ?? 2;
+      final dx = (args['dx'] as num?)?.toDouble() ?? 0;
+      final dy = (args['dy'] as num?)?.toDouble() ?? 0;
+      final vista = WidgetsBinding.instance.platformDispatcher.views.first;
+      final medida = vista.physicalSize / vista.devicePixelRatio;
+      var x = (args['x'] as num?)?.toDouble() ?? medida.width / 2;
+      var y = (args['y'] as num?)?.toDouble() ?? medida.height / 2;
+      // Los dedos van separados en horizontal, como se apoyan de verdad.
+      const separacion = 40.0;
+      x -= separacion * (dedos - 1) / 2;
+
+      void emitir(PointerEvent Function(int i, Offset p) crear, Offset avance) {
+        for (var i = 0; i < dedos; i++) {
+          GestureBinding.instance.handlePointerEvent(
+            crear(i, Offset(x + separacion * i, y) + avance),
+          );
+        }
+      }
+
+      emitir((i, p) => PointerDownEvent(pointer: 900 + i, position: p), Offset.zero);
+      const pasos = 12;
+      for (var paso = 1; paso <= pasos; paso++) {
+        final avance = Offset(dx * paso / pasos, dy * paso / pasos);
+        emitir(
+          (i, p) => PointerMoveEvent(
+            pointer: 900 + i,
+            position: p,
+            delta: Offset(dx / pasos, dy / pasos),
+          ),
+          avance,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+      }
+      // Siempre se sueltan: un puntero que se queda abajo deja la pantalla
+      // inservible hasta reiniciar la app.
+      emitir(
+        (i, p) => PointerUpEvent(pointer: 900 + i, position: p),
+        Offset(dx, dy),
+      );
+      return {'dedos': dedos, 'dx': dx, 'dy': dy};
 
     case 'orientacion':
       // Rotar la app desde adentro, sin depender de la rotacion del sistema.

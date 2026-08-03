@@ -157,6 +157,17 @@ void main() {
 
     expect(find.text('Elegí el día'), findsNothing);
   });
+  testWidgets('dos dedos hacia arriba abren el menú de exportación', (tester) async {
+    await montar(tester, Rol.gerente);
+
+    await dosDedos(tester, dy: -160);
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // El gesto reemplaza a un "mantener presionado" que no se descubre solo.
+    expect(find.text('Exportar reporte'), findsOneWidget);
+    expect(find.text('PDF'), findsOneWidget);
+    expect(find.text('Tabla (CSV)'), findsOneWidget);
+  });
 }
 
 class _SesionFija extends SesionNotifier {

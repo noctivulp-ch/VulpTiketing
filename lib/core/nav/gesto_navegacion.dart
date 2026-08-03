@@ -5,9 +5,15 @@ import 'package:flutter/material.dart';
 ///
 /// **Un dedo navega; dos o tres hacen cosas.** Esa es la convención de gestos de
 /// la app, y este widget sostiene su mitad: reconoce el arrastre horizontal
-/// solo mientras haya **un** puntero en pantalla, y se aparta en cuanto aparece
-/// un segundo. Así los gestos de dos y tres dedos quedan libres para acciones,
-/// sin tener que renegociar nada cuando se agreguen.
+/// solo mientras haya **un** puntero en pantalla, y **se retira de la arena** en
+/// cuanto aparece un segundo.
+///
+/// Retirarse es la palabra importante. Ignorar el gesto no alcanza: este widget
+/// envuelve la app entera, así que si su reconocedor se queda en la arena, gana
+/// —está más arriba y acepta antes— y la acción de dos dedos de la pantalla
+/// nunca llega a reclamarla. Fue exactamente lo que pasó: el gesto lateral de
+/// dos dedos de Reportes no hacía nada en el aparato, y cada widget pasaba su
+/// propia prueba por separado.
 ///
 /// Deslizar a la **izquierda** lleva a la ventana siguiente, como pasar la hoja
 /// de un cuaderno. En los extremos no da la vuelta: saltar de Configuración a
@@ -41,31 +47,23 @@ class NavegacionPorGesto extends StatefulWidget {
 }
 
 class _NavegacionPorGestoState extends State<NavegacionPorGesto> {
-  /// Punteros que hay ahora mismo en la pantalla.
-  ///
-  /// Se cuentan a mano porque un `HorizontalDragGestureRecognizer` normal sigue
-  /// atendiendo al primer dedo aunque aparezca un segundo: con dos dedos
-  /// deslizando, cambiaría de ventana igual. Y eso es justo lo que hay que
-  /// dejar libre.
-  int _punteros = 0;
-
   double _recorrido = 0;
-  bool _cancelado = false;
+  _ArrastreDeUnDedo? _reconocedor;
 
   void _empezar(DragStartDetails _) {
     _recorrido = 0;
-    _cancelado = _punteros > 1;
   }
 
   void _mover(DragUpdateDetails detalles) {
-    // Un segundo dedo a mitad del arrastre lo anula: el gesto pasó a ser otra
-    // cosa, y terminarlo como navegación sería adivinar.
-    if (_punteros > 1) _cancelado = true;
     _recorrido += detalles.delta.dx;
   }
 
   void _terminar(DragEndDetails detalles) {
-    if (_cancelado) return;
+    // Retirarse de la arena no alcanza cuando el primer dedo YA había ganado —
+    // que es lo que pasa cuando nadie compite—: ahí `resolve` no deshace nada y
+    // el arrastre sigue vivo. Por eso el reconocedor además se marca, y acá no
+    // se navega.
+    if (_reconocedor?.invalidado ?? false) return;
 
     final ancho = context.size?.width ?? MediaQuery.sizeOf(context).width;
     final velocidad = detalles.velocity.pixelsPerSecond.dx;
@@ -84,28 +82,67 @@ class _NavegacionPorGestoState extends State<NavegacionPorGesto> {
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      // `Listener` y no `GestureDetector` para contar: los punteros llegan acá
-      // antes de que ningún reconocedor los reclame.
-      onPointerDown: (_) => _punteros++,
-      onPointerUp: (_) => _punteros = _punteros > 0 ? _punteros - 1 : 0,
-      onPointerCancel: (_) => _punteros = _punteros > 0 ? _punteros - 1 : 0,
-      child: RawGestureDetector(
-        // `deferToChild`: lo que ya escucha un toque —un botón, una lista— lo
-        // sigue recibiendo. Este gesto solo entra donde nadie lo reclama.
-        behavior: HitTestBehavior.deferToChild,
-        gestures: {
-          HorizontalDragGestureRecognizer:
-              GestureRecognizerFactoryWithHandlers<HorizontalDragGestureRecognizer>(
-                HorizontalDragGestureRecognizer.new,
-                (instancia) => instancia
-                  ..onStart = _empezar
-                  ..onUpdate = _mover
-                  ..onEnd = _terminar,
-              ),
-        },
-        child: widget.child,
-      ),
+    return RawGestureDetector(
+      // `deferToChild`: lo que ya escucha un toque —un botón, una lista— lo
+      // sigue recibiendo. Este gesto solo entra donde nadie lo reclama.
+      behavior: HitTestBehavior.deferToChild,
+      gestures: {
+        _ArrastreDeUnDedo: GestureRecognizerFactoryWithHandlers<_ArrastreDeUnDedo>(
+          _ArrastreDeUnDedo.new,
+          (instancia) => _reconocedor = instancia
+            ..onStart = _empezar
+            ..onUpdate = _mover
+            ..onEnd = _terminar,
+        ),
+      },
+      child: widget.child,
     );
+  }
+}
+
+/// Un arrastre horizontal que **se retira** en cuanto hay un segundo dedo.
+///
+/// `HorizontalDragGestureRecognizer` sigue atendiendo al primer puntero aunque
+/// aparezcan más: con dos dedos deslizando cambiaría de ventana igual, y —peor—
+/// se quedaría con la victoria en la arena, dejando sin gesto a la acción de dos
+/// dedos de la pantalla.
+///
+/// `resolve(rejected)` es lo que lo suelta: retira a este reconocedor de la
+/// disputa y deja que la gane quien sí sabe qué hacer con dos dedos.
+class _ArrastreDeUnDedo extends HorizontalDragGestureRecognizer {
+  int _punteros = 0;
+
+  /// Hubo un segundo dedo en este gesto, así que ya no es navegación.
+  ///
+  /// Hace falta además del `resolve` porque retirarse de la arena solo sirve
+  /// mientras la disputa siga abierta: si este reconocedor ya la había ganado
+  /// —no había con quién competir—, el arrastre continúa igual.
+  bool invalidado = false;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    _punteros++;
+    // El primer dedo abre un gesto nuevo y limpio. Se reinicia acá y no al
+    // dejar de rastrear: `resolve(rejected)` deja de rastrear en el acto, así
+    // que resetear ahí borraba la marca ANTES de que el arrastre terminara — y
+    // el gesto de dos dedos volvía a navegar.
+    if (_punteros == 1) invalidado = false;
+    if (_punteros > 1) {
+      invalidado = true;
+      resolve(GestureDisposition.rejected);
+      return;
+    }
+    super.addAllowedPointer(event);
+  }
+
+  @override
+  void handleNonAllowedPointer(PointerDownEvent event) {
+    // Sin esto, un puntero que no se aceptó dejaría el contador desbalanceado.
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {
+    _punteros = 0;
+    super.didStopTrackingLastPointer(pointer);
   }
 }

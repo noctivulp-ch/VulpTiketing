@@ -179,6 +179,25 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     setState(() => _rango = rangos[destino]);
   }
 
+  /// Exporta lo que se está mirando: el turno abierto, si hay uno, y si no el
+  /// período completo.
+  ///
+  /// El gesto necesita el reporte ya calculado, y quien lo dispara es la
+  /// pantalla entera —no la celda—, así que se lee del provider en vez de
+  /// pasarlo por parámetro.
+  Future<void> _exportarLoQueSeVe() async {
+    final params = ReportesParametros(rango: _rango, fechaReferencia: _fecha);
+    final reporte = ref.read(reportesProvider(params)).valueOrNull;
+    // Todavía cargando: exportar un total que no está sería exportar un cero.
+    if (reporte == null) return;
+
+    if (_turnoSeleccionado != null) {
+      await _exportarTurno(reporte, _turnoSeleccionado!);
+    } else {
+      await _exportarPeriodo(reporte);
+    }
+  }
+
   Future<void> _elegirFecha() async {
     final elegida = await elegirPeriodo(context, rango: _rango, actual: _fecha);
     if (elegida != null && mounted) setState(() => _fecha = elegida);
@@ -210,12 +229,14 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       // es cambiar de ventana, así que esto no le pisa nada (decisión 0030).
       alDeslizarIzquierda: () => _moverRango(1, esGerente),
       alDeslizarDerecha: () => _moverRango(-1, esGerente),
-      // Y hacia abajo se despliega el selector del rango actual —calendario,
-      // meses o años—, que es el mismo sentido de "abrir" que en Ventana 2.
-      alDeslizarAbajo: enDetalle || !esGerente ? null : () => _elegirFecha(),
-      // Arriba cierra el detalle abierto, por simetría con el gesto de Ventana
-      // 2: abajo abre, arriba cierra.
-      alDeslizarArriba: enDetalle ? volver : null,
+      // Abajo despliega el selector del rango actual —calendario, meses o
+      // años—, que es el mismo sentido de "abrir" que en Ventana 2.
+      alDeslizarAbajo: enDetalle || !esGerente ? null : _elegirFecha,
+      // Y arriba, exportar. No cerrar: para salir del detalle ya están el botón
+      // de volver y el retroceso del sistema, así que gastar el gesto en eso
+      // era desperdiciarlo. Exportar, en cambio, no tenía atajo — vivía
+      // escondido en un "mantener presionado" que no se descubre solo.
+      alDeslizarArriba: _exportarLoQueSeVe,
       child: RetrocesoCierra(
         activo: enDetalle,
         alRetroceder: volver,

@@ -26,7 +26,7 @@ después.
 - **Dos y tres dedos** → acciones. Las que hay:
   - **Ventana 2** — abajo abre el panel de productos, arriba lo cierra.
   - **Reportes** — de lado recorre los rangos (Día → Semana → Mes → Año), abajo
-    abre el selector del rango actual, arriba cierra el detalle abierto.
+    abre el selector del rango actual, arriba abre el menú de exportación.
 
 `NavegacionPorGesto` cuenta los punteros en pantalla con un `Listener` y anula
 el arrastre en cuanto hay más de uno — incluso a mitad del gesto. **No basta con
@@ -76,6 +76,14 @@ la app.
 esto, un gesto lateral con algo de caída dispararía la acción vertical, o las
 dos.
 
+**Los gestos no entran en los diálogos.** Un emergente vive en otra rama del
+árbol —la del `Navigator`—, así que no hereda nada de la pantalla que lo abrió.
+Es lo correcto: mientras el calendario está abierto, deslizar no debe cambiar de
+rango por detrás. Por eso "arriba cierra" no servía como salida de un emergente,
+y el gesto se aprovecha para **exportar**, que no tenía atajo: vivía escondido
+en un "mantener presionado" que no se descubre solo. Para salir ya están el
+botón de volver y el retroceso del sistema.
+
 **Los gestos respetan el rol.** En Reportes, el recorrido de rangos va sobre los
 que ese rol tiene —la Registradora tiene dos, el Gerente cuatro— y el gesto de
 abrir el selector no existe para quien no tiene el botón. Un gesto no puede ser
@@ -92,6 +100,24 @@ una puerta trasera a algo que la pantalla no ofrece.
   distingue un dedo de dos.
 - **Dar la vuelta en los extremos**: probado mentalmente contra el uso real —
   quien está en Configuración y desliza no quiere aterrizar en la caja.
+
+### Cómo se prueban
+
+Anidados, no por separado. El gesto lateral de dos dedos **no funcionaba en el
+aparato** aunque cada widget pasara su propia prueba: el reconocedor de la
+navegación —que envuelve la app entera— ganaba la arena y no la soltaba nunca.
+`resolve(GestureDisposition.rejected)` es lo que lo retira; y hace falta
+**además** una marca propia, porque retirarse solo sirve mientras la disputa
+siga abierta: si ya había ganado —cuando no hay con quién competir— el arrastre
+continúa igual. `test/gestos_anidados_test.dart` monta los dos juntos, que es
+como están en la app.
+
+En el aparato se prueban con el comando `gesto` del arnés, que inyecta los
+punteros por `handlePointerEvent` —el mismo sitio por el que el motor mete los
+dedos de verdad—. No hay otra forma desde fuera: `adb shell input` solo manda un
+puntero (no tiene `motionevent` hasta Android 11), `sendevent` necesita permisos
+sobre `/dev/input` que un teléfono de producción no da (`Permission denied`), y
+`scrcpy` simula el pellizco con Ctrl y el mouse, o sea que necesita ventana.
 
 ## Consecuencias
 

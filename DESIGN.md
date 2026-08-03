@@ -238,7 +238,10 @@ la app:
 | Dónde | De lado | Abajo | Arriba |
 |---|---|---|---|
 | Ventana 2 | — | abre el panel de productos | lo cierra |
-| Reportes | recorre los rangos | abre el selector del rango | cierra el detalle |
+| Reportes | recorre los rangos | abre el selector del rango | abre exportar |
+
+Los emergentes **no** heredan estos gestos: viven en la rama del `Navigator`, y
+mientras un calendario está abierto deslizar no debe cambiar nada por detrás.
 
 Disparan al cruzar el umbral —48 dp, un objetivo táctil—, no al soltar: la app
 prioriza velocidad. Manda el **eje dominante**, porque nadie arrastra dos dedos
