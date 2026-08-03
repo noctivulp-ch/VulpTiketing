@@ -18,6 +18,13 @@ import 'package:flutter/material.dart';
 /// Deslizar a la **izquierda** lleva a la ventana siguiente, como pasar la hoja
 /// de un cuaderno. En los extremos no da la vuelta: saltar de Configuración a
 /// Venta Rápida de un tirón desorienta más de lo que ahorra.
+///
+/// **En escritorio** el equivalente es el **touchpad de dos dedos en
+/// horizontal**. No es una inconsistencia con la regla de "un dedo navega": en
+/// un trackpad no existe arrastrar con un dedo sin apretar —eso mueve el
+/// cursor—, así que el gesto de moverse es el de dos. El vertical se deja en
+/// paz porque ahí es el scroll de toda la vida, y robárselo a las listas sería
+/// cambiar un atajo por un estorbo.
 class NavegacionPorGesto extends StatefulWidget {
   const NavegacionPorGesto({
     super.key,
@@ -50,6 +57,14 @@ class _NavegacionPorGestoState extends State<NavegacionPorGesto> {
   double _recorrido = 0;
   _ArrastreDeUnDedo? _reconocedor;
 
+  /// Lo que lleva acumulado el scroll horizontal del touchpad.
+  ///
+  /// Se acumula porque un gesto de trackpad llega en decenas de eventos
+  /// diminutos, no en uno: actuar con el primero cambiaría de ventana con el
+  /// roce más leve.
+  double _rueda = 0;
+  DateTime? _ultimaRueda;
+
   void _empezar(DragStartDetails _) {
     _recorrido = 0;
   }
@@ -80,22 +95,62 @@ class _NavegacionPorGestoState extends State<NavegacionPorGesto> {
     widget.onCambio(destino);
   }
 
+  /// El scroll horizontal de un touchpad (o de una rueda con inclinación).
+  void _rodar(PointerSignalEvent evento) {
+    if (evento is! PointerScrollEvent) return;
+    final delta = evento.scrollDelta;
+    // Vertical es scroll de contenido y no se toca. `>=` porque un trackpad
+    // manda algo de ruido en el otro eje casi siempre.
+    if (delta.dy.abs() >= delta.dx.abs()) return;
+
+    final ahora = DateTime.now();
+    // Un gesto nuevo empieza tras una pausa: sin esto, seguir deslizando después
+    // de cambiar de ventana encadenaría saltos hasta el final.
+    if (_ultimaRueda == null || ahora.difference(_ultimaRueda!) > _pausaEntreGestos) {
+      _rueda = 0;
+    }
+    _ultimaRueda = ahora;
+    _rueda += delta.dx;
+
+    if (_rueda.abs() < _recorridoDeRueda) return;
+    // A la izquierda es la siguiente, igual que con el dedo. El scroll de
+    // trackpad manda dx POSITIVO cuando los dedos van a la izquierda, que es al
+    // revés que el arrastre — de ahí el signo cambiado.
+    final destino = widget.indice + (_rueda > 0 ? 1 : -1);
+    _rueda = 0;
+    if (destino < 0 || destino >= widget.cantidad) return;
+    widget.onCambio(destino);
+  }
+
+  /// Cuánto scroll horizontal hace falta. Un gesto de trackpad completo pasa de
+  /// 100 con holgura; el roce al scrollear en diagonal, no.
+  static const _recorridoDeRueda = 120.0;
+
+  /// Después de esta pausa, lo que venga es un gesto nuevo.
+  static const _pausaEntreGestos = Duration(milliseconds: 250);
+
   @override
   Widget build(BuildContext context) {
-    return RawGestureDetector(
-      // `deferToChild`: lo que ya escucha un toque —un botón, una lista— lo
-      // sigue recibiendo. Este gesto solo entra donde nadie lo reclama.
-      behavior: HitTestBehavior.deferToChild,
-      gestures: {
-        _ArrastreDeUnDedo: GestureRecognizerFactoryWithHandlers<_ArrastreDeUnDedo>(
-          _ArrastreDeUnDedo.new,
-          (instancia) => _reconocedor = instancia
-            ..onStart = _empezar
-            ..onUpdate = _mover
-            ..onEnd = _terminar,
-        ),
-      },
-      child: widget.child,
+    return Listener(
+      onPointerSignal: _rodar,
+      // `translucent`: hay que verlo pase lo que pase, y aun así dejar que el
+      // scroll llegue a las listas de abajo.
+      behavior: HitTestBehavior.translucent,
+      child: RawGestureDetector(
+        // `deferToChild`: lo que ya escucha un toque —un botón, una lista— lo
+        // sigue recibiendo. Este gesto solo entra donde nadie lo reclama.
+        behavior: HitTestBehavior.deferToChild,
+        gestures: {
+          _ArrastreDeUnDedo: GestureRecognizerFactoryWithHandlers<_ArrastreDeUnDedo>(
+            _ArrastreDeUnDedo.new,
+            (instancia) => _reconocedor = instancia
+              ..onStart = _empezar
+              ..onUpdate = _mover
+              ..onEnd = _terminar,
+          ),
+        },
+        child: widget.child,
+      ),
     );
   }
 }

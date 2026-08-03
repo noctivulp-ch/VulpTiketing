@@ -251,6 +251,23 @@ aparta en cuanto aparece un segundo dedo, incluso a mitad del arrastre: no basta
 con un `HorizontalDragGestureRecognizer`, que sigue atendiendo al primer dedo y
 navegaría igual.
 
+### En escritorio
+
+No hay dedos, así que lo mismo se hace con **touchpad** y **teclado**
+([decisión 0031](docs/decisiones/0031-paridad-de-escritorio-teclado-y-touchpad.md)):
+
+- **Touchpad, dos dedos en horizontal** → cambiar de ventana. Es el equivalente
+  del deslizamiento de un dedo del teléfono: en un trackpad no existe arrastrar
+  con un dedo sin apretar. El **vertical no se toca** — ahí dos dedos es el
+  scroll de las listas.
+- **Teclado** para lo demás: `Ctrl+1..5` y `Ctrl+Tab` para las ventanas; en
+  Reportes `←`/`→` para el rango, `RePág`/`AvPág` para la página, `Ctrl+E`
+  exportar, `Ctrl+F` elegir período, `Esc` salir del detalle; `Ctrl+P` abre el
+  panel de productos en Venta.
+
+Lleva `Ctrl` lo que podría chocar con escribir. Reportes no tiene campos, así que
+ahí las flechas van directas.
+
 Nada de esto se anima. El orden de prioridades de la app es **velocidad y
 usabilidad primero, después ser intuitiva, y la estética al final**; una
 transición cuesta frames en un teléfono de gama baja para no agregar

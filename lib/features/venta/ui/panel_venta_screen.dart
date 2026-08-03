@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/nav/gesto_dos_dedos.dart';
@@ -215,12 +216,21 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
   /// El botón de la costura sigue estando: el gesto es un atajo para quien
   /// cobra con una mano todo el día, no la única forma de hacerlo.
   Widget _conGestoDePanel(Widget hijo) {
-    return GestoDeDosDedos(
-      // `!_panelAbierto` en vez de alternar: repetir el gesto en el mismo
-      // sentido no puede cerrar lo que acaba de abrir.
-      alDeslizarAbajo: _panelAbierto ? null : () => setState(() => _panelAbierto = true),
-      alDeslizarArriba: _panelAbierto ? () => setState(() => _panelAbierto = false) : null,
-      child: hijo,
+    // `Ctrl+P` hace lo mismo que el gesto en escritorio, donde no hay dedos.
+    // Con `Ctrl` porque esta pantalla SÍ tiene campos —el de Recibí— y una P
+    // suelta ahí es una letra.
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyP, control: true): () =>
+            setState(() => _panelAbierto = !_panelAbierto),
+      },
+      child: GestoDeDosDedos(
+        // `!_panelAbierto` en vez de alternar: repetir el gesto en el mismo
+        // sentido no puede cerrar lo que acaba de abrir.
+        alDeslizarAbajo: _panelAbierto ? null : () => setState(() => _panelAbierto = true),
+        alDeslizarArriba: _panelAbierto ? () => setState(() => _panelAbierto = false) : null,
+        child: hijo,
+      ),
     );
   }
 }

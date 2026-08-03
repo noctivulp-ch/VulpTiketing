@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/db_providers.dart';
@@ -260,74 +261,94 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     final params = ReportesParametros(rango: _rango, fechaReferencia: _fecha);
     final reporteAsync = ref.watch(reportesProvider(params));
 
-    return GestoDeDosDedos(
-      // Dos dedos de lado recorren los rangos, en el mismo orden en que están
-      // en el selector: Día → Semana → Mes → Año. Con un dedo el horizontal ya
-      // es cambiar de ventana, así que esto no le pisa nada (decisión 0030).
-      // Dentro del detalle el mismo gesto pasa de PÁGINA, no de rango: ahí lo
-      // que se recorre son las ventas, y cambiar el rango por debajo de una
-      // lista que se está leyendo sería desconcertante.
-      alDeslizarIzquierda: _detalleDelRango
-          ? () => _moverPagina(1)
-          : () => _moverRango(1, esGerente),
-      alDeslizarDerecha: _detalleDelRango
-          ? () => _moverPagina(-1)
-          : () => _moverRango(-1, esGerente),
-      // Abajo despliega el selector del rango actual —calendario, meses o
-      // años—, que es el mismo sentido de "abrir" que en Ventana 2.
-      alDeslizarAbajo: enDetalle || !esGerente ? null : _elegirFecha,
-      // Y arriba, exportar. No cerrar: para salir del detalle ya están el botón
-      // de volver y el retroceso del sistema, así que gastar el gesto en eso
-      // era desperdiciarlo. Exportar, en cambio, no tenía atajo — vivía
-      // escondido en un "mantener presionado" que no se descubre solo.
-      alDeslizarArriba: _exportarLoQueSeVe,
-      child: RetrocesoCierra(
-        activo: enDetalle,
-        alRetroceder: volver,
-        child: Scaffold(
-          body: Padding(
-            // El hero no scrollea: acá el espacio superior se reserva de verdad,
-            // no se atraviesa.
-            padding: EdgeInsets.fromLTRB(
-              BentoSpacing.gapCelda,
-              bentoInsetSuperior(context),
-              BentoSpacing.gapCelda,
-              BentoSpacing.gapCelda,
-            ),
-            child: _detalleDelRango
-                ? _DetalleDelRango(
-                    peticion: PaginaDetalle(params, pagina: _paginaDetalle),
-                    titulo: _tituloDelRango(),
-                    onVolver: volver,
-                  )
-                : reporteAsync.when(
-                    data: (reporte) => _turnoSeleccionado != null
-                        ? _VistaDrillDown(
-                            titulo: _nombreTurno(_turnoSeleccionado!),
-                            ventas: reporte.ventasPorTurno[_turnoSeleccionado]!,
-                            total: reporte.porTurno[_turnoSeleccionado]!,
-                            vacio: 'Sin ventas en este turno',
-                            onVolver: volver,
-                          )
-                        : _VistaGeneral(
-                            rango: _rango,
-                            fecha: _fecha,
-                            reporte: reporte,
-                            esGerente: esGerente,
-                            onCambiarRango: (r) => setState(() => _rango = r),
-                            onSeleccionarTurno: (t) => setState(() => _turnoSeleccionado = t),
-                            onVerDetalle: () => setState(() => _detalleDelRango = true),
-                            onExportar: () => _exportarPeriodo(reporte),
-                            onExportarTurno: (t) => _exportarTurno(reporte, t),
-                            onElegirFecha: _elegirFecha,
-                          ),
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, st) => BentoFalla(
-                      mensaje: 'No se pudieron cargar las ventas del período.',
-                      error: e,
-                      onReintentar: () => ref.invalidate(reportesProvider(params)),
+    // Los mismos atajos que en el teléfono son gestos. Sin `Ctrl` las flechas y
+    // las teclas de página, porque Reportes no tiene un solo campo de texto con
+    // el que puedan chocar; `Ctrl+E` sí lo lleva, que una E suelta es una letra.
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
+            _detalleDelRango ? _moverPagina(1) : _moverRango(1, esGerente),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
+            _detalleDelRango ? _moverPagina(-1) : _moverRango(-1, esGerente),
+        const SingleActivator(LogicalKeyboardKey.pageDown): () => _moverPagina(1),
+        const SingleActivator(LogicalKeyboardKey.pageUp): () => _moverPagina(-1),
+        const SingleActivator(LogicalKeyboardKey.keyE, control: true): _exportarLoQueSeVe,
+        // El período: `F` de fecha. Solo el Gerente lo elige, igual que el gesto
+        // y que el botón del calendario.
+        if (esGerente && !enDetalle)
+          const SingleActivator(LogicalKeyboardKey.keyF, control: true): _elegirFecha,
+        // Salir del detalle sin buscar el botón.
+        if (enDetalle) const SingleActivator(LogicalKeyboardKey.escape): volver,
+      },
+      child: GestoDeDosDedos(
+        // Dos dedos de lado recorren los rangos, en el mismo orden en que están
+        // en el selector: Día → Semana → Mes → Año. Con un dedo el horizontal ya
+        // es cambiar de ventana, así que esto no le pisa nada (decisión 0030).
+        // Dentro del detalle el mismo gesto pasa de PÁGINA, no de rango: ahí lo
+        // que se recorre son las ventas, y cambiar el rango por debajo de una
+        // lista que se está leyendo sería desconcertante.
+        alDeslizarIzquierda: _detalleDelRango
+            ? () => _moverPagina(1)
+            : () => _moverRango(1, esGerente),
+        alDeslizarDerecha: _detalleDelRango
+            ? () => _moverPagina(-1)
+            : () => _moverRango(-1, esGerente),
+        // Abajo despliega el selector del rango actual —calendario, meses o
+        // años—, que es el mismo sentido de "abrir" que en Ventana 2.
+        alDeslizarAbajo: enDetalle || !esGerente ? null : _elegirFecha,
+        // Y arriba, exportar. No cerrar: para salir del detalle ya están el botón
+        // de volver y el retroceso del sistema, así que gastar el gesto en eso
+        // era desperdiciarlo. Exportar, en cambio, no tenía atajo — vivía
+        // escondido en un "mantener presionado" que no se descubre solo.
+        alDeslizarArriba: _exportarLoQueSeVe,
+        child: RetrocesoCierra(
+          activo: enDetalle,
+          alRetroceder: volver,
+          child: Scaffold(
+            body: Padding(
+              // El hero no scrollea: acá el espacio superior se reserva de verdad,
+              // no se atraviesa.
+              padding: EdgeInsets.fromLTRB(
+                BentoSpacing.gapCelda,
+                bentoInsetSuperior(context),
+                BentoSpacing.gapCelda,
+                BentoSpacing.gapCelda,
+              ),
+              child: _detalleDelRango
+                  ? _DetalleDelRango(
+                      peticion: PaginaDetalle(params, pagina: _paginaDetalle),
+                      titulo: _tituloDelRango(),
+                      onVolver: volver,
+                    )
+                  : reporteAsync.when(
+                      data: (reporte) => _turnoSeleccionado != null
+                          ? _VistaDrillDown(
+                              titulo: _nombreTurno(_turnoSeleccionado!),
+                              ventas: reporte.ventasPorTurno[_turnoSeleccionado]!,
+                              total: reporte.porTurno[_turnoSeleccionado]!,
+                              vacio: 'Sin ventas en este turno',
+                              onVolver: volver,
+                            )
+                          : _VistaGeneral(
+                              rango: _rango,
+                              fecha: _fecha,
+                              reporte: reporte,
+                              esGerente: esGerente,
+                              onCambiarRango: (r) => setState(() => _rango = r),
+                              onSeleccionarTurno: (t) => setState(() => _turnoSeleccionado = t),
+                              onVerDetalle: () => setState(() => _detalleDelRango = true),
+                              onExportar: () => _exportarPeriodo(reporte),
+                              onExportarTurno: (t) => _exportarTurno(reporte, t),
+                              onElegirFecha: _elegirFecha,
+                            ),
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (e, st) => BentoFalla(
+                        mensaje: 'No se pudieron cargar las ventas del período.',
+                        error: e,
+                        onReintentar: () => ref.invalidate(reportesProvider(params)),
+                      ),
                     ),
-                  ),
+            ),
           ),
         ),
       ),
