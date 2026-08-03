@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vulp_tiketing/core/theme/bento_imagen_abstracta.dart';
 import 'package:vulp_tiketing/core/theme/bento_theme.dart';
 import 'package:vulp_tiketing/features/producto/banco_imagenes.dart';
+import 'package:vulp_tiketing/features/producto/ui/banco_imagenes_dialog.dart';
 import 'package:vulp_tiketing/features/producto/ui/imagen_del_banco_vista.dart';
 
 /// El banco de imágenes: figuras de fábrica que no pesan, más las fotos que se
@@ -136,6 +137,77 @@ void main() {
 
       expect(primera.semilla, segunda.semilla);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('el diálogo del banco', () {
+    Future<String?> abrir(WidgetTester tester) async {
+      String? elegida;
+      var abierto = false;
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: buildBentoTheme(AcentoTinte.oro),
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () async {
+                      abierto = true;
+                      elegida = await elegirDelBanco(context, semillaProducto: 'p1');
+                    },
+                    child: const Text('abrir'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('abrir'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(abierto, isTrue);
+      return elegida;
+    }
+
+    testWidgets('muestra las figuras de fábrica sin que haya nada agregado', (tester) async {
+      // Un banco vacío del que no se pueda elegir nada sería una pantalla que
+      // solo sabe decir "no hay".
+      await abrir(tester);
+
+      expect(find.text('Figuras'), findsOneWidget);
+      expect(find.byType(ImagenDelBancoVista), findsNWidgets(BancoDeImagenes.figurasDeFabrica));
+    });
+
+    testWidgets('ofrece cámara y galería', (tester) async {
+      await abrir(tester);
+
+      expect(find.text('Cámara'), findsOneWidget);
+      expect(find.text('Galería'), findsOneWidget);
+    });
+
+    testWidgets('elegir una figura devuelve SU referencia', (tester) async {
+      await abrir(tester);
+
+      await tester.tap(find.byType(ImagenDelBancoVista).first);
+      await tester.pumpAndSettle();
+
+      // La primera de la cuadrícula es la primera de fábrica.
+      expect(find.text('Figuras'), findsNothing, reason: 'el diálogo se cerró');
+    });
+
+    testWidgets('"Sin imagen" y "Cancelar" son cosas distintas', (tester) async {
+      // Vaciar la imagen es una elección —devuelve al producto su figura
+      // propia—; cancelar no cambia nada. Si devolvieran lo mismo, no se podría
+      // quitar una foto ya puesta.
+      await abrir(tester);
+      expect(find.text('Sin imagen'), findsOneWidget);
+      expect(find.text('Cancelar'), findsOneWidget);
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Figuras'), findsNothing);
     });
   });
 }

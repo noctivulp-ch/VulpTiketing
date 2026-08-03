@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -110,5 +112,30 @@ void main() {
     final p1 = (await db.query('producto', where: 'id = ?', whereArgs: ['p1'])).first;
     expect(p1['nombre'], 'Café especial');
     expect(p1['precio_base'], 1000.0);
+  });
+
+  test('el catálogo compartido lleva la referencia de imagen', () async {
+    // `.tiketdata` se comparte entre negocios (0017). La referencia viaja, pero
+    // el banco NO (0033): quien lo importe verá la figura por defecto del
+    // producto si la foto no está en su aparato, que es lo mismo que ve un
+    // producto sin imagen. Lo que sí funciona en cualquier aparato son las
+    // figuras de fábrica, que no son archivos.
+    await db.insert('producto', {
+      'id': 'con-figura',
+      'nombre': 'Casado',
+      'imagen': 'abs:figura-4',
+      'precio_base': 2500.0,
+      'updated_at': DateTime(2026).toIso8601String(),
+    });
+
+    final bytes = await TiketdataService(db).generarCatalogo();
+    final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+    final productos = (json['productos'] as List).cast<Map<String, dynamic>>();
+
+    expect(
+      productos.firstWhere((p) => p['id'] == 'con-figura')['imagen'],
+      'abs:figura-4',
+      reason: 'una figura de fábrica sí sirve en el aparato que lo importe',
+    );
   });
 }
