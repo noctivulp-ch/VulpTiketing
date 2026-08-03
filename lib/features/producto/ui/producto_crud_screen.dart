@@ -267,25 +267,38 @@ class _FilaProducto extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // El icono neutro se calla cuando hay aspa. Los dos juntos —
-                  // un cubierto y una prohibición del mismo tamaño, uno encima
-                  // del otro— no se leían ni por separado: se veían como un
-                  // borrón. Con imagen elegida sí van los dos, porque ahí el
-                  // de abajo dice algo (qué producto es) y el de arriba dice
-                  // otra cosa (que está fuera de la carta).
-                  if (producto.activo || producto.imagen != null)
-                    ImagenDelBancoVista(
-                      referencia: producto.imagen,
-                      ventana: VentanaConFotos.inventario,
-                      categoria: categoria,
-                      apagada: !producto.activo,
-                    ),
+                  ImagenDelBancoVista(
+                    referencia: producto.imagen,
+                    ventana: VentanaConFotos.inventario,
+                    categoria: categoria,
+                    apagada: !producto.activo,
+                  ),
+                  // El aspa va en una ESQUINA y pequeña, no centrada y del
+                  // mismo tamaño que lo de abajo. Centradas, las dos marcas se
+                  // pisaban y no se leía ninguna: un cubierto y una prohibición
+                  // superpuestos son un borrón, no dos datos.
+                  //
+                  // Y son dos datos distintos que hacen falta a la vez — qué es
+                  // el producto y que está fuera de la carta—, así que la
+                  // respuesta es apartarlas, no callar una.
                   if (!producto.activo)
-                    Center(
-                      child: Icon(
-                        Icons.block,
-                        size: 22,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Container(
+                        // Fondo propio: encima de una foto clara, el aspa sola
+                        // desaparecía.
+                        decoration: BoxDecoration(
+                          color: lacaDe(context).pozo,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(BentoRadius.pozo / 2),
+                          ),
+                        ),
+                        padding: const EdgeInsets.only(left: 2, top: 2),
+                        child: Icon(
+                          Icons.block,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                 ],

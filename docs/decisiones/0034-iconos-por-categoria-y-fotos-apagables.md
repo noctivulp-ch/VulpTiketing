@@ -116,11 +116,17 @@ distintas del mismo aparato.
 **Apagar las fotos dejando el hueco vacío.** Ahorraría también el espacio, pero
 convierte una opción de rendimiento en una pérdida de información.
 
+### 5. El aspa de "fuera de la carta", a una esquina
+
+Centrada y del mismo tamaño que el icono de abajo, las dos marcas se pisaban y
+no se leía ninguna — un cubierto y una prohibición superpuestos son un borrón,
+no dos datos. Y son dos datos que hacen falta a la vez: qué es el producto y que
+está fuera de la carta. La respuesta es apartarlas, no callar una.
+
+El aspa pasa a insignia pequeña en la esquina inferior derecha, con fondo propio
+porque encima de una foto clara desaparecía.
+
 ## Qué queda sin resolver
 
-- El aspa de "fuera de la carta" del catálogo se dibuja **encima** del icono, y
-  cuando el producto no tiene imagen elegida los dos se pisan: un cubierto y una
-  prohibición del mismo tamaño, uno sobre otro, no se leen ni por separado. Con
-  el icono por categoría el caso es menos frecuente, pero sigue ahí.
 - La cámara y la galería del banco siguen sin probarse en el aparato: abren apps
   del sistema y necesitan que alguien toque la pantalla.
