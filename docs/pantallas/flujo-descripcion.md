@@ -40,6 +40,7 @@ Pensada para el caso común: vender uno o pocos productos sin construir un carri
   - **Cantidad** — cuántas unidades de ese producto, por defecto 1, editable (consistente con el `DEFAULT 1` de `linea_venta.cantidad` en el esquema).
   - **Precio** — precargado con el precio base (placeholder), editable — mismo comportamiento ya definido en [ventas.md](../funciones/ventas.md) y `linea_venta.precio_aplicado`.
   - **Cambio** — mismo control que el de la Ventana 2 (ver abajo): campo de texto donde se escribe el monto recibido; tras 400ms sin escribir, se calcula el cambio a devolver automáticamente. Sin botón adicional.
+  - **SINPE** — casilla para marcar que se cobró por transferencia. Efectivo es lo normal y es lo que pasa si nadie la toca; el identificador de la transferencia **no** se pide acá, se anota después desde Reportes ([decisión 0032](../decisiones/0032-metodo-de-pago-en-la-venta.md)).
   - **Completado** — botón para finalizar esta venta de un solo producto.
 - Al finalizar: se muestra una **notificación no intrusiva en una esquina** (éxito o error) y el overlay se cierra.
 
@@ -51,9 +52,15 @@ Para ventas de varios productos. Layout:
 
 ```
 [ rectángulo amplio: líneas de la venta en curso ]
-[ barra inferior: cambio | total | finalizar ]
+[ barra inferior: SINPE | recibí | cambio | total | finalizar ]
 [ botón/pestaña: agregar producto ]
 ```
+
+La casilla **SINPE** marca que se cobró por transferencia; efectivo es lo normal
+y es lo que pasa si nadie la toca. El identificador se anota después, desde el
+detalle de Reportes ([decisión 0032](../decisiones/0032-metodo-de-pago-en-la-venta.md)).
+De pie ocupa su propia fila a lo ancho: es lo que hay que acordarse de marcar
+**antes** de cobrar, y apretada en media celda se pasa por alto.
 
 - **Rectángulo de líneas**: cada producto agregado se muestra como un rectángulo con dos botones integrados — **editar** (precio/cantidad/nota de esa línea) y **eliminar** (quita la línea del carrito; no confundir con "descontinuar" un Producto del catálogo — ver Ventana 3).
 - **Barra inferior**, según el ejemplo dado:

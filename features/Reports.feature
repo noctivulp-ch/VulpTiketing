@@ -23,3 +23,12 @@ Feature: Financial Reports
     Then the user can only view the Current Week report
     And the Current Day report
     And the Morning/Afternoon/Night breakdown for the current day
+
+  Scenario: Seeing how much came in by bank transfer
+    Given sales exist in the selected period, some paid by "sinpe"
+    Then the report must show how much of the total came in by SINPE
+    And show nothing about payment methods when every sale was cash
+    # "SINPE ₡0" on an all-cash day is a line that says nothing and takes room
+    # from the number people come to see.
+    And exported files must carry the payment method and the transfer reference
+        per line, which is what gets checked against the bank statement ([0032])

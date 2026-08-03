@@ -20,12 +20,30 @@ Feature: Fast Sale Registration
     Then the system must save that line as a "línea libre", not linked to any catalog "Producto"
     And this line must never block a future purge of any "Producto" ([0016])
 
+  Scenario: Choosing how the sale was paid
+    Given the user is building a "Venta"
+    Then the system must default the payment method to "efectivo" (cash)
+    And offer a single "SINPE" checkbox to mark it as a bank transfer instead
+    # A checkbox and not a two-option picker: cash is what happens in nine out
+    # of ten sales, so asking every time would add a tap per sale for nothing.
+    And this checkbox must be available both in Venta Rápida and in the Panel de Venta
+
+  Scenario: Adding the transfer reference after the sale
+    Given a "Venta" was saved with payment method "sinpe"
+    When the user opens it later from the sales detail in Reportes
+    Then the system must allow entering the transfer identifier
+    And allow leaving it empty or clearing it afterwards
+    # At the counter there is a queue: nobody types a twelve-digit reference
+    # with the customer waiting. What cannot be lost is THAT it was a transfer.
+    And this must be the only field of a saved venta that can be written after the fact,
+        apart from the reversal — it must not change amounts, lines or estado ([0032])
+
   Scenario: A saved Venta cannot be edited or deleted
     Given a "Venta" has already been saved
     When the user wants to correct it
     Then the system must not allow editing its lines or prices
     And the system must not allow deleting it
-    And the only available action is to revert it
+    And the only available actions are to revert it, or to annotate its transfer reference
 
   Scenario: Reverting a Venta
     Given a "Venta" is in "activa" state
