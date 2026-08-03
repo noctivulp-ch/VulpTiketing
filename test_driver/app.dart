@@ -146,22 +146,39 @@ Future<dynamic> _ejecutar(
       );
       final params = ReportesParametros(rango: rango, fechaReferencia: DateTime.now());
       final reporte = await container.read(reportesProvider(params).future);
-      final detalle = await container.read(detalleRangoProvider(params).future);
-      final bytes = await const ReporteExportService().generar(
-        formato: formato,
-        titulo: 'Ventas · ${rango.name}',
-        total: reporte.total,
-        porTurno: reporte.porTurno,
-        ventas: detalle.ventas,
-      );
+      final db = await container.read(databaseProvider.future);
       final destino = await const CarpetaExportacion().archivoPara(
         'reporte-${rango.name}.${formato.extension}',
       );
-      await destino.writeAsBytes(bytes);
+      var cuantas = 0;
+      if (formato == FormatoReporte.csv) {
+        cuantas = await const ReporteExportService().escribirCsvPorLotes(
+          destino: destino,
+          titulo: 'Ventas · ${rango.name}',
+          total: reporte.total,
+          porTurno: reporte.porTurno,
+          lotes: ventasDelRangoPorLotes(db, params),
+        );
+      } else {
+        final ventas = <VentaConLineas>[];
+        await for (final lote in ventasDelRangoPorLotes(db, params)) {
+          ventas.addAll(lote);
+        }
+        cuantas = ventas.length;
+        await destino.writeAsBytes(
+          await const ReporteExportService().generar(
+            formato: formato,
+            titulo: 'Ventas · ${rango.name}',
+            total: reporte.total,
+            porTurno: reporte.porTurno,
+            ventas: ventas,
+          ),
+        );
+      }
       return {
         'donde': await const AlmacenPublico().publicar(destino),
-        'ventas': detalle.ventas.length,
-        'bytes': bytes.length,
+        'ventas': cuantas,
+        'fallo_publicar': AlmacenPublico.ultimoFallo,
       };
 
     case 'exportar_backup':

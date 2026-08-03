@@ -1,3 +1,4 @@
+import 'package:sqflite/sqflite.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/db_providers.dart';
@@ -334,3 +335,56 @@ final detalleRangoProvider = FutureProvider.family<DetalleRango, ReportesParamet
     totalVentas: total,
   );
 });
+
+/// **Todas** las ventas de un rango, en lotes, para exportar.
+///
+/// El tope de [limiteDetalleRango] es para la PANTALLA: una lista de la que
+/// nadie va a desplazar 5.000 filas no gana nada trayéndolas. Un informe es otra
+/// cosa — nadie manda a su contador un archivo que dice "incluye las 300 ventas
+/// más recientes de 2.847". Acá no hay tope.
+///
+/// Va por lotes y no de una para no construir 200.000 objetos antes de escribir
+/// el primer byte: el CSV se escribe lote a lote y el consumo se mantiene plano
+/// sea cual sea el período.
+Stream<List<VentaConLineas>> ventasDelRangoPorLotes(
+  Database db,
+  ReportesParametros params, {
+  int lote = 500,
+}) async* {
+  final (desde, hasta) = rangoDeFechas(params.rango, params.fechaReferencia);
+  final args = [desde.toIso8601String(), hasta.toIso8601String()];
+
+  var desplazamiento = 0;
+  while (true) {
+    final ventasRows = await db.rawQuery(
+      'SELECT v.* FROM venta v WHERE $_sqlRangoActivo '
+      'ORDER BY v.fecha_hora ASC LIMIT $lote OFFSET $desplazamiento',
+      args,
+    );
+    if (ventasRows.isEmpty) return;
+
+    final ids = ventasRows.map((r) => "'${r['id']}'").join(',');
+    final lineasRows = await db.rawQuery(
+      'SELECT lv.*, $_sqlDescripcionLinea FROM linea_venta lv $_sqlJoinProducto '
+      'WHERE lv.venta_id IN ($ids)',
+    );
+    final lineasPorVenta = <String, List<LineaDetallada>>{};
+    for (final row in lineasRows) {
+      (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaDetallada.fromMap(row));
+    }
+
+    yield [
+      for (final row in ventasRows)
+        VentaConLineas(
+          venta: Venta.fromMap(row),
+          lineas: lineasPorVenta[row['id'] as String] ?? const [],
+        ),
+    ];
+
+    // Ascendente y por OFFSET: el rango ya está cerrado —no entran ventas
+    // nuevas de un período pasado mientras se exporta—, así que la página N+1
+    // no se solapa con la N.
+    if (ventasRows.length < lote) return;
+    desplazamiento += lote;
+  }
+}

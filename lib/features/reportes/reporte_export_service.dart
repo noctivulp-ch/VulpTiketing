@@ -64,6 +64,87 @@ class ReporteExportService {
     }
   }
 
+  /// Escribe un CSV **completo** lote a lote, sin cargar el período entero en
+  /// memoria.
+  ///
+  /// Existe porque un informe no puede venir recortado: la lista de pantalla
+  /// tiene tope (`limiteDetalleRango`) porque nadie desplaza 5.000 filas, pero
+  /// nadie manda a su contador un archivo que dice "incluye las 300 ventas más
+  /// recientes de 2.847". Acá no hay tope, y por eso tampoco puede haber una
+  /// lista entera en memoria.
+  ///
+  /// Devuelve cuántas ventas se escribieron.
+  Future<int> escribirCsvPorLotes({
+    required File destino,
+    required String titulo,
+    required double total,
+    required Stream<List<VentaConLineas>> lotes,
+    Map<Turno, double>? porTurno,
+  }) async {
+    final salida = destino.openWrite(encoding: utf8);
+    var ventas = 0;
+    var articulos = 0;
+    try {
+      // CRLF y BOM: sin ellos Excel en Windows abre el archivo en una sola
+      // columna y con los acentos rotos. Es el destino más probable de esto.
+      salida.write('\u{FEFF}');
+      void fila(List<String> celdas) => salida.write('${_fila(celdas)}\r\n');
+
+      fila(['Reporte', titulo]);
+      fila(['Total', total.toStringAsFixed(2)]);
+      if (porTurno != null) {
+        for (final turno in Turno.values) {
+          fila([_nombreTurno(turno), porTurno[turno]!.toStringAsFixed(2)]);
+        }
+      }
+      salida.write('\r\n');
+      fila(_cabeceraDetalle);
+
+      await for (final lote in lotes) {
+        for (final venta in lote) {
+          ventas++;
+          for (final l in venta.lineas) {
+            articulos += l.linea.cantidad;
+            fila(_filaDetalle(venta, l));
+          }
+        }
+      }
+
+      // El recuento va al FINAL porque hasta acá no se sabe: es el precio de no
+      // tener el período entero en memoria, y es un precio barato.
+      salida.write('\r\n');
+      fila(['Ventas', '$ventas']);
+      fila(['Artículos', '$articulos']);
+    } finally {
+      await salida.close();
+    }
+    return ventas;
+  }
+
+  static const _cabeceraDetalle = [
+    'Fecha',
+    'Hora',
+    'Producto',
+    'Cantidad',
+    'Precio unitario',
+    'Subtotal',
+    'Nota',
+    'Venta',
+  ];
+
+  List<String> _filaDetalle(VentaConLineas venta, LineaDetallada l) => [
+    _fecha(venta.venta.fechaHora),
+    _hora(venta.venta.fechaHora),
+    l.descripcion,
+    '${l.linea.cantidad}',
+    l.linea.precioAplicado.toStringAsFixed(2),
+    l.subtotal.toStringAsFixed(2),
+    l.linea.nota ?? '',
+    // El id de la venta agrupa las líneas: sin él, dos ventas de la misma hora
+    // se confunden al ordenar la tabla en Excel.
+    venta.venta.id,
+  ];
+
   /// Escribe el archivo en una ruta. Lo usan las pruebas y el escritorio, donde
   /// el selector sí devuelve una ruta escribible.
   Future<void> exportar({
@@ -110,30 +191,9 @@ class ReporteExportService {
       // Una fila por LÍNEA, no por venta. Con una fila por venta lo único que
       // salía era "2 línea(s)": un archivo del que no se puede sacar qué se
       // vendió no sirve ni para el contador ni para revisar un día raro.
-      _fila([
-        'Fecha',
-        'Hora',
-        'Producto',
-        'Cantidad',
-        'Precio unitario',
-        'Subtotal',
-        'Nota',
-        'Venta',
-      ]),
+      _fila(_cabeceraDetalle),
       for (final venta in ventas)
-        for (final l in venta.lineas)
-          _fila([
-            _fecha(venta.venta.fechaHora),
-            _hora(venta.venta.fechaHora),
-            l.descripcion,
-            '${l.linea.cantidad}',
-            l.linea.precioAplicado.toStringAsFixed(2),
-            l.subtotal.toStringAsFixed(2),
-            l.linea.nota ?? '',
-            // El id de la venta agrupa las líneas: sin él, dos ventas de la
-            // misma hora se confunden al ordenar la tabla en Excel.
-            venta.venta.id,
-          ]),
+        for (final l in venta.lineas) _fila(_filaDetalle(venta, l)),
       if (nota != null) ...[
         '',
         _fila([nota]),
@@ -178,16 +238,11 @@ class ReporteExportService {
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        // El paquete corta en 20 páginas por defecto y lanza
-        // `PdfTooBigPageException`. Con una fila por VENTA cabía justo; desde
-        // que el detalle va línea por línea, un reporte anual —hasta 300 ventas
-        // de varias líneas— se pasa, y exportar el año en PDF fallaba con un
-        // "no se pudo guardar" que no decía nada.
-        //
-        // El límite del paquete es un guardarraíl contra un widget que se
-        // repite infinito, no un tope de diseño: acá el número de páginas está
-        // acotado por `limiteDetalleRango`, así que basta con dejarle sitio.
-        maxPages: 500,
+        // Calculado del contenido, no un número fijo. El paquete corta en 20
+        // páginas por defecto y lanza `PdfTooBigPageException`; poner un tope
+        // arbitrario solo mueve el problema, porque un informe recortado no es
+        // un informe. Acá se estima de las filas que hay y se deja margen.
+        maxPages: _paginasNecesarias(ventas),
         build: (context) => [
           pw.Header(level: 0, text: titulo),
           pw.Text(
@@ -255,6 +310,23 @@ class ReporteExportService {
       ),
     );
     return doc.save();
+  }
+
+  /// Una cota SUPERIOR de las páginas que puede necesitar el detalle.
+  ///
+  /// No es una estimación de cuántas van a salir: es un número que el documento
+  /// no puede superar pase lo que pase. Una fila ocupa como mucho una página
+  /// entera —un nombre absurdamente largo—, así que "una página por fila, más
+  /// diez para cabecera, turnos y ranking" no se queda corto nunca.
+  ///
+  /// Estimar el promedio fue el primer intento y estuvo mal: se calculó con 25
+  /// filas por página, salieron 16, y el documento se cortó igual. El paquete
+  /// usa este número como guardarraíl contra un widget que se repite infinito,
+  /// no como tope de diseño — pasarse de generoso no cuesta nada, quedarse
+  /// corto recorta el informe.
+  int _paginasNecesarias(List<VentaConLineas> ventas) {
+    final filas = ventas.fold<int>(0, (s, v) => s + v.lineas.length);
+    return filas + 10;
   }
 
   /// Ranking del período exportado, calculado sobre las mismas ventas que van

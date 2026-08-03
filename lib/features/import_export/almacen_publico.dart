@@ -26,6 +26,11 @@ class AlmacenPublico {
 
   static const _canal = MethodChannel('vulp/almacen_publico');
 
+  /// Por qué falló la última publicación, si falló. Lo lee el arnés para poder
+  /// diagnosticar desde fuera; en la app sirve para no dar por bueno un archivo
+  /// que se quedó en la carpeta privada.
+  static String? ultimoFallo;
+
   /// Publica [archivo] y devuelve dónde quedó, para poder decírselo al usuario.
   ///
   /// Si no se puede publicar —no es Android, o MediaStore lo rechaza— devuelve
@@ -33,6 +38,7 @@ class AlmacenPublico {
   /// está escrito, y decir "no se pudo" cuando sí se guardó sería mentir.
   Future<String> publicar(File archivo) async {
     if (!Platform.isAndroid) return archivo.path;
+    ultimoFallo = null;
     final nombre = p.basename(archivo.path);
     try {
       final donde = await _canal.invokeMethod<String>('publicar', {
@@ -49,10 +55,13 @@ class AlmacenPublico {
         await archivo.delete();
       } catch (_) {}
       return donde;
-    } on PlatformException {
+    } on PlatformException catch (e) {
+      // No se traga en silencio: si el archivo se queda en la carpeta privada,
+      // quien exportó tiene que enterarse de que no está donde cree.
+      ultimoFallo = '${e.code}: ${e.message}';
       return archivo.path;
     } on MissingPluginException {
-      // La app instrumentada del arnés no registra la actividad nativa.
+      ultimoFallo = 'canal nativo no registrado';
       return archivo.path;
     }
   }

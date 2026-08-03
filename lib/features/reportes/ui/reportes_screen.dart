@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/db/db_providers.dart';
 import '../../../core/nav/retroceso.dart';
 import '../../../core/ui/bento_aviso.dart';
 import '../../../core/ui/bento_dialogo.dart';
@@ -58,19 +59,11 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       sufijoArchivo: _rango.name,
       total: reporte.total,
       porTurno: reporte.porTurno,
-      // Las ventas se piden aparte porque el reporte de pantalla trae solo los
-      // agregados: el detalle se carga bajo demanda para no arrastrar el año
-      // entero cada vez que se abre Reportes.
-      cargarVentas: () async {
-        final detalle = await ref.read(detalleRangoProvider(params).future);
-        return (
-          detalle.ventas,
-          detalle.truncado
-              ? 'Incluye las ${detalle.ventas.length} ventas más recientes de '
-                    '${detalle.totalVentas}.'
-              : null,
-        );
-      },
+      // TODAS las ventas del período, sin el tope de la pantalla. Ese tope
+      // existe porque nadie desplaza 5.000 filas en un teléfono; un informe es
+      // otra cosa, y uno que dijera "incluye las 300 más recientes de 2.847" no
+      // se le manda a nadie.
+      lotes: () async => ventasDelRangoPorLotes(await ref.read(databaseProvider.future), params),
     );
   }
 
@@ -81,7 +74,9 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       titulo: '${_nombreTurno(turno)} · ${_tituloPeriodo()}',
       sufijoArchivo: '${_rango.name}-${turno.name}',
       total: reporte.porTurno[turno]!,
-      cargarVentas: () async => (reporte.ventasPorTurno[turno]!, null),
+      // Un turno suelto ya viene entero en el reporte de pantalla: no hay tope
+      // que quitar ni consulta que repetir.
+      lotes: () async => Stream.value(reporte.ventasPorTurno[turno]!),
     );
   }
 
@@ -89,7 +84,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     required String titulo,
     required String sufijoArchivo,
     required double total,
-    required Future<(List<VentaConLineas>, String?)> Function() cargarVentas,
+    required Future<Stream<List<VentaConLineas>>> Function() lotes,
     Map<Turno, double>? porTurno,
   }) async {
     final formato = await showDialog<FormatoReporte>(
@@ -98,30 +93,56 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     );
     if (formato == null || !mounted) return;
 
-    final (ventas, nota) = await cargarVentas();
-    if (!mounted) return;
-
     final (desde, _) = rangoDeFechas(_rango, _fecha);
+    final servicio = const ReporteExportService();
     try {
-      final bytes = await const ReporteExportService().generar(
-        formato: formato,
-        titulo: titulo,
-        total: total,
-        porTurno: porTurno,
-        ventas: ventas,
-        nota: nota,
-      );
       // A la carpeta de exportación, sin selector: se elige una vez desde
       // Configuración y de ahí en adelante exportar es un toque.
       final destino = await const CarpetaExportacion().archivoPara(
         'reporte-$sufijoArchivo-${desde.toIso8601String().split('T').first}'
         '.${formato.extension}',
       );
-      await destino.writeAsBytes(bytes);
+
+      switch (formato) {
+        case FormatoReporte.csv:
+          // Lote a lote y directo al archivo: el consumo se mantiene plano sea
+          // cual sea el período, así que exportar un año no depende de que
+          // quepa en memoria.
+          await servicio.escribirCsvPorLotes(
+            destino: destino,
+            titulo: titulo,
+            total: total,
+            porTurno: porTurno,
+            lotes: await lotes(),
+          );
+        case FormatoReporte.pdf:
+          // El PDF sí necesita el documento entero antes de escribirlo — es
+          // como funciona el generador. Se junta acá, en un solo sitio.
+          final ventas = <VentaConLineas>[];
+          await for (final lote in await lotes()) {
+            ventas.addAll(lote);
+          }
+          await destino.writeAsBytes(
+            await servicio.generar(
+              formato: formato,
+              titulo: titulo,
+              total: total,
+              porTurno: porTurno,
+              ventas: ventas,
+            ),
+          );
+      }
+
       final donde = await const AlmacenPublico().publicar(destino);
       // Con el nombre en el aviso: sin selector, si no se dice dónde quedó,
-      // nadie lo encuentra.
-      if (mounted) mostrarAviso(context, '✓ $donde');
+      // nadie lo encuentra. Y si no llegó a Descargas se dice —el archivo
+      // existe igual, pero en un sitio donde no se va a buscar.
+      if (mounted) {
+        mostrarAviso(
+          context,
+          AlmacenPublico.ultimoFallo == null ? '✓ $donde' : '⚠ Guardado, pero no en Descargas',
+        );
+      }
     } catch (e) {
       // Con el motivo, no solo "no se pudo": exportar el año en PDF falló por
       // el tope de páginas del generador y el aviso a secas no daba por dónde
