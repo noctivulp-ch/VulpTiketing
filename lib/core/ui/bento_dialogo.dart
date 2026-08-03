@@ -43,14 +43,23 @@ class BentoDialogo extends StatelessWidget {
     final acostado = bentoEstaAcostado(context);
 
     return AlertDialog(
+      // `scrollable` mueve título, contenido y acciones DENTRO de un mismo
+      // scroll. No es para scrollear siempre —casi nunca hace falta— sino para
+      // el caso en que el alto no da: con el teclado abierto en un teléfono
+      // acostado quedan menos de 200 dp, y ahí un diálogo que no cede desborda.
+      // Sin esto, `AlertDialog` recorta y el usuario ve la caja partida.
+      scrollable: true,
       title: titulo,
       content: acostado
-          ? SizedBox(
-              width: anchoAcostado,
+          ? ConstrainedBox(
+              // `maxWidth` y no un ancho fijo: acostado la pantalla siempre da
+              // más de 560, pero fijarlo obligaría al diálogo a ese ancho aun
+              // cuando la ventana sea menor.
+              constraints: BoxConstraints(maxWidth: anchoAcostado),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: SingleChildScrollView(child: contenido)),
+                  Expanded(child: contenido),
                   const SizedBox(width: BentoSpacing.pared),
                   // `IntrinsicWidth`: la cuadrícula de acciones necesita un
                   // ancho acotado para repartir sus dos columnas dentro de una

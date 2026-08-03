@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/ui/bento_aviso.dart';
-import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_velo.dart';
@@ -14,7 +13,7 @@ import '../../../core/ui/bento_falla.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/producto_notifier.dart';
 import '../../producto/producto_query_provider.dart';
-import '../venta_en_curso_notifier.dart';
+import 'cobro_rapido_overlay.dart';
 
 /// Ventana 1 — ver docs/pantallas/flujo-descripcion.md#ventana-1--venta-rápida
 /// y docs/pantallas/prototipos-ascii.md. Crea una Venta de una sola línea
@@ -125,7 +124,7 @@ class VentaRapidaScreen extends ConsumerWidget {
   Future<void> _abrirCobroRapido(BuildContext context, WidgetRef ref, Producto producto) async {
     final completado = await showDialog<bool>(
       context: context,
-      builder: (_) => _OverlayCobroRapido(producto: producto),
+      builder: (_) => CobroRapidoOverlay(producto: producto),
     );
     if (completado == true && context.mounted) {
       mostrarAviso(context, '✓ Venta OK');
@@ -225,226 +224,6 @@ class _TarjetaProducto extends StatelessWidget {
             estilo: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Overlay de cobro de un solo producto (0018 cantidad default 1, precio
-/// editable con el base como punto de partida, cambio con debounce 400ms
-/// — ver decisiones ya cerradas en flujo-descripcion.md).
-class _OverlayCobroRapido extends ConsumerStatefulWidget {
-  const _OverlayCobroRapido({required this.producto});
-
-  final Producto producto;
-
-  @override
-  ConsumerState<_OverlayCobroRapido> createState() => _OverlayCobroRapidoState();
-}
-
-class _OverlayCobroRapidoState extends ConsumerState<_OverlayCobroRapido> {
-  late final TextEditingController _precioController;
-  final _recibidoController = TextEditingController();
-  int _cantidad = 1;
-  double? _cambio;
-  Timer? _debounce;
-
-  @override
-  void initState() {
-    super.initState();
-    _precioController = TextEditingController(text: widget.producto.precioBase.toStringAsFixed(2));
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _precioController.dispose();
-    _recibidoController.dispose();
-    super.dispose();
-  }
-
-  void _onRecibidoChanged(String valor) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
-      final recibido = double.tryParse(valor);
-      final precio = double.tryParse(_precioController.text) ?? 0;
-      setState(() {
-        _cambio = recibido == null ? null : recibido - (precio * _cantidad);
-      });
-    });
-  }
-
-  Future<void> _completar() async {
-    final precio = double.tryParse(_precioController.text) ?? widget.producto.precioBase;
-    ref
-        .read(ventaEnCursoNotifierProvider.notifier)
-        .agregarLineaDeCatalogo(
-          productoId: widget.producto.id,
-          precioAplicado: precio,
-          cantidad: _cantidad,
-        );
-    await ref.read(ventaEnCursoNotifierProvider.notifier).guardar();
-    if (mounted) {
-      Navigator.of(context).pop(true);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final laca = lacaDe(context);
-    final tema = Theme.of(context);
-    final total = (double.tryParse(_precioController.text) ?? 0) * _cantidad;
-
-    // Cobro rápido como una BANDEJA propia, no como un `AlertDialog` con campos
-    // apilados: era la única superficie de la app que no hablaba el idioma del
-    // resto — sin pozos, sin retícula, con los campos sueltos sobre el fondo del
-    // diálogo.
-    //
-    // La jerarquía es la de la venta: qué se cobra arriba, cuánto en grande, y
-    // los ajustes debajo en celdas de la misma retícula que Reportes.
-    // Acostado las acciones se van al COSTADO y la retícula deja de scrollear:
-    // con 360 dp de alto, un scroll para dos botones significa que cobrar pide
-    // un gesto de más en el momento en que hay cola.
-    final acostado = bentoEstaAcostado(context);
-
-    final celdas = <BentoCelda>[
-      BentoCelda.fija(
-        6,
-        hijo: BentoPozo(
-          padding: const EdgeInsets.all(BentoSpacing.paddingCeldaGrande),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.producto.nombre, style: tema.textTheme.titleMedium),
-              BentoTextoTallado(
-                '\u20a1${total.toStringAsFixed(2)}',
-                sobre: laca.pozo,
-                nivel: TalladoNivel.marcado,
-                estilo: tema.textTheme.displaySmall,
-              ),
-            ],
-          ),
-        ),
-      ),
-      BentoCelda.fija(
-        3,
-        hijo: BentoPozo(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.remove),
-                tooltip: 'Menos',
-                onPressed: _cantidad > 1 ? () => setState(() => _cantidad--) : null,
-              ),
-              Text('$_cantidad', style: tema.textTheme.titleLarge),
-              IconButton(
-                icon: const Icon(Icons.add),
-                tooltip: 'Más',
-                onPressed: () => setState(() => _cantidad++),
-              ),
-            ],
-          ),
-        ),
-      ),
-      BentoCelda.fija(
-        3,
-        hijo: BentoPozo(
-          padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
-          child: TextField(
-            controller: _precioController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Precio',
-              isDense: true,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-            ),
-          ),
-        ),
-      ),
-      // Cambio antes que Recibí, por lo mismo que en la barra de
-      // cobro de Ventana 2: deja los campos que se tocan alineados
-      // en la misma columna en vez de en diagonal.
-      BentoCelda.fija(
-        3,
-        hijo: BentoPozo(
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              _cambio == null ? 'Cambio: \u2014' : 'Cambio: \u20a1${_cambio!.toStringAsFixed(2)}',
-            ),
-          ),
-        ),
-      ),
-      BentoCelda.fija(
-        3,
-        hijo: BentoPozo(
-          padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
-          child: TextField(
-            controller: _recibidoController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Recib\u00ed',
-              isDense: true,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-            ),
-            onChanged: _onRecibidoChanged,
-          ),
-        ),
-      ),
-    ];
-
-    final cancelar = OutlinedButton(
-      onPressed: () => Navigator.of(context).pop(),
-      child: const Text('Cancelar'),
-    );
-    final completado = FilledButton(onPressed: _completar, child: const Text('Completado'));
-
-    return Dialog(
-      insetPadding: const EdgeInsets.all(BentoSpacing.gapCelda),
-      backgroundColor: laca.bandeja,
-      child: ConstrainedBox(
-        // Más ancho acostado: es lo que sobra, y es de donde sale el sitio para
-        // la columna de acciones.
-        constraints: BoxConstraints(maxWidth: acostado ? 720 : 460),
-        child: Padding(
-          padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-          child: acostado
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: BentoCuadricula(hijos: celdas)),
-                    const SizedBox(width: BentoSpacing.pared),
-                    // `IntrinsicWidth`: la columna necesita un ancho acotado
-                    // para estirar los dos botones al mismo.
-                    IntrinsicWidth(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          completado,
-                          const SizedBox(height: BentoSpacing.pared),
-                          cancelar,
-                        ],
-                      ),
-                    ),
-                  ],
-                )
-              : SingleChildScrollView(
-                  child: BentoCuadricula(
-                    hijos: [
-                      ...celdas,
-                      BentoCelda.fija(3, hijo: cancelar),
-                      BentoCelda.fija(3, hijo: completado),
-                    ],
-                  ),
-                ),
-        ),
       ),
     );
   }
