@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/db_providers.dart';
+import '../../../core/nav/gesto_dos_dedos.dart';
 import '../../../core/nav/retroceso.dart';
 import '../../../core/ui/bento_aviso.dart';
 import '../../../core/ui/bento_dialogo.dart';
@@ -161,6 +162,28 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     return 'error inesperado';
   }
 
+  /// Los rangos que este rol puede mirar, en el orden del selector.
+  ///
+  /// La Registradora tiene dos y el Gerente cuatro (Mes y Año son suyos), así
+  /// que el gesto recorre lo que hay: llevarla a un rango que su selector no
+  /// muestra la dejaría en una pantalla de la que no sabría salir.
+  List<RangoReporte> _rangosDe(bool esGerente) =>
+      esGerente ? RangoReporte.values : const [RangoReporte.dia, RangoReporte.semana];
+
+  /// Un paso en la lista de rangos. En los extremos no da la vuelta, igual que
+  /// la navegación entre ventanas.
+  void _moverRango(int paso, bool esGerente) {
+    final rangos = _rangosDe(esGerente);
+    final destino = rangos.indexOf(_rango) + paso;
+    if (destino < 0 || destino >= rangos.length) return;
+    setState(() => _rango = rangos[destino]);
+  }
+
+  Future<void> _elegirFecha() async {
+    final elegida = await elegirPeriodo(context, rango: _rango, actual: _fecha);
+    if (elegida != null && mounted) setState(() => _fecha = elegida);
+  }
+
   String _tituloPeriodo() {
     final (desde, hasta) = rangoDeFechas(_rango, _fecha);
     final fin = hasta.subtract(const Duration(days: 1));
@@ -181,56 +204,62 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     final params = ReportesParametros(rango: _rango, fechaReferencia: _fecha);
     final reporteAsync = ref.watch(reportesProvider(params));
 
-    return RetrocesoCierra(
-      activo: enDetalle,
-      alRetroceder: volver,
-      child: Scaffold(
-        body: Padding(
-          // El hero no scrollea: acá el espacio superior se reserva de verdad,
-          // no se atraviesa.
-          padding: EdgeInsets.fromLTRB(
-            BentoSpacing.gapCelda,
-            bentoInsetSuperior(context),
-            BentoSpacing.gapCelda,
-            BentoSpacing.gapCelda,
-          ),
-          child: _detalleDelRango
-              ? _DetalleDelRango(params: params, titulo: _tituloDelRango(), onVolver: volver)
-              : reporteAsync.when(
-                  data: (reporte) => _turnoSeleccionado != null
-                      ? _VistaDrillDown(
-                          titulo: _nombreTurno(_turnoSeleccionado!),
-                          ventas: reporte.ventasPorTurno[_turnoSeleccionado]!,
-                          total: reporte.porTurno[_turnoSeleccionado]!,
-                          vacio: 'Sin ventas en este turno',
-                          onVolver: volver,
-                        )
-                      : _VistaGeneral(
-                          rango: _rango,
-                          fecha: _fecha,
-                          reporte: reporte,
-                          esGerente: esGerente,
-                          onCambiarRango: (r) => setState(() => _rango = r),
-                          onSeleccionarTurno: (t) => setState(() => _turnoSeleccionado = t),
-                          onVerDetalle: () => setState(() => _detalleDelRango = true),
-                          onExportar: () => _exportarPeriodo(reporte),
-                          onExportarTurno: (t) => _exportarTurno(reporte, t),
-                          onElegirFecha: () async {
-                            final elegida = await elegirPeriodo(
-                              context,
-                              rango: _rango,
-                              actual: _fecha,
-                            );
-                            if (elegida != null) setState(() => _fecha = elegida);
-                          },
-                        ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, st) => BentoFalla(
-                    mensaje: 'No se pudieron cargar las ventas del período.',
-                    error: e,
-                    onReintentar: () => ref.invalidate(reportesProvider(params)),
+    return GestoDeDosDedos(
+      // Dos dedos de lado recorren los rangos, en el mismo orden en que están
+      // en el selector: Día → Semana → Mes → Año. Con un dedo el horizontal ya
+      // es cambiar de ventana, así que esto no le pisa nada (decisión 0030).
+      alDeslizarIzquierda: () => _moverRango(1, esGerente),
+      alDeslizarDerecha: () => _moverRango(-1, esGerente),
+      // Y hacia abajo se despliega el selector del rango actual —calendario,
+      // meses o años—, que es el mismo sentido de "abrir" que en Ventana 2.
+      alDeslizarAbajo: enDetalle || !esGerente ? null : () => _elegirFecha(),
+      // Arriba cierra el detalle abierto, por simetría con el gesto de Ventana
+      // 2: abajo abre, arriba cierra.
+      alDeslizarArriba: enDetalle ? volver : null,
+      child: RetrocesoCierra(
+        activo: enDetalle,
+        alRetroceder: volver,
+        child: Scaffold(
+          body: Padding(
+            // El hero no scrollea: acá el espacio superior se reserva de verdad,
+            // no se atraviesa.
+            padding: EdgeInsets.fromLTRB(
+              BentoSpacing.gapCelda,
+              bentoInsetSuperior(context),
+              BentoSpacing.gapCelda,
+              BentoSpacing.gapCelda,
+            ),
+            child: _detalleDelRango
+                ? _DetalleDelRango(params: params, titulo: _tituloDelRango(), onVolver: volver)
+                : reporteAsync.when(
+                    data: (reporte) => _turnoSeleccionado != null
+                        ? _VistaDrillDown(
+                            titulo: _nombreTurno(_turnoSeleccionado!),
+                            ventas: reporte.ventasPorTurno[_turnoSeleccionado]!,
+                            total: reporte.porTurno[_turnoSeleccionado]!,
+                            vacio: 'Sin ventas en este turno',
+                            onVolver: volver,
+                          )
+                        : _VistaGeneral(
+                            rango: _rango,
+                            fecha: _fecha,
+                            reporte: reporte,
+                            esGerente: esGerente,
+                            onCambiarRango: (r) => setState(() => _rango = r),
+                            onSeleccionarTurno: (t) => setState(() => _turnoSeleccionado = t),
+                            onVerDetalle: () => setState(() => _detalleDelRango = true),
+                            onExportar: () => _exportarPeriodo(reporte),
+                            onExportarTurno: (t) => _exportarTurno(reporte, t),
+                            onElegirFecha: _elegirFecha,
+                          ),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, st) => BentoFalla(
+                      mensaje: 'No se pudieron cargar las ventas del período.',
+                      error: e,
+                      onReintentar: () => ref.invalidate(reportesProvider(params)),
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );

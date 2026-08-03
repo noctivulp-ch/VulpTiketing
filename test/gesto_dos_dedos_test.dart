@@ -22,6 +22,8 @@ void main() {
           body: GestoDeDosDedos(
             alDeslizarAbajo: () => hechos.add('abajo'),
             alDeslizarArriba: () => hechos.add('arriba'),
+            alDeslizarIzquierda: () => hechos.add('izquierda'),
+            alDeslizarDerecha: () => hechos.add('derecha'),
             child: const SizedBox.expand(child: ColoredBox(color: Colors.black)),
           ),
         ),
@@ -30,14 +32,19 @@ void main() {
     return (hechos, find.byType(GestoDeDosDedos));
   }
 
-  /// Arrastra [dedos] punteros [dy] píxeles en vertical.
-  Future<void> arrastrar(WidgetTester tester, {required int dedos, required double dy}) async {
+  /// Arrastra [dedos] punteros [dy] píxeles en vertical y [dx] en horizontal.
+  Future<void> arrastrar(
+    WidgetTester tester, {
+    required int dedos,
+    double dy = 0,
+    double dx = 0,
+  }) async {
     final gestos = [
       for (var i = 0; i < dedos; i++) await tester.startGesture(Offset(150.0 + i * 40, 400)),
     ];
     for (var paso = 0; paso < 8; paso++) {
       for (final g in gestos) {
-        await g.moveBy(Offset(0, dy / 8));
+        await g.moveBy(Offset(dx / 8, dy / 8));
       }
       await tester.pump(const Duration(milliseconds: 20));
     }
@@ -128,5 +135,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(toques, 1);
+  });
+
+  testWidgets('dos dedos de lado', (tester) async {
+    final (izq, _) = await montar(tester);
+    await arrastrar(tester, dedos: 2, dx: -120);
+    expect(izq, ['izquierda']);
+
+    final (der, _) = await montar(tester);
+    await arrastrar(tester, dedos: 2, dx: 120);
+    expect(der, ['derecha']);
+  });
+
+  testWidgets('manda el eje dominante, no el primero que cruza', (tester) async {
+    // Nadie arrastra dos dedos perfectamente rectos. Sin decidir por el eje
+    // dominante, un gesto lateral con algo de caída dispararía la acción
+    // vertical —o las dos.
+    final (lateral, _) = await montar(tester);
+    await arrastrar(tester, dedos: 2, dx: -160, dy: 40);
+    expect(lateral, ['izquierda']);
+
+    final (vertical, _) = await montar(tester);
+    await arrastrar(tester, dedos: 2, dx: 40, dy: 160);
+    expect(vertical, ['abajo']);
   });
 }

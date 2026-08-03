@@ -23,8 +23,10 @@ después.
 
 - **Un dedo, arrastre horizontal** → cambia de ventana. A la izquierda, la
   siguiente; a la derecha, la anterior. Como pasar la hoja de un cuaderno.
-- **Dos y tres dedos** → acciones. La primera: **dos dedos hacia abajo abren el
-  panel de productos de Ventana 2; hacia arriba lo cierran.**
+- **Dos y tres dedos** → acciones. Las que hay:
+  - **Ventana 2** — abajo abre el panel de productos, arriba lo cierra.
+  - **Reportes** — de lado recorre los rangos (Día → Semana → Mes → Año), abajo
+    abre el selector del rango actual, arriba cierra el detalle abierto.
 
 `NavegacionPorGesto` cuenta los punteros en pantalla con un `Listener` y anula
 el arrastre en cuanto hay más de uno — incluso a mitad del gesto. **No basta con
@@ -67,7 +69,17 @@ dos, que es la distinción sobre la que se apoya toda esta convención.
 
 Abrir "hacia abajo" es el sentido de desplegar algo recogido, y da igual que el
 panel esté arriba de pie y al costado acostado: lo que se recuerda es el sentido
-del gesto, no dónde aparece la caja.
+del gesto, no dónde aparece la caja. **Abajo abre, arriba cierra** vale en toda
+la app.
+
+**El eje dominante decide.** Nadie arrastra dos dedos perfectamente rectos: sin
+esto, un gesto lateral con algo de caída dispararía la acción vertical, o las
+dos.
+
+**Los gestos respetan el rol.** En Reportes, el recorrido de rangos va sobre los
+que ese rol tiene —la Registradora tiene dos, el Gerente cuatro— y el gesto de
+abrir el selector no existe para quien no tiene el botón. Un gesto no puede ser
+una puerta trasera a algo que la pantalla no ofrece.
 
 ## Alternativas descartadas
 

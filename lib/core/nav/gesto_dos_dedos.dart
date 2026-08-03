@@ -16,6 +16,8 @@ class GestoDeDosDedos extends StatefulWidget {
     super.key,
     this.alDeslizarAbajo,
     this.alDeslizarArriba,
+    this.alDeslizarIzquierda,
+    this.alDeslizarDerecha,
     required this.child,
   });
 
@@ -24,6 +26,13 @@ class GestoDeDosDedos extends StatefulWidget {
 
   /// Y hacia arriba.
   final VoidCallback? alDeslizarArriba;
+
+  /// Horizontal, para lo que se recorre de lado: en Reportes, el rango.
+  ///
+  /// Con un dedo el horizontal ya es cambiar de ventana, así que estos dos solo
+  /// existen con dos dedos — la convención se sostiene sola.
+  final VoidCallback? alDeslizarIzquierda;
+  final VoidCallback? alDeslizarDerecha;
 
   final Widget child;
 
@@ -39,11 +48,11 @@ class GestoDeDosDedos extends StatefulWidget {
 }
 
 class _GestoDeDosDedosState extends State<GestoDeDosDedos> {
-  double _recorrido = 0;
+  Offset _recorrido = Offset.zero;
   bool _disparado = false;
 
   void _empezar(ScaleStartDetails detalles) {
-    _recorrido = 0;
+    _recorrido = Offset.zero;
     _disparado = false;
   }
 
@@ -51,21 +60,28 @@ class _GestoDeDosDedosState extends State<GestoDeDosDedos> {
     // Con uno o con tres, esto no es. Se reinicia el acumulado para que un dedo
     // que se levanta a mitad no deje medio gesto cargado.
     if (detalles.pointerCount != 2) {
-      _recorrido = 0;
+      _recorrido = Offset.zero;
       return;
     }
     if (_disparado) return;
 
-    _recorrido += detalles.focalPointDelta.dy;
-    if (_recorrido.abs() < GestoDeDosDedos.umbral) return;
+    _recorrido += detalles.focalPointDelta;
+
+    // El eje DOMINANTE decide. Nadie arrastra dos dedos perfectamente rectos, y
+    // sin esto un gesto lateral con algo de caída dispararía las dos cosas —o
+    // la que no era.
+    final vertical = _recorrido.dy.abs() >= _recorrido.dx.abs();
+    final avance = vertical ? _recorrido.dy : _recorrido.dx;
+    if (avance.abs() < GestoDeDosDedos.umbral) return;
+
+    final accion = vertical
+        ? (avance > 0 ? widget.alDeslizarAbajo : widget.alDeslizarArriba)
+        : (avance > 0 ? widget.alDeslizarDerecha : widget.alDeslizarIzquierda);
+    if (accion == null) return;
 
     // Una vez por gesto: sin esto, seguir arrastrando dispararía en cada frame.
     _disparado = true;
-    if (_recorrido > 0) {
-      widget.alDeslizarAbajo?.call();
-    } else {
-      widget.alDeslizarArriba?.call();
-    }
+    accion();
   }
 
   @override

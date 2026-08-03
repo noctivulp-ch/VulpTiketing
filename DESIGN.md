@@ -232,9 +232,18 @@ Notas de herramienta: el detector mecánico de impeccable es solo web
 Deslizar de lado con **un** dedo cambia de ventana — a la izquierda la
 siguiente, como pasar la hoja de un cuaderno. En los extremos no da la vuelta.
 
-**Dos y tres dedos son para acciones.** La primera: dos dedos hacia abajo abren
-el panel de productos de Ventana 2, hacia arriba lo cierran. Disparan al cruzar
-el umbral —48 dp, un objetivo táctil—, no al soltar: la app prioriza velocidad. El gesto de navegación se
+**Dos y tres dedos son para acciones**, y **abajo abre, arriba cierra** en toda
+la app:
+
+| Dónde | De lado | Abajo | Arriba |
+|---|---|---|---|
+| Ventana 2 | — | abre el panel de productos | lo cierra |
+| Reportes | recorre los rangos | abre el selector del rango | cierra el detalle |
+
+Disparan al cruzar el umbral —48 dp, un objetivo táctil—, no al soltar: la app
+prioriza velocidad. Manda el **eje dominante**, porque nadie arrastra dos dedos
+perfectamente rectos. Y **respetan el rol**: un gesto no es una puerta trasera a
+algo que la pantalla no ofrece. El gesto de navegación se
 aparta en cuanto aparece un segundo dedo, incluso a mitad del arrastre: no basta
 con un `HorizontalDragGestureRecognizer`, que sigue atendiendo al primer dedo y
 navegaría igual.
