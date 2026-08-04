@@ -24,10 +24,19 @@ class CredencialesService {
   // no una API expuesta a internet.
   static final _algoritmo = Argon2id(parallelism: 1, memory: 19456, iterations: 2, hashLength: 32);
 
-  // TODO: reemplazar por una contrasena de fabrica distinta y mas segura
-  // por rol antes de cualquier release real — "1359" es un placeholder
-  // temporal compartido, solo para poder probar el resto de la app ahora.
-  static const _contrasenaDeFabrica = '1359';
+  /// Las de fabrica, **distintas por rol**.
+  ///
+  /// Son conocidas a proposito y estan a la vista en este archivo: el modelo es
+  /// el de un router, donde la clave de la etiqueta sirve para entrar la primera
+  /// vez y se espera que se cambie en uso. No son un secreto, son un arranque.
+  ///
+  /// La de Gerente es mas larga porque es la que abre lo que no se puede
+  /// deshacer: purgar productos, restaurar un backup encima de la base, y ver el
+  /// token que deja manejar la app desde fuera. La de Registradora se queda
+  /// corta a proposito — se teclea decenas de veces al dia en un mostrador con
+  /// gente esperando, y ahi una clave larga se acaba anotando en un papel
+  /// pegado a la caja, que es peor que una corta.
+  static const _contrasenasDeFabrica = {Rol.gerente: 'Gen@1359#', Rol.registradora: '1359'};
 
   String _keyHash(Rol rol) => 'contrasena_hash_${rol.name}';
   String _keySalt(Rol rol) => 'contrasena_salt_${rol.name}';
@@ -40,7 +49,10 @@ class CredencialesService {
       // Este rol nunca cambio su contrasena en este dispositivo todavia —
       // compara contra la de fabrica. No es un flujo de "primer uso",
       // simplemente el estado por defecto hasta que alguien la cambie.
-      return contrasena == _contrasenaDeFabrica;
+      //
+      // Es por ROL: cambiar la de Gerente no le toca la suya a Registradora, y
+      // al reves. Cada una vive en su propia entrada del almacen.
+      return contrasena == _contrasenasDeFabrica[rol];
     }
 
     final hash = await _derivar(contrasena, base64Decode(saltGuardado));

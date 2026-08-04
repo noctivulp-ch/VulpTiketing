@@ -83,7 +83,7 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
     final c = contenedor();
     final notifier = c.read(sesionNotifierProvider.notifier);
-    await notifier.iniciarSesion(Rol.gerente, '1359');
+    await notifier.iniciarSesion(Rol.gerente, 'Gen@1359#');
     expect((await SharedPreferences.getInstance()).getString('rol_activo_pista'), 'gerente');
 
     await notifier.cerrarSesion();
