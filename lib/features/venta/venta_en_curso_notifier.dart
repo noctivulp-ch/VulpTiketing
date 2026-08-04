@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/db/db_providers.dart';
+import '../reportes/reportes_provider.dart';
 import 'linea_venta_model.dart';
 import 'libro_ventas.dart';
 import 'venta_dao.dart';
@@ -159,6 +160,12 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
     await dao.guardar(venta, state.lineas);
 
     ref.invalidate(ventaNotifierProvider);
+    // Los reportes leen la base por su cuenta y no observan al libro, así que
+    // sin esto una venta recién cobrada no aparecía en Reportes hasta cerrar y
+    // reabrir la app: los totales del día se quedaban en lo que había al
+    // arrancar, que en una caja es un número equivocado a la vista.
+    ref.invalidate(reportesProvider);
+    ref.invalidate(detalleRangoProvider);
     ref.invalidateSelf(); // fuerza un ventaIdBorrador nuevo para la próxima venta
   }
 }

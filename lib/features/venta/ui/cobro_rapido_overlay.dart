@@ -167,14 +167,35 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
       ),
     );
 
+    // Etiqueta arriba y monto abajo, igual que Precio y Recibí — los tres pozos
+    // de la retícula se leen entonces con la misma forma.
+    //
+    // Antes iba todo en una línea ("Cambio: ₡12345.00") con elipsis, y en media
+    // fila de 360 dp no entra: el monto se cortaba justo por el final, que es
+    // donde están los colones que hay que devolver. Un cambio a medio leer es
+    // peor que ninguno — se devuelve mal el vuelto.
     final cambio = BentoPozo(
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          _cambio == null ? 'Cambio: —' : 'Cambio: ₡${_cambio!.toStringAsFixed(2)}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: BentoSpacing.paddingCelda),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Cambio', style: tema.textTheme.bodySmall),
+          const SizedBox(height: 2),
+          // `FittedBox` y no elipsis: con un vuelto de cinco cifras el número
+          // se encoge, pero se lee entero. Recortarlo no es una opción para un
+          // dato que se cuenta en la mano.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _cambio == null ? '—' : '₡${_cambio!.toStringAsFixed(2)}',
+              maxLines: 1,
+              style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
 

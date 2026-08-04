@@ -36,6 +36,26 @@ class ReportesScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportesScreenState extends ConsumerState<ReportesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Se refresca al ABRIR la pantalla, no solo cuando cambia la base.
+    //
+    // Invalidar al guardar una venta (ver `VentaEnCursoNotifier.guardar`) cubre
+    // la causa más común, pero no todas: una venta revertida desde otro sitio,
+    // una base que llegó por sincronización, o el día que cambia mientras la
+    // app sigue abierta —a medianoche el "hoy" pasa a ser otro—. Todas dejan
+    // los totales viejos en pantalla.
+    //
+    // Va en un post-frame porque invalidar durante el `build` de un widget que
+    // ya está observando esos providers dispara "modified during build".
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.invalidate(reportesProvider);
+      ref.invalidate(detalleRangoProvider);
+    });
+  }
+
   RangoReporte _rango = RangoReporte.dia;
   DateTime _fecha = DateTime.now();
   Turno? _turnoSeleccionado;

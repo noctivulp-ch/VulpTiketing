@@ -126,16 +126,22 @@ void main() {
 
       final recibi = tester.getRect(find.widgetWithText(TextField, 'Recibí'));
       final precio = tester.getRect(find.widgetWithText(TextField, 'Precio'));
-      final cambio = tester.getRect(find.textContaining('Cambio:'));
+      final cambio = tester.getRect(find.text('Cambio'));
       final sinpe = tester.getRect(find.text('SINPE'));
+
+      // "Misma fila" es que sus franjas verticales se SOLAPAN, no que sus
+      // centros coincidan: dentro de su pozo, cada pieza se alinea a su manera
+      // —la etiqueta de Cambio arriba, la casilla de SINPE al medio— y exigir
+      // centros iguales convierte la prueba en un test de alineación interna.
+      bool mismaFila(Rect a, Rect b) => a.top < b.bottom && b.top < a.bottom;
 
       // Arriba: Recibí a la izquierda, Precio a la derecha.
       expect(recibi.left, lessThan(precio.left), reason: 'Recibí va a la izquierda de Precio');
-      expect(recibi.center.dy, closeTo(precio.center.dy, 4), reason: 'van en la misma fila');
+      expect(mismaFila(recibi, precio), isTrue, reason: 'Recibí y Precio van en la misma fila');
 
       // Abajo: Cambio a la izquierda, SINPE a la derecha.
       expect(cambio.left, lessThan(sinpe.left), reason: 'Cambio va a la izquierda de SINPE');
-      expect(cambio.center.dy, closeTo(sinpe.center.dy, 8), reason: 'van en la misma fila');
+      expect(mismaFila(cambio, sinpe), isTrue, reason: 'Cambio y SINPE van en la misma fila');
 
       // Y la fila de abajo, debajo.
       expect(cambio.top, greaterThan(recibi.top), reason: 'Cambio va bajo Recibí');
