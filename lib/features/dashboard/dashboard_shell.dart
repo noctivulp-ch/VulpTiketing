@@ -122,7 +122,23 @@ class _DashboardShellState extends State<DashboardShell> {
     return Scaffold(
       body: Column(
         children: [
-          Expanded(child: _stack()),
+          // Las pantallas dejan de ver el inset INFERIOR: aquí abajo está la
+          // banda de navegación, y es ella la que toca el borde de la pantalla.
+          //
+          // Sin esto se reserva dos veces. Una barra inferior de pantalla —el
+          // buscador de Venta Rápida, el de Inventario— también lleva su
+          // `SafeArea`, y como es hermana y no descendiente de la banda, las dos
+          // ven el mismo inset y las dos lo reservan: queda una franja muerta
+          // entre el buscador y las pestañas.
+          //
+          // En Android 10 no se veía porque ahí la barra de navegación del
+          // sistema vive fuera de la app y el inset es 0. Apareció en el
+          // teléfono de la soda —Android 15, donde `edge-to-edge` es
+          // obligatorio y el inset es real—, que es justo para lo que sirve
+          // tener un aparato con una base moderna.
+          Expanded(
+            child: MediaQuery.removePadding(context: context, removeBottom: true, child: _stack()),
+          ),
           _BandaNavegacion(
             indice: _indice,
             iconos: _iconos,
