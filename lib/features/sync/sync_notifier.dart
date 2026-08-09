@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/db_providers.dart';
 import '../auth/device_identity_service.dart';
 import '../auth/sesion_notifier.dart';
+import '../producto/categoria_notifier.dart';
+import '../producto/producto_notifier.dart';
+import '../reportes/reportes_provider.dart';
 import '../venta/libro_ventas.dart';
+import '../venta/venta_notifier.dart';
 import 'device_discovery_service.dart';
 import 'sync_client.dart';
 import 'sync_group_coordinator.dart';
@@ -41,6 +47,26 @@ class SyncNotifier extends Notifier<EstadoSync> {
 
   List<PeerVisible> _paresDelMismoRol = [];
   String? _miDeviceId;
+
+  /// Últimos pares vistos, para poder repasarlos sin esperar a que el
+  /// descubrimiento vuelva a emitir.
+  List<PeerVisible> _ultimosPares = [];
+  Timer? _ronda;
+  SyncClient? _cliente;
+  bool _sincronizando = false;
+
+  /// Cada cuánto se vuelve a preguntar a los pares ya conocidos.
+  ///
+  /// Antes NO existía: el sync se disparaba solo cuando el stream de
+  /// descubrimiento emitía, o sea al aparecer o desaparecer un aparato. Medido
+  /// con cuatro: se importaba el catálogo en un Gerente y el otro se quedaba
+  /// vacío indefinidamente, porque la membresía no había cambiado. Había que
+  /// apagar y encender el interruptor para que pasara algo.
+  ///
+  /// Quince segundos porque lo que se sincroniza es una venta de mostrador: que
+  /// tarde un cuarto de minuto en aparecer en el otro aparato no molesta a
+  /// nadie, y preguntar más seguido gasta batería en cinco teléfonos a la vez.
+  static const _cadaRonda = Duration(seconds: 15);
 
   @override
   EstadoSync build() => EstadoSync.idle;
@@ -109,26 +135,90 @@ class SyncNotifier extends Notifier<EstadoSync> {
 
     await _discovery.anunciar(deviceId: miDeviceId, rol: rol.name, puerto: puerto);
 
-    final cliente = SyncClient(db, libros: await ref.read(libroVentasServiceProvider.future));
+    _cliente = SyncClient(db, libros: await ref.read(libroVentasServiceProvider.future));
+
+    // La ronda periódica: repasa los pares YA conocidos aunque no haya cambiado
+    // nada en la red.
+    _ronda?.cancel();
+    _ronda = Timer.periodic(_cadaRonda, (_) => _repasarPares());
+
     _discovery.descubrirPares().listen((pares) async {
+      _ultimosPares = pares;
       // Cualquier par cuenta, sea del rol que sea: lo que decide si este
       // aparato está solo es si HAY otro en la red, no si es de su grupo.
       if (pares.isNotEmpty) await _marcarQueVioPares();
       _paresDelMismoRol = pares.where((p) => p.rol == rol.name).toList();
-      for (final par in _paresDelMismoRol) {
-        try {
-          await cliente.sincronizarCon(par);
-        } catch (_) {
-          // Un peer que se desconecta a mitad de sync no debe tumbar toda
-          // la sesión — se reintenta solo en el próximo ciclo de
-          // descubrimiento (mismo principio de robustez best-effort de
-          // 0007: el peor caso es una sync redundante, no una caída).
-        }
-      }
+
+      // Se sincroniza con TODOS los pares, no solo con los del mismo rol.
+      //
+      // El diseño original (0007, opción B) separaba dos redes por rol y las
+      // unía por un handshake entre orquestadores — el paso 3/4, que nunca se
+      // implementó. El resultado medido con cuatro aparatos: un Gerente y una
+      // Registradora **se ven por mDNS y no se sincronizan nunca**. La
+      // Registradora arrancaba vacía y se quedaba vacía con el catálogo entero
+      // a un metro.
+      //
+      // La separación no era por seguridad: el propio 0007 dice que la opción
+      // par-a-par "hubiera sido más simple" y que se eligió la otra para
+      // reducir tráfico. A la escala real de una soda —cuatro aparatos, doce
+      // conexiones por ciclo— ese ahorro no compra nada, y costaba que la
+      // función no existiera.
+      //
+      // `_paresDelMismoRol` se conserva porque el coordinador de grupo lo sigue
+      // usando para elegir orquestador: si algún día hace falta el ahorro, la
+      // pieza está.
+      await _repasarPares();
     }, onError: (_) => state = EstadoSync.error);
   }
 
+  /// Una pasada por todos los pares conocidos.
+  ///
+  /// El cerrojo `_sincronizando` evita que la ronda periódica y un evento de
+  /// descubrimiento se pisen: dos pasadas a la vez sobre las mismas filas no
+  /// corrompen nada —LWW es idempotente— pero duplican el tráfico y las
+  /// escrituras justo cuando la red ya está movida.
+  Future<void> _repasarPares() async {
+    final cliente = _cliente;
+    if (cliente == null || _sincronizando || _ultimosPares.isEmpty) return;
+    _sincronizando = true;
+    var llegoAlgo = false;
+    try {
+      for (final par in _ultimosPares) {
+        try {
+          await cliente.sincronizarCon(par);
+          llegoAlgo = true;
+        } catch (_) {
+          // Un peer que se desconecta a mitad de sync no debe tumbar toda la
+          // sesión — se reintenta en la próxima ronda (robustez best-effort de
+          // 0007: el peor caso es una sync redundante, no una caída).
+        }
+      }
+    } finally {
+      _sincronizando = false;
+    }
+
+    // Lo que entra por sync se escribe DIRECTO en la base, sin pasar por los
+    // notifiers, así que la pantalla seguía mostrando lo de antes: medido con
+    // dos aparatos, la base del receptor tenía 39 productos y Venta Rápida
+    // decía "la bandeja está vacía" hasta reiniciar la app.
+    //
+    // Se invalida después de la ronda entera y no por peer: con cuatro
+    // aparatos, invalidar dentro del bucle reconstruiría el catálogo tres
+    // veces seguidas para llegar al mismo sitio.
+    if (llegoAlgo) {
+      ref.invalidate(productoNotifierProvider);
+      ref.invalidate(categoriaNotifierProvider);
+      ref.invalidate(ventaNotifierProvider);
+      ref.invalidate(reportesProvider);
+      ref.invalidate(detalleRangoProvider);
+    }
+  }
+
   Future<void> detenerSync() async {
+    _ronda?.cancel();
+    _ronda = null;
+    _cliente = null;
+    _ultimosPares = [];
     await _discovery.detener();
     await _server?.detener();
     _server = null;
