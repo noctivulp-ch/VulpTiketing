@@ -24,17 +24,26 @@ FlutterDriver? _driver;
 /// Sin él el bridge no arranca: no hay modo "sin autenticar".
 String? _token;
 
+/// El que aceptan los builds de desarrollo (ver `TokenMcpService`). Se usa si
+/// no se pasa `--token`, que es el caso normal mientras se desarrolla: la app
+/// se reinstala decenas de veces al dia y cada una empieza sin token generado.
+///
+/// Contra un build de RELEASE esto no sirve — la app lo rechaza — y ahi hay que
+/// pedirle el token a quien atiende el aparato.
+const _tokenDeDesarrollo = 'vulp-dev-no-usar-en-produccion';
+
 void main(List<String> args) async {
   final vmService = _leerArg(args, '--vm-service');
-  final token = _leerArg(args, '--token');
-  if (vmService == null || token == null) {
-    stderr.writeln('Uso: dart run test_driver/bridge.dart --vm-service=<url> --token=<token>');
+  if (vmService == null) {
+    stderr.writeln('Uso: dart run test_driver/bridge.dart --vm-service=<url> [--token=<token>]');
     stderr.writeln();
-    stderr.writeln('El token lo genera la persona que atiende el aparato, en');
-    stderr.writeln('Configuracion -> Herramientas. Hay que pedirselo: no se puede');
-    stderr.writeln('deducir de la contrasena ni de ningun otro dato de la app.');
+    stderr.writeln('Sin --token se usa el de desarrollo, que solo aceptan los builds');
+    stderr.writeln('de debug y profile. Contra un release hay que pedirle el token a');
+    stderr.writeln('la persona que atiende el aparato: lo genera en la app, en');
+    stderr.writeln('Configuracion -> Acceso.');
     exit(1);
   }
+  final token = _leerArg(args, '--token') ?? _tokenDeDesarrollo;
   _token = token;
 
   stdout.writeln('Conectando a $vmService ...');
@@ -48,9 +57,19 @@ void main(List<String> args) async {
   );
   if (prueba['ok'] != true) {
     stderr.writeln('Token rechazado por la app: ${prueba['error']}');
+    if (token == _tokenDeDesarrollo) {
+      stderr.writeln();
+      stderr.writeln('Se uso el token de desarrollo y la app lo rechazo, asi que');
+      stderr.writeln('probablemente sea un build de RELEASE. Pedile el token a quien');
+      stderr.writeln('atiende el aparato y pasalo con --token=<token>.');
+    }
     exit(2);
   }
 
+  if (token == _tokenDeDesarrollo) {
+    stdout.writeln('!! Token de DESARROLLO. La app en este aparato es un build de pruebas.');
+    stdout.writeln('!! Antes de dejarlo en la soda: flutter build apk --release');
+  }
   stdout.writeln('Token aceptado. Bridge escuchando en http://127.0.0.1:$_puertoBridge');
 
   final handler = const Pipeline()

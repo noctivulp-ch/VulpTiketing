@@ -40,6 +40,17 @@ void main() {
       expect(iconoDeCategoria('Batidos en Leche').clave, 'batido');
     });
 
+    test('las genéricas también aciertan, sin pisar a las específicas', () {
+      // "Bebidas" a secas es de las categorías más comunes de una soda y caía
+      // al icono neutro — lo vi en el aparato al crear una. Pero la genérica no
+      // puede ganarle a la específica: "Bebidas Naturales" sigue siendo
+      // refresco, no un vaso cualquiera.
+      expect(iconoDeCategoria('Bebidas').clave, 'refresco');
+      expect(iconoDeCategoria('Comidas Rápidas').clave, 'hamburguesa');
+      expect(iconoDeCategoria('Batidos en Leche').clave, 'batido');
+      expect(iconoDeCategoria('Frappé').clave, 'batido');
+    });
+
     test('una categoría que no dice nada cae al neutro, no revienta', () {
       expect(iconoDeCategoria('Varios surtidos').clave, iconoDeProductoPorDefecto.clave);
       expect(iconoDeCategoria(null).clave, iconoDeProductoPorDefecto.clave);

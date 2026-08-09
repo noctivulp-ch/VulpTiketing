@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -35,6 +36,33 @@ class TokenMcpService {
   /// esto lo copia una máquina: no hay razón para acercarse a lo adivinable.
   static const _bytes = 32;
 
+  /// Token fijo que vale **solo en builds de desarrollo y pruebas**.
+  ///
+  /// Existe para que el harness del MCP no obligue a generar y copiar un token
+  /// a mano en cada reinstalación: durante el desarrollo la app se reinstala
+  /// decenas de veces al día, y cada una empieza sin token.
+  ///
+  /// No es un secreto y no pretende serlo — está escrito acá, en el repositorio
+  /// público del proyecto. Su seguridad es entera de la condición de abajo: en
+  /// un build de release **no se acepta**, y de hecho ni siquiera llega al
+  /// binario. Ver [_devHabilitado].
+  static const tokenDeDesarrollo = 'vulp-dev-no-usar-en-produccion';
+
+  /// Si este build acepta [tokenDeDesarrollo].
+  ///
+  /// `kReleaseMode` es una constante de compilación, así que en release esta
+  /// rama se elimina entera junto con la cadena del token: no queda ni el
+  /// literal dentro del APK. Está comprobado sobre el APK real en
+  /// `test/harness_fuera_de_produccion_test.dart`.
+  ///
+  /// Vale también en `profile` —el modo del banco de rendimiento— porque ahí
+  /// también hace falta manejar la app desde fuera para medir.
+  static bool get _devHabilitado => !kReleaseMode;
+
+  /// Si este build acepta el token de desarrollo. Para que la pantalla pueda
+  /// avisarlo, que es la otra mitad del trato.
+  static bool get esBuildDeDesarrollo => _devHabilitado;
+
   /// El token de este aparato, o `null` si nunca se generó.
   ///
   /// Que empiece sin existir es deliberado: mientras nadie lo pida, no hay
@@ -60,8 +88,13 @@ class TokenMcpService {
   ///
   /// Sin token generado devuelve `false` siempre — ni siquiera para una cadena
   /// vacía, que es lo que llega cuando el otro lado no manda nada.
+  ///
+  /// En un build de desarrollo se acepta **además** [tokenDeDesarrollo], que es
+  /// lo que evita tener que generar y copiar uno a mano en cada reinstalación.
+  /// En release esa rama no existe.
   Future<bool> verificar(String? presentado) async {
     if (presentado == null || presentado.isEmpty) return false;
+    if (_devHabilitado && _iguales(tokenDeDesarrollo, presentado)) return true;
     final guardado = await leer();
     if (guardado == null) return false;
     return _iguales(guardado, presentado);

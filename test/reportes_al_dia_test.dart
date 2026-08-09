@@ -76,7 +76,8 @@ void main() {
     return c;
   }
 
-  ReportesParametros hoy() => ReportesParametros(rango: RangoReporte.dia, fechaReferencia: DateTime.now());
+  ReportesParametros hoy() =>
+      ReportesParametros(rango: RangoReporte.dia, fechaReferencia: DateTime.now());
 
   test('cobrar una venta actualiza el total del día, sin reiniciar nada', () async {
     final c = contenedor();

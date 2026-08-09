@@ -72,6 +72,27 @@ void main() {
     expect(app, contains('verificar('));
   });
 
+  test('el token de desarrollo está detrás de kReleaseMode', () {
+    // La garantía es de compilación, no de tiempo de ejecución:
+    // `kReleaseMode` es una constante, así que en release la rama entera
+    // —incluida la cadena del token— se elimina del binario.
+    //
+    // Se comprueba el código y no el APK porque compilar uno tarda dos minutos
+    // y esta prueba corre en cada cambio. La comprobación sobre el binario de
+    // verdad está en `scripts/verificar-release.sh`, que sí lo hace, y se corre
+    // antes de dejar un aparato en la soda.
+    final servicio = File(
+      '$raiz/lib/features/configuracion/token_mcp_service.dart',
+    ).readAsStringSync();
+
+    expect(servicio, contains('kReleaseMode'));
+    expect(
+      servicio,
+      contains('_devHabilitado && '),
+      reason: 'el token de desarrollo tiene que estar detrás de la condición, no suelto',
+    );
+  });
+
   test('el bridge no arranca sin token', () {
     final bridge = File('$raiz/test_driver/bridge.dart').readAsStringSync();
 

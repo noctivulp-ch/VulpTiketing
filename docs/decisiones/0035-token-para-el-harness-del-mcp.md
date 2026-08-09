@@ -88,6 +88,32 @@ Conviene decirlo sin adornos, porque un lector futuro podría confiar de más:
   app. Llegar ahí exige acceso físico con depuración habilitada y un build
   debug, que es el mismo nivel de acceso que ya permite instalar otro APK.
 
+## Addendum (2026-08-09) — token fijo en los builds de desarrollo
+
+El token aleatorio resolvió la seguridad y creó una fricción real: la app se
+reinstala decenas de veces al día mientras se desarrolla, y **cada instalación
+empieza sin token**. O sea que cada vuelta pedía abrir Configuración, escribir
+la contraseña, generar, copiar y pasárselo al bridge.
+
+Los builds de **debug y profile** aceptan además un token fijo,
+`vulp-dev-no-usar-en-produccion`, escrito en el repositorio. No es un secreto y
+no pretende serlo: toda su seguridad está en que la rama viva detrás de
+`kReleaseMode`, que es una constante de compilación — en release el `if` se
+elimina entero y **la cadena ni siquiera llega al binario**. Comprobado sobre el
+APK real con `scripts/verificar-release.sh`.
+
+Dos cosas lo acompañan, y son la parte que importa:
+
+- **El panel lo grita.** Si el build acepta el token fijo, Configuración →
+  Acceso muestra un aviso en rojo, imposible de cerrar, diciendo que hay que
+  reinstalar con `flutter build apk --release` antes de dejar el aparato en la
+  soda. Un build de pruebas no puede parecerse a uno normal.
+- **`scripts/verificar-release.sh`** revisa un APK terminado y falla si
+  encuentra el token, la extensión de driver o los comandos del harness. Se
+  corre antes de entregar un aparato. Está probado en las dos direcciones: pasa
+  con el release y falla con el debug — un verificador que solo se ha visto
+  aprobar no sirve de nada.
+
 ## La otra mitad: que la puerta no exista
 
 El token protege si alguien llega a la puerta. Más barato y más efectivo es que

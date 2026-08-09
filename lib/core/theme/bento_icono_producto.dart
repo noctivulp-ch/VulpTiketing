@@ -68,6 +68,7 @@ const iconoDeProductoPorDefecto = IconoDeProducto('otro', Icons.restaurant, 'Otr
 /// antes que lo general — "Batidos en Leche" tiene que dar batido, no leche.
 const _pistasDeCategoria = <String, String>{
   'batido': 'batido',
+  'frappe': 'batido',
   'refresco': 'refresco',
   'fresco': 'refresco',
   'natural': 'refresco',
@@ -106,6 +107,17 @@ const _pistasDeCategoria = <String, String>{
   'tamal': 'bocas',
   'frito': 'bocas',
   'abarrote': 'abarrote',
+  // Al final del todo: son el cajón de sastre, y cualquiera de ellas ganaría a
+  // una pista específica si estuviera antes.
+  //
+  // Entre ellas el orden también cuenta: "Comidas Rápidas" tiene las dos, y con
+  // `comida` delante salía un plato de restaurante en vez de la hamburguesa.
+  'rapida': 'hamburguesa',
+  'bebida': 'refresco',
+  'trago': 'refresco',
+  'comida': 'plato',
+  'extra': 'bocas',
+  'acompan': 'bocas',
 };
 
 /// El icono que le toca a un producto por su **categoría**, cuando nadie le

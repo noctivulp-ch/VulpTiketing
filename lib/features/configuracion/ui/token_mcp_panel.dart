@@ -108,6 +108,13 @@ class _PanelTokenMcpState extends ConsumerState<PanelTokenMcp> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // El aviso va PRIMERO y en rojo: un build que acepta un token fijo y
+          // conocido no puede parecerse a uno normal, y esta pantalla es el
+          // único sitio donde se puede notar la diferencia.
+          if (TokenMcpService.esBuildDeDesarrollo) ...[
+            _AvisoDeDesarrollo(),
+            const SizedBox(height: BentoSpacing.unidad),
+          ],
           Text(
             hayToken
                 ? 'Hay un token activo. Quien lo tenga puede manejar esta app '
@@ -161,6 +168,51 @@ class _PanelTokenMcpState extends ConsumerState<PanelTokenMcp> {
           child: Text(hayToken ? 'Generar otro' : 'Generar'),
         ),
       ],
+    );
+  }
+}
+
+/// Lo que separa un build de pruebas de uno para el negocio.
+///
+/// El token de desarrollo es fijo y está escrito en el repositorio, así que
+/// cualquiera que tenga el código puede manejar un aparato con este build. En
+/// una máquina de desarrollo eso es exactamente lo que se quiere; en el
+/// mostrador de la soda, no.
+///
+/// Por eso el aviso es imposible de confundir con información: usa el color de
+/// error del tema, dice qué hay que hacer, y no se puede cerrar.
+class _AvisoDeDesarrollo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.errorContainer,
+        borderRadius: BorderRadius.circular(BentoRadius.pozo),
+        border: Border.all(color: scheme.error),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(BentoSpacing.unidad),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_rounded, size: 20, color: scheme.onErrorContainer),
+            const SizedBox(width: BentoSpacing.unidad),
+            Expanded(
+              child: Text(
+                'BUILD DE PRUEBAS. Acepta un token fijo y conocido, así que '
+                'cualquiera con el código puede manejar este aparato. '
+                'Antes de dejarlo en la soda hay que reinstalar la app con '
+                '`flutter build apk --release`.',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onErrorContainer),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

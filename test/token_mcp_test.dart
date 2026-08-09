@@ -91,6 +91,58 @@ void main() {
     );
   });
 
+  group('el token de desarrollo', () {
+    // Existe para que el harness no obligue a generar y copiar un token a mano
+    // en cada reinstalación: durante el desarrollo la app se reinstala decenas
+    // de veces al día y cada una empieza sin token.
+    //
+    // Estas pruebas corren en modo debug, o sea con el token habilitado. Que en
+    // RELEASE no exista lo comprueba `harness_fuera_de_produccion_test.dart`
+    // buscando la cadena dentro del APK de verdad — acá no se puede, porque una
+    // prueba no puede cambiarse su propio `kReleaseMode`.
+
+    test('se acepta sin haber generado ninguno', () async {
+      final servicio = servicioCon(_AlmacenFalso());
+
+      expect(await servicio.verificar(TokenMcpService.tokenDeDesarrollo), isTrue);
+      // Y no deja rastro: sigue sin haber token guardado, así que el panel
+      // sigue diciendo "sin token" y revocar no tiene nada que revocar.
+      expect(await servicio.leer(), isNull);
+    });
+
+    test('convive con uno generado: valen los dos', () async {
+      // Si generar uno propio apagara el de desarrollo, cada vez que se probara
+      // el flujo de token a mano habría que acordarse de revocarlo después.
+      final servicio = servicioCon(_AlmacenFalso());
+      final propio = await servicio.generar();
+
+      expect(await servicio.verificar(propio), isTrue);
+      expect(await servicio.verificar(TokenMcpService.tokenDeDesarrollo), isTrue);
+    });
+
+    test('revocar no lo apaga: no es un token guardado', () async {
+      final servicio = servicioCon(_AlmacenFalso());
+      await servicio.generar();
+
+      await servicio.revocar();
+
+      expect(await servicio.verificar(TokenMcpService.tokenDeDesarrollo), isTrue);
+    });
+
+    test('se nota que es de desarrollo con solo leerlo', () async {
+      // Va a aparecer en logs, en líneas de comando y en capturas. Que se
+      // explique solo evita que alguien lo tome por un token de verdad.
+      expect(TokenMcpService.tokenDeDesarrollo, contains('dev'));
+      expect(TokenMcpService.tokenDeDesarrollo, contains('produccion'));
+    });
+
+    test('la app sabe decir que este build lo acepta', () async {
+      // Es lo que enciende el aviso rojo del panel. Sin esto, un build de
+      // pruebas se ve igual que uno de la soda.
+      expect(TokenMcpService.esBuildDeDesarrollo, isTrue, reason: 'las pruebas corren en debug');
+    });
+  });
+
   test('sobrevive a reabrir la app', () async {
     // Vive en el almacén, no en memoria: si se perdiera al cerrar, habría que
     // reconfigurar la herramienta externa en cada arranque.
