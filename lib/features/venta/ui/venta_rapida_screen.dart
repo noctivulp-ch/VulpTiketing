@@ -41,7 +41,7 @@ class VentaRapidaScreen extends ConsumerWidget {
               child: productosAsync.when(
                 data: (grupos) {
                   if (grupos.every((g) => g.productos.isEmpty)) return const _SinProductos();
-                  final categorias = ref.watch(nombresDeCategoriaProvider);
+                  final iconos = ref.watch(iconosDeCategoriaProvider);
                   return ListaProductosAgrupada(
                     grupos: grupos,
                     // Padding del SCROLL, no del contenedor: así las
@@ -75,7 +75,7 @@ class VentaRapidaScreen extends ConsumerWidget {
                     altoCelda: _altoDeCelda(context),
                     celda: (producto) => _TarjetaProducto(
                       producto: producto,
-                      categoria: categorias[producto.categoriaId],
+                      iconoDeSuCategoria: iconos[producto.categoriaId],
                       onTap: () => _abrirCobroRapido(context, ref, producto),
                     ),
                   );
@@ -189,7 +189,11 @@ class _SinProductos extends StatelessWidget {
 }
 
 class _TarjetaProducto extends StatelessWidget {
-  const _TarjetaProducto({required this.producto, required this.categoria, required this.onTap});
+  const _TarjetaProducto({
+    required this.producto,
+    required this.iconoDeSuCategoria,
+    required this.onTap,
+  });
 
   /// Lo justo para reconocer el icono de un vistazo. Más alto no ayuda a
   /// distinguir una taza de un plato, y sale del sitio del nombre.
@@ -201,8 +205,9 @@ class _TarjetaProducto extends StatelessWidget {
 
   final Producto producto;
 
-  /// El nombre de su categoría: de ahí sale la cara cuando nadie le eligió una.
-  final String? categoria;
+  /// La clave del icono que le toca por su categoría, ya resuelta: es la cara
+  /// que lleva cuando nadie le eligió imagen propia.
+  final String? iconoDeSuCategoria;
 
   final VoidCallback onTap;
 
@@ -237,7 +242,7 @@ class _TarjetaProducto extends StatelessWidget {
               child: ImagenDelBancoVista(
                 referencia: producto.imagen,
                 ventana: VentanaConFotos.ventaRapida,
-                categoria: categoria,
+                iconoDeSuCategoria: iconoDeSuCategoria,
               ),
             ),
           ),

@@ -222,7 +222,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
             // producto en la lista, y elegir imagen pasa a ser una decisión en
             // vez de un hueco por llenar.
             imagen: _imagen,
-            categoria: ref.watch(nombresDeCategoriaProvider)[_categoriaId],
+            iconoDeSuCategoria: ref.watch(iconosDeCategoriaProvider)[_categoriaId],
             ocupado: _guardando,
             onElegir: _elegirImagen,
           ),
@@ -356,13 +356,13 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
 class _ControlDeImagen extends StatelessWidget {
   const _ControlDeImagen({
     required this.imagen,
-    required this.categoria,
+    required this.iconoDeSuCategoria,
     required this.ocupado,
     required this.onElegir,
   });
 
   final String? imagen;
-  final String? categoria;
+  final String? iconoDeSuCategoria;
   final bool ocupado;
   final VoidCallback onElegir;
 
@@ -383,7 +383,7 @@ class _ControlDeImagen extends StatelessWidget {
             child: ImagenDelBancoVista(
               referencia: imagen,
               ventana: VentanaConFotos.inventario,
-              categoria: categoria,
+              iconoDeSuCategoria: iconoDeSuCategoria,
             ),
           ),
         ),

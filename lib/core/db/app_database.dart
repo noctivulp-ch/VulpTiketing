@@ -101,6 +101,13 @@ class AppDatabase {
         if (viejo < 3) {
           await migrarVentasALibro(db, p.dirname(await ruta()));
         }
+
+        // v3 -> v4: la categoria puede llevar su icono elegido a mano. La
+        // columna es NULLABLE y sin DEFAULT a proposito: `NULL` significa "el
+        // que salga del nombre", que es lo que hacian todas hasta ahora, asi
+        // que las filas existentes quedan exactamente como estaban sin tener
+        // que reescribir ninguna.
+        if (viejo < 4) await agregarIconoDeCategoria(db);
       },
     );
 
@@ -115,7 +122,16 @@ class AppDatabase {
     return db;
   }
 
-  static const version = 3;
+  static const version = 4;
+
+  /// v3 -> v4. Publica para que las pruebas de migracion la apliquen sobre una
+  /// base vieja de verdad en vez de recrear el esquema nuevo y dar por sentado
+  /// que el camino de actualizacion funciona.
+  static Future<void> agregarIconoDeCategoria(Database db) async {
+    final columnas = await db.rawQuery('PRAGMA table_info(categoria)');
+    if (columnas.any((c) => c['name'] == 'icono')) return;
+    await db.execute('ALTER TABLE categoria ADD COLUMN icono TEXT');
+  }
 
   /// El esquema como lista ordenada de sentencias, publico a proposito: las
   /// pruebas lo aplican en bases en memoria en vez de duplicar el DDL a mano.
@@ -255,6 +271,10 @@ class AppDatabase {
     CREATE TABLE categoria (
       id            TEXT PRIMARY KEY,
       nombre        TEXT NOT NULL,
+      -- Clave del icono elegido a mano. NULL = el que salga del nombre, que es
+      -- el caso normal: el acierto automatico funciona para casi todas y solo
+      -- se toca cuando falla.
+      icono         TEXT,
       updated_at    TEXT NOT NULL,
       deleted_at    TEXT
     );

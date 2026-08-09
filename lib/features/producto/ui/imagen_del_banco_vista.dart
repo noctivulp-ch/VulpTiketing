@@ -27,7 +27,7 @@ class ImagenDelBancoVista extends ConsumerWidget {
     super.key,
     required this.referencia,
     required this.ventana,
-    this.categoria,
+    this.iconoDeSuCategoria,
     this.apagada = false,
   });
 
@@ -39,8 +39,12 @@ class ImagenDelBancoVista extends ConsumerWidget {
   /// del banco, donde apagar la foto que se está eligiendo no tendría sentido.
   final VentanaConFotos? ventana;
 
-  /// El nombre de la categoría del producto, de donde sale el icono por defecto.
-  final String? categoria;
+  /// La **clave del icono** que le toca al producto por su categoría, ya
+  /// resuelta (ver `iconosDeCategoriaProvider`). Antes acá llegaba el nombre de
+  /// la categoría y la regla de nombres se aplicaba en cada celda; ahora la
+  /// categoría puede llevar un icono elegido a mano, y quien pinta no tiene por
+  /// qué saber cuál de las dos cosas ganó.
+  final String? iconoDeSuCategoria;
 
   final bool apagada;
 
@@ -76,6 +80,8 @@ class ImagenDelBancoVista extends ConsumerWidget {
     );
   }
 
-  Widget _iconoDeLaCategoria() =>
-      BentoIconoProducto(clave: iconoDeCategoria(categoria).clave, apagada: apagada);
+  Widget _iconoDeLaCategoria() => BentoIconoProducto(
+    clave: iconoDeSuCategoria ?? iconoDeProductoPorDefecto.clave,
+    apagada: apagada,
+  );
 }

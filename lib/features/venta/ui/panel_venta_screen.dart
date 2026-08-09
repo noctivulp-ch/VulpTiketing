@@ -359,7 +359,7 @@ class _ListaCarrito extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ventaEnCurso = ref.watch(ventaEnCursoNotifierProvider);
     final productos = ref.watch(productoQueryProvider).valueOrNull ?? const <Producto>[];
-    final categorias = ref.watch(nombresDeCategoriaProvider);
+    final iconos = ref.watch(iconosDeCategoriaProvider);
 
     if (ventaEnCurso.lineas.isEmpty) {
       // El texto sigue al panel: en teléfono la costura está ABAJO, y decir "a
@@ -387,7 +387,7 @@ class _ListaCarrito extends ConsumerWidget {
         return _FilaLineaVenta(
           nombre: nombre,
           imagen: producto?.imagen,
-          categoria: categorias[producto?.categoriaId],
+          iconoDeSuCategoria: iconos[producto?.categoriaId],
           lineaLibre: linea.nombreLibre != null,
           cantidad: linea.cantidad,
           nota: linea.nota,
@@ -526,7 +526,7 @@ class _FilaLineaVenta extends StatelessWidget {
   const _FilaLineaVenta({
     required this.nombre,
     required this.imagen,
-    required this.categoria,
+    required this.iconoDeSuCategoria,
     required this.lineaLibre,
     required this.cantidad,
     required this.nota,
@@ -541,9 +541,10 @@ class _FilaLineaVenta extends StatelessWidget {
   /// cara sale entonces de [categoria].
   final String? imagen;
 
-  /// El nombre de la categoría del producto. Nulo solo si el producto ya no
-  /// está en el catálogo, y entonces la fila va sin miniatura.
-  final String? categoria;
+  /// La clave del icono que le toca por su categoría, ya resuelta. Nulo solo si
+  /// el producto ya no está en el catálogo, y entonces la fila va sin
+  /// miniatura.
+  final String? iconoDeSuCategoria;
 
   final bool lineaLibre;
   final int cantidad;
@@ -577,7 +578,7 @@ class _FilaLineaVenta extends StatelessWidget {
             ),
             child: const Icon(Icons.edit_note, size: 22),
           )
-        : imagen == null && categoria == null
+        : imagen == null && iconoDeSuCategoria == null
         ? null
         : SizedBox(
             width: bentoMiniatura,
@@ -587,7 +588,7 @@ class _FilaLineaVenta extends StatelessWidget {
               child: ImagenDelBancoVista(
                 referencia: imagen,
                 ventana: VentanaConFotos.venta,
-                categoria: categoria,
+                iconoDeSuCategoria: iconoDeSuCategoria,
               ),
             ),
           );

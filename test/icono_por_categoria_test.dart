@@ -62,7 +62,7 @@ void main() {
     Future<void> montar(
       WidgetTester tester, {
       String? referencia,
-      String? categoria,
+      String? iconoDeSuCategoria,
       VentanaConFotos? ventana,
       Set<VentanaConFotos> sinFotos = const {},
     }) async {
@@ -80,7 +80,7 @@ void main() {
                 child: ImagenDelBancoVista(
                   referencia: referencia,
                   ventana: ventana,
-                  categoria: categoria,
+                  iconoDeSuCategoria: iconoDeSuCategoria,
                 ),
               ),
             ),
@@ -92,7 +92,7 @@ void main() {
     }
 
     testWidgets('sin imagen elegida se dibuja el icono de la categoría', (tester) async {
-      await montar(tester, categoria: 'Arroces', ventana: VentanaConFotos.ventaRapida);
+      await montar(tester, iconoDeSuCategoria: 'casado', ventana: VentanaConFotos.ventaRapida);
 
       expect(find.byIcon(iconoDeProductoDe('casado').icono), findsOneWidget);
     });
@@ -103,7 +103,7 @@ void main() {
       await montar(
         tester,
         referencia: 'ico:postre',
-        categoria: 'Arroces',
+        iconoDeSuCategoria: 'casado',
         ventana: VentanaConFotos.ventaRapida,
       );
 
@@ -133,7 +133,7 @@ void main() {
                   // Una foto, no un icono: es lo que la preferencia apaga.
                   referencia: 'una-foto.jpg',
                   ventana: ventana,
-                  categoria: 'Arroces',
+                  iconoDeSuCategoria: 'casado',
                 ),
               ),
             ),

@@ -35,7 +35,7 @@ class ProductoCrudScreen extends ConsumerWidget {
     // terminado de comprobar si hay otros aparatos.
     final sincronizado = ref.watch(dispositivoSinParesProvider).valueOrNull ?? false;
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
-    final categorias = ref.watch(nombresDeCategoriaProvider);
+    final iconos = ref.watch(iconosDeCategoriaProvider);
 
     return Scaffold(
       body: Column(
@@ -93,7 +93,7 @@ class ProductoCrudScreen extends ConsumerWidget {
                           celda: (producto) {
                             return _FilaProducto(
                               producto: producto,
-                              categoria: categorias[producto.categoriaId],
+                              iconoDeSuCategoria: iconos[producto.categoriaId],
                               lineasDelNombre: medida?.lineasDelNombre,
                               esGerente: esGerente,
                               sincronizado: sincronizado,
@@ -294,7 +294,7 @@ class ProductoCrudScreen extends ConsumerWidget {
 class _FilaProducto extends StatelessWidget {
   const _FilaProducto({
     required this.producto,
-    required this.categoria,
+    required this.iconoDeSuCategoria,
     required this.lineasDelNombre,
     required this.esGerente,
     required this.sincronizado,
@@ -305,8 +305,8 @@ class _FilaProducto extends StatelessWidget {
 
   final Producto producto;
 
-  /// El nombre de su categoría: de ahí sale la cara cuando nadie le eligió una.
-  final String? categoria;
+  /// La clave del icono que le toca por su categoría, ya resuelta.
+  final String? iconoDeSuCategoria;
 
   /// Cuántas líneas se le dieron al nombre, cuando la lista tiene varias
   /// columnas y hay que darles a todas el mismo alto. **Nulo con una sola fila
@@ -344,7 +344,7 @@ class _FilaProducto extends StatelessWidget {
                   ImagenDelBancoVista(
                     referencia: producto.imagen,
                     ventana: VentanaConFotos.inventario,
-                    categoria: categoria,
+                    iconoDeSuCategoria: iconoDeSuCategoria,
                     apagada: !producto.activo,
                   ),
                   // El aspa va en una ESQUINA y pequeña, no centrada y del

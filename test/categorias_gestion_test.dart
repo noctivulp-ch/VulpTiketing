@@ -9,7 +9,9 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/core/theme/bento_theme.dart';
+import 'package:vulp_tiketing/features/producto/categoria_model.dart';
 import 'package:vulp_tiketing/features/producto/categoria_notifier.dart';
+import 'package:vulp_tiketing/features/producto/producto_query_provider.dart';
 import 'package:vulp_tiketing/features/producto/ui/categorias_panel.dart';
 
 /// Las categorías se pueden crear, renombrar y sacar de la carta **desde la
@@ -191,5 +193,106 @@ void main() {
     // sigan ahí, no que un notifier las recuerde.
     final filas = await tester.runAsync(() => db.query('producto'));
     expect(filas, hasLength(3), reason: 'los productos se borraron con la categoría');
+  });
+
+  group('el icono elegido a mano', () {
+    // El acierto por nombre está bien y sigue siendo el defecto, pero sale de
+    // una tabla de palabras: una categoría que el negocio llame "Especiales" o
+    // "Lo de la casa" no tiene de dónde adivinarse. Una categoría con la cara
+    // equivocada es peor que una sin cara, porque dice algo que no es.
+
+    testWidgets('el elegido gana al que saldría del nombre', (tester) async {
+      final c = await montar(tester);
+
+      await tester.runAsync(
+        () => c
+            .read(categoriaNotifierProvider.notifier)
+            .actualizar(
+              Categoria(
+                id: 'cat-arroz',
+                nombre: 'Arroces',
+                icono: 'postre',
+                updatedAt: DateTime.now(),
+              ),
+            ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(c.read(iconosDeCategoriaProvider)['cat-arroz'], 'postre');
+    });
+
+    testWidgets('sin elegir nada sigue mandando el nombre', (tester) async {
+      // Que la columna nueva no cambie el comportamiento de las categorías que
+      // nadie tocó, que son casi todas.
+      final c = await montar(tester);
+
+      expect(c.read(iconosDeCategoriaProvider)['cat-arroz'], 'casado');
+      expect(c.read(iconosDeCategoriaProvider)['cat-vacia'], 'postre');
+    });
+
+    testWidgets('volver al automático deshace la elección', (tester) async {
+      // Es la salida de un cambio del que uno se arrepiente, y por eso el
+      // diálogo distingue "Automático" de "Cancelar".
+      final c = await montar(tester);
+      final notifier = c.read(categoriaNotifierProvider.notifier);
+
+      await tester.runAsync(
+        () => notifier.actualizar(
+          Categoria(id: 'cat-arroz', nombre: 'Arroces', icono: 'postre', updatedAt: DateTime.now()),
+        ),
+      );
+      await tester.runAsync(
+        () => notifier.actualizar(
+          Categoria(id: 'cat-arroz', nombre: 'Arroces', updatedAt: DateTime.now()),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(c.read(iconosDeCategoriaProvider)['cat-arroz'], 'casado');
+    });
+
+    testWidgets('renombrar no borra el icono elegido', (tester) async {
+      // Si se perdiera al renombrar, cada corrección de una errata desharía la
+      // elección sin avisar.
+      final c = await montar(tester);
+      await tester.runAsync(
+        () => c
+            .read(categoriaNotifierProvider.notifier)
+            .actualizar(
+              Categoria(
+                id: 'cat-arroz',
+                nombre: 'Arroces',
+                icono: 'postre',
+                updatedAt: DateTime.now(),
+              ),
+            ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      await tester.tap(find.text('Arroces'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'Arroz');
+      await tester.tap(find.widgetWithText(FilledButton, 'Guardar'));
+      await tester.pump();
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(c.read(iconosDeCategoriaProvider)['cat-arroz'], 'postre');
+    });
+
+    testWidgets('el icono de la fila se toca y abre el selector', (tester) async {
+      await montar(tester);
+
+      await tester.tap(find.byTooltip('Elegir icono').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Icono de la categoría'), findsOneWidget);
+      // Y el automático se distingue, para que "volver al automático" diga a
+      // qué se vuelve.
+      expect(find.byTooltip('Casado (el automático)'), findsOneWidget);
+    });
   });
 }

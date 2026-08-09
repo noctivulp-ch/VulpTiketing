@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/bento_icono_producto.dart';
 import '../configuracion/preferencias_notifier.dart';
 import 'categoria_notifier.dart';
 import 'producto_model.dart';
@@ -87,6 +88,19 @@ String _clave(Map<String, String> nombres, String? categoriaId) {
 final nombresDeCategoriaProvider = Provider<Map<String, String>>((ref) {
   final categorias = ref.watch(categoriaNotifierProvider).valueOrNull ?? const [];
   return {for (final c in categorias) c.id: c.nombre};
+});
+
+/// Id de categoría → **clave del icono ya resuelta**: el elegido a mano si lo
+/// hay, y si no el que sale del nombre.
+///
+/// Se resuelve una vez acá y no en cada celda por dos razones. Una es el coste:
+/// la cuadrícula de Venta Rápida pinta decenas de celdas y cada una tendría que
+/// recorrer la tabla de pistas. La otra importa más — así el widget que pinta
+/// recibe un icono y no una categoría, y no tiene que saber que existe una
+/// regla de nombres detrás.
+final iconosDeCategoriaProvider = Provider<Map<String, String>>((ref) {
+  final categorias = ref.watch(categoriaNotifierProvider).valueOrNull ?? const [];
+  return {for (final c in categorias) c.id: c.icono ?? iconoDeCategoria(c.nombre).clave};
 });
 
 /// Un tramo de la lista de productos con su título.

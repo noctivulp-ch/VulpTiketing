@@ -126,6 +126,39 @@ distintas del mismo aparato.
 **Apagar las fotos dejando el hueco vacío.** Ahorraría también el espacio, pero
 convierte una opción de rendimiento en una pérdida de información.
 
+## Addendum (2026-08-09) — el icono se puede elegir a mano
+
+Llegó el día que esta decisión dejaba anotado: *"Queda como salida si algún día
+el acierto por nombre resulta insuficiente"*. El dueño lo pidió con la razón
+exacta — **el auto-selector está bien, pero no es infalible**.
+
+Y se comprobó en el aparato de la forma más limpia posible: una categoría de
+prueba llamada `test` salía con icono de **café**, porque `test` empieza por
+`te` y esa es la pista del té. Una tabla de palabras siempre va a tener casos
+así, y una categoría que el negocio llame "Especiales" o "Lo de la casa" no
+tiene de dónde adivinarse.
+
+- **Columna `icono` en `categoria`**, migración v3 → v4. Nullable y sin
+  `DEFAULT`: `NULL` significa "el que salga del nombre", que es lo que hacían
+  todas hasta ahora, así que la migración no reescribe ninguna fila.
+- **Se toca el icono en el panel de Categorías** para elegirlo. El automático
+  aparece resaltado en el selector, para que "volver al automático" diga a qué
+  se vuelve.
+- **`iconosDeCategoriaProvider`** resuelve la disputa una sola vez —elegido si
+  lo hay, derivado si no— y quien pinta recibe una clave de icono, no una
+  categoría. Antes cada celda de la cuadrícula aplicaba la regla de nombres por
+  su cuenta.
+
+Una categoría con la cara equivocada es peor que una sin cara: dice algo que no
+es. Por eso la salida manual valía la migración de esquema que esta decisión
+había descartado — el cálculo cambió cuando el panel de Categorías ya existía y
+solo faltaba el selector.
+
+**Un fallo que la prueba cazó en el camino:** renombrar una categoría borraba su
+icono elegido, porque se reconstruía la `Categoria` a mano y el constructor no
+pide `icono`. De ahí salió `Categoria.copyWith`, que evita que el próximo campo
+nuevo repita el problema en cada sitio que reconstruya a mano.
+
 ## Qué queda sin resolver
 
 - La cámara y la galería del banco siguen sin probarse en el aparato: abren apps

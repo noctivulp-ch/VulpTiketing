@@ -16,6 +16,8 @@ import 'package:vulp_tiketing/features/venta/libro_ventas.dart';
 /// - **v2 → v3**: muda `venta` y `linea_venta` a su primer libro
 ///   ([decisión 0025](../docs/decisiones/0025-archivado-anual-rodante.md)). Es
 ///   la única vez en la vida del proyecto que las ventas cambian de archivo.
+/// - **v3 → v4**: la categoría gana la columna `icono`, para poder elegirlo a
+///   mano cuando el acierto por nombre falla.
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -194,5 +196,74 @@ void main() {
         'idx_venta_fecha',
       ]),
     );
+  });
+
+  group('v3 → v4: el icono de la categoría', () {
+    /// Una base tal como la dejaba v3: sin la columna `icono`.
+    Future<Database> baseV3() async {
+      final db = await databaseFactory.openDatabase(
+        p.join(temporal.path, 'v3.db'),
+        options: OpenDatabaseOptions(singleInstance: false),
+      );
+      await db.execute(
+        'CREATE TABLE categoria ('
+        '  id TEXT PRIMARY KEY,'
+        '  nombre TEXT NOT NULL,'
+        '  updated_at TEXT NOT NULL,'
+        '  deleted_at TEXT'
+        ');',
+      );
+      await db.insert('categoria', {
+        'id': 'cat',
+        'nombre': 'Arroces',
+        'updated_at': DateTime(2026).toIso8601String(),
+      });
+      return db;
+    }
+
+    test('agrega la columna sin tocar las filas que ya estaban', () async {
+      // La columna es NULLABLE y sin DEFAULT a propósito: `NULL` significa "el
+      // que salga del nombre", que es exactamente lo que hacían todas las
+      // categorías hasta ahora. Así la migración no tiene que reescribir nada
+      // —y no puede equivocarse al hacerlo.
+      final db = await baseV3();
+
+      await AppDatabase.agregarIconoDeCategoria(db);
+
+      final filas = await db.query('categoria');
+      expect(filas, hasLength(1));
+      expect(filas.first['nombre'], 'Arroces');
+      expect(filas.first['icono'], isNull, reason: 'debe quedar en automático');
+      await db.close();
+    });
+
+    test('aplicarla dos veces no rompe', () async {
+      // Pasa de verdad: una base a medio migrar, o un `onUpgrade` que corre tras
+      // restaurar un backup. Un `ALTER TABLE` repetido es un error fatal de
+      // SQLite, así que la migración comprueba antes de tocar.
+      final db = await baseV3();
+
+      await AppDatabase.agregarIconoDeCategoria(db);
+      await AppDatabase.agregarIconoDeCategoria(db);
+
+      expect(await db.query('categoria'), hasLength(1));
+      await db.close();
+    });
+
+    test('una base nueva ya la trae', () async {
+      // El esquema de `onCreate` y el resultado de migrar tienen que coincidir:
+      // si divergen, una instalación nueva y una actualizada dejan de ser la
+      // misma app.
+      final db = await databaseFactory.openDatabase(
+        p.join(temporal.path, 'nueva.db'),
+        options: OpenDatabaseOptions(singleInstance: false),
+      );
+      await AppDatabase.crearEsquema(db);
+
+      final columnas = await db.rawQuery('PRAGMA table_info(categoria)');
+
+      expect(columnas.map((c) => c['name']), contains('icono'));
+      await db.close();
+    });
   });
 }

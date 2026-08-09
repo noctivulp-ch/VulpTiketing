@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/theme/bento_bandeja.dart';
+import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_icono_producto.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_aviso.dart';
@@ -122,10 +123,48 @@ class _PanelCategoriasState extends ConsumerState<PanelCategorias> {
     // Los productos NO se tocan: apuntan al id, no al nombre. Renombrar
     // "Arroces" a "Arroz" los deja a todos donde estaban, que es justo lo que
     // se espera de un renombrado.
+    //
+    // Y con `copyWith`, no construyendo una `Categoria` a mano: así se hacía
+    // antes y el icono elegido se perdía en silencio, porque el constructor no
+    // lo pide.
     await ref
         .read(categoriaNotifierProvider.notifier)
-        .actualizar(Categoria(id: categoria.id, nombre: nombre, updatedAt: DateTime.now()));
+        .actualizar(categoria.copyWith(nombre: nombre, updatedAt: DateTime.now()));
     if (mounted) mostrarAviso(context, '✓ Categoría renombrada');
+  }
+
+  /// Elegir a mano el icono de una categoría.
+  ///
+  /// El acierto por nombre está bien y sigue siendo el defecto, pero no es
+  /// infalible: sale de una tabla de palabras, y una categoría que el negocio
+  /// llame "Especiales" o "Lo de la casa" no tiene de dónde adivinarse. Una
+  /// categoría con la cara equivocada es peor que una sin cara — dice algo que
+  /// no es.
+  Future<void> _elegirIcono(Categoria categoria) async {
+    final elegido = await showDialog<String>(
+      context: context,
+      builder: (dialogo) => _DialogoDeIcono(
+        actual: categoria.icono,
+        automatico: iconoDeCategoria(categoria.nombre).clave,
+      ),
+    );
+    if (elegido == null || !mounted) return;
+
+    await ref
+        .read(categoriaNotifierProvider.notifier)
+        .actualizar(
+          categoria.copyWith(
+            // Cadena vacía = "volver al automático". Se distingue de `null`
+            // —que es cancelar— porque volver al automático es una elección.
+            icono: (valor: elegido.isEmpty ? null : elegido),
+            updatedAt: DateTime.now(),
+          ),
+        );
+    if (!mounted) return;
+    // Los productos que no tienen imagen propia llevan el icono de su
+    // categoría: si no se refresca, la carta sigue con el anterior.
+    ref.invalidate(productoNotifierProvider);
+    mostrarAviso(context, elegido.isEmpty ? '✓ Icono automático' : '✓ Icono cambiado');
   }
 
   Future<void> _descontinuar(Categoria categoria) async {
@@ -197,6 +236,7 @@ class _PanelCategoriasState extends ConsumerState<PanelCategorias> {
                     categoria: categoria,
                     productos: _cuantosUsan(categoria.id),
                     onRenombrar: () => _renombrar(categoria),
+                    onElegirIcono: () => _elegirIcono(categoria),
                     onDescontinuar: () => _descontinuar(categoria),
                   ),
               ],
@@ -230,12 +270,14 @@ class _FilaCategoria extends StatelessWidget {
     required this.categoria,
     required this.productos,
     required this.onRenombrar,
+    required this.onElegirIcono,
     required this.onDescontinuar,
   });
 
   final Categoria categoria;
   final int productos;
   final VoidCallback onRenombrar;
+  final VoidCallback onElegirIcono;
   final VoidCallback onDescontinuar;
 
   @override
@@ -255,15 +297,31 @@ class _FilaCategoria extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // El mismo icono que van a llevar sus productos: así se ve de
-            // antemano qué cara le toca a la categoría por su nombre, que si no
-            // es una regla invisible.
-            Icon(
-              iconoDeCategoria(categoria.nombre).icono,
-              size: 20,
-              color: Theme.of(context).colorScheme.primary,
+            // El mismo icono que van a llevar sus productos, y se TOCA para
+            // cambiarlo: así se ve de antemano qué cara le toca a la categoría
+            // y se corrige ahí mismo cuando el acierto automático falla.
+            //
+            // Con sus 48 dp aunque el dibujo mida 20: un objetivo del tamaño
+            // del glifo no se acierta con el pulgar.
+            Tooltip(
+              message: 'Elegir icono',
+              child: InkWell(
+                onTap: onElegirIcono,
+                borderRadius: BorderRadius.circular(BentoRadius.pozo),
+                child: SizedBox(
+                  width: bentoObjetivoTactilMin,
+                  height: bentoObjetivoTactilMin,
+                  child: Icon(
+                    iconoDeProductoDe(
+                      categoria.icono ?? iconoDeCategoria(categoria.nombre).clave,
+                    ).icono,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: BentoSpacing.unidad),
+            const SizedBox(width: BentoSpacing.unidad / 2),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,9 +329,16 @@ class _FilaCategoria extends StatelessWidget {
                 children: [
                   Text(categoria.nombre, style: textos.bodyLarge, maxLines: 2),
                   Text(
-                    productos == 0
-                        ? 'Sin productos'
-                        : '$productos producto${productos == 1 ? '' : 's'}',
+                    [
+                      if (productos == 0)
+                        'Sin productos'
+                      else
+                        '$productos producto${productos == 1 ? '' : 's'}',
+                      // Solo se dice cuando el icono se eligió a mano: "icono
+                      // automático" en todas las filas sería ruido, porque es
+                      // lo normal.
+                      if (categoria.icono != null) 'icono propio',
+                    ].join(' · '),
                     style: textos.bodySmall,
                   ),
                 ],
@@ -286,6 +351,77 @@ class _FilaCategoria extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Elegir el icono de una categoría a mano.
+///
+/// Devuelve la clave elegida, `''` para volver al automático, o `null` si se
+/// cancela. Los tres son distintos: volver al automático es una elección, no un
+/// cancelar, y es la que deshace un cambio del que uno se arrepiente.
+class _DialogoDeIcono extends StatelessWidget {
+  const _DialogoDeIcono({required this.actual, required this.automatico});
+
+  /// Lo que la categoría tiene elegido, o `null` si va por nombre.
+  final String? actual;
+
+  /// El que saldría del nombre. Se marca como tal para que se entienda que
+  /// **no elegir** también es una opción con resultado, no un hueco.
+  final String automatico;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return BentoDialogo(
+      titulo: const Text('Icono de la categoría'),
+      contenido: SizedBox(
+        width: 420,
+        child: BentoCuadricula(
+          separacion: BentoSpacing.unidad,
+          hijos: [
+            for (final icono in iconosDeProducto)
+              BentoCelda.fija(
+                1,
+                hijo: AspectRatio(
+                  aspectRatio: 1,
+                  child: Tooltip(
+                    message: icono.clave == automatico
+                        ? '${icono.etiqueta} (el automático)'
+                        : icono.etiqueta,
+                    child: BentoPozo(
+                      onTap: () => Navigator.pop(context, icono.clave),
+                      seleccionado: icono.clave == actual,
+                      padding: EdgeInsets.zero,
+                      child: Icon(
+                        icono.icono,
+                        // El que saldría solo se distingue aunque no esté
+                        // elegido: sin eso, "volver al automático" es un botón
+                        // que no dice a qué se vuelve.
+                        color: icono.clave == (actual ?? automatico)
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+      acciones: BentoAcciones(
+        izquierda: [
+          if (actual != null)
+            TextButton(
+              onPressed: () => Navigator.pop(context, ''),
+              child: const Text('Automático'),
+            ),
+        ],
+        derecha: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ],
       ),
     );
   }
