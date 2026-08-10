@@ -72,8 +72,23 @@ Comprobado en el aparato tras instalar:
 
 Lo que queda pendiente y afecta a la próxima actualización:
 
-- Sincronización PC ↔ teléfono sin probar.
 - Bluetooth como respaldo de la red, solo anotado.
+- La app de escritorio no se ha usado de verdad: se probó su sincronización, no
+  su día a día.
+
+Sincronización verificada con tres aparatos —la PC, el P30 de la estación y el
+P30 personal— en las tres formas que puede tomar la soda:
+
+| Caso | Resultado |
+|---|---|
+| PC ↔ teléfono, uno a uno | catálogo, venta de ida y venta de vuelta |
+| PC de Gerente, dos teléfonos de cajas | 11 ventas iguales en los tres, mismo conjunto |
+| Teléfono de Gerente, PC y teléfono de cajas | igual, y el borrado propagado a las dos cajas |
+
+En las dos últimas se comprobó además lo que con dos aparatos no existe: que lo
+de una caja llegue a la **otra caja** y no solo al Gerente, que tres cobrando a la
+vez converjan sin perder ni duplicar, y que descontinuar en el Gerente saque el
+producto de las dos cartas sin tocar las ventas.
 
 ## La clave de firma
 
