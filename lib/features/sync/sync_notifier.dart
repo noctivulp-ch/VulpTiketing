@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/db_providers.dart';
@@ -17,7 +19,60 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'sync_server.dart';
 
-enum EstadoSync { idle, syncing, error }
+enum FaseSync { idle, syncing, error }
+
+/// Lo que la pantalla necesita saber de la sincronización.
+///
+/// Los pares y el último fallo van **dentro del estado**, no en campos privados
+/// del notifier. Estaban fuera, y el resultado era una pantalla que mentía:
+/// los dos aparatos sincronizaban correctamente —misma base en los dos— y los
+/// dos seguían diciendo "Buscando otros dispositivos…". Como la fase no
+/// cambiaba (`syncing` todo el rato), Riverpod no tenía motivo para reconstruir
+/// el widget, y el texto se quedaba con lo que hubiera en el primer build.
+///
+/// Con los datos acá, cualquier cambio en los pares es un estado distinto y la
+/// pantalla se entera sola. Es la misma lección del refresco tras sincronizar:
+/// un dato que cambia en memoria sin avisar es un dato que la pantalla no
+/// tiene.
+@immutable
+class EstadoSync {
+  const EstadoSync({required this.fase, this.pares = 0, this.mismoRol = 0, this.fallo});
+
+  const EstadoSync.detenida() : this(fase: FaseSync.idle);
+
+  final FaseSync fase;
+
+  /// Cuántos aparatos se ven ahora mismo, **sin contarse a uno mismo**.
+  final int pares;
+
+  /// De esos, cuántos comparten rol. Solo decide quién orquesta; la
+  /// sincronización va con todos (decisión 0036).
+  final int mismoRol;
+
+  /// El último error de conexión, con dirección y puerto. `null` si no ha
+  /// fallado nada desde que se activó.
+  final String? fallo;
+
+  bool get activa => fase == FaseSync.syncing;
+
+  EstadoSync copyWith({FaseSync? fase, int? pares, int? mismoRol, String? fallo}) => EstadoSync(
+    fase: fase ?? this.fase,
+    pares: pares ?? this.pares,
+    mismoRol: mismoRol ?? this.mismoRol,
+    fallo: fallo ?? this.fallo,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is EstadoSync &&
+      other.fase == fase &&
+      other.pares == pares &&
+      other.mismoRol == mismoRol &&
+      other.fallo == fallo;
+
+  @override
+  int get hashCode => Object.hash(fase, pares, mismoRol, fallo);
+}
 
 /// Fachada Riverpod-facing: compone DeviceDiscoveryService + SyncServer +
 /// SyncClient + SyncGroupCoordinator (decisiones 0019/0022). Expone estado
@@ -73,7 +128,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
   static const _cadaRonda = Duration(seconds: 15);
 
   @override
-  EstadoSync build() => EstadoSync.idle;
+  EstadoSync build() => const EstadoSync.detenida();
 
   /// Guarda que este aparato VIO a otro alguna vez. Se escribe cuando el
   /// descubrimiento encuentra un par y no se borra: un aparato que ya estuvo
@@ -135,7 +190,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
     final server = SyncServer(db);
     final puerto = await server.iniciar();
     _server = server;
-    state = EstadoSync.syncing;
+    state = const EstadoSync(fase: FaseSync.syncing);
 
     await _discovery.anunciar(deviceId: miDeviceId, rol: rol.name, puerto: puerto);
 
@@ -165,6 +220,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
       // aparato está solo es si HAY otro en la red, no si es de su grupo.
       if (pares.isNotEmpty) await _marcarQueVioPares();
       _paresDelMismoRol = pares.where((p) => p.rol == rol.name).toList();
+      _publicar();
 
       // Se sincroniza con TODOS los pares, no solo con los del mismo rol.
       //
@@ -185,7 +241,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
       // usando para elegir orquestador: si algún día hace falta el ahorro, la
       // pieza está.
       await _repasarPares();
-    }, onError: (_) => state = EstadoSync.error);
+    }, onError: (_) => state = state.copyWith(fase: FaseSync.error));
   }
 
   /// Una pasada por todos los pares conocidos.
@@ -215,6 +271,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
           // "activa" y no pasaba nada. Costó una tarde de aparatos descubrir
           // que era una dirección `fe80::` inalcanzable.
           _ultimoFallo = '${par.direccion}:${par.puerto} — $e';
+          _publicar();
         }
       }
     } finally {
@@ -238,6 +295,19 @@ class SyncNotifier extends Notifier<EstadoSync> {
     }
   }
 
+  /// Vuelca a `state` lo que la pantalla mira.
+  ///
+  /// Hay que llamarlo cada vez que cambien los pares o el último fallo: son
+  /// campos privados, y sin esto Riverpod no se entera de que hay algo nuevo
+  /// que enseñar.
+  void _publicar() {
+    state = state.copyWith(
+      pares: _ultimosPares.length,
+      mismoRol: _paresDelMismoRol.length,
+      fallo: _ultimoFallo,
+    );
+  }
+
   /// Qué pares se ven ahora y qué fue lo último que falló.
   ///
   /// Lo consulta el panel de Sincronización: sin esto, "activa" es todo lo que
@@ -256,7 +326,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
     await _server?.detener();
     _server = null;
     _paresDelMismoRol = [];
-    state = EstadoSync.idle;
+    state = const EstadoSync.detenida();
   }
 }
 
