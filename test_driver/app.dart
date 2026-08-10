@@ -408,6 +408,29 @@ Future<dynamic> _ejecutar(
       container.invalidate(ventaNotifierProvider);
       return {'lineas': lineas.length};
 
+    // Deja la base sin catalogo ni ventas, SIN cerrar la app.
+    //
+    // Existe para las pruebas de sincronizacion: cada una tiene que partir de
+    // cero o no distingue "esto llego ahora" de "esto ya estaba", que es
+    // justo lo que tiene que distinguir. `pm clear` haria lo mismo pero mata el
+    // proceso, y con el el VM service al que esta enganchado el bridge — habria
+    // que reinstalar y reconectar entre prueba y prueba.
+    //
+    // Borra de verdad, no marca `deleted_at`: un tombstone volveria a viajar
+    // por sincronizacion y reapareceria en el otro aparato como borrado,
+    // ensuciando la prueba siguiente.
+    case 'reset_datos':
+      final db = await container.read(databaseProvider.future);
+      // `venta` y `linea_venta` viven en el libro adjunto (0025); los nombres
+      // sin calificar resuelven contra el.
+      for (final tabla in ['linea_venta', 'venta', 'producto', 'categoria']) {
+        await db.delete(tabla);
+      }
+      container.invalidate(productoNotifierProvider);
+      container.invalidate(categoriaNotifierProvider);
+      container.invalidate(ventaNotifierProvider);
+      return {'borrado': true};
+
     case 'listar_productos':
       final productos = await container.read(productoNotifierProvider.future);
       return productos
