@@ -51,6 +51,10 @@ class SyncNotifier extends Notifier<EstadoSync> {
   /// Últimos pares vistos, para poder repasarlos sin esperar a que el
   /// descubrimiento vuelva a emitir.
   List<PeerVisible> _ultimosPares = [];
+
+  /// El último error de sincronización, para que la pantalla pueda decirlo.
+  /// `null` mientras no haya fallado nada.
+  String? _ultimoFallo;
   Timer? _ronda;
   SyncClient? _cliente;
   bool _sincronizando = false;
@@ -187,10 +191,17 @@ class SyncNotifier extends Notifier<EstadoSync> {
         try {
           await cliente.sincronizarCon(par);
           llegoAlgo = true;
-        } catch (_) {
+        } catch (e) {
           // Un peer que se desconecta a mitad de sync no debe tumbar toda la
           // sesión — se reintenta en la próxima ronda (robustez best-effort de
           // 0007: el peor caso es una sync redundante, no una caída).
+          //
+          // Pero se DEJA RASTRO. Antes era un `catch (_)` mudo, y por eso una
+          // sincronización que fallaba siempre contra el mismo peer se veía
+          // exactamente igual que una que no tenía nada que traer: la app decía
+          // "activa" y no pasaba nada. Costó una tarde de aparatos descubrir
+          // que era una dirección `fe80::` inalcanzable.
+          _ultimoFallo = '${par.direccion}:${par.puerto} — $e';
         }
       }
     } finally {
@@ -214,11 +225,20 @@ class SyncNotifier extends Notifier<EstadoSync> {
     }
   }
 
+  /// Qué pares se ven ahora y qué fue lo último que falló.
+  ///
+  /// Lo consulta el panel de Sincronización: sin esto, "activa" es todo lo que
+  /// la app sabe decir, y no distingue "no hay nadie" de "no consigo hablar con
+  /// el que hay".
+  ({int pares, int mismoRol, String? fallo}) get diagnostico =>
+      (pares: _ultimosPares.length, mismoRol: _paresDelMismoRol.length, fallo: _ultimoFallo);
+
   Future<void> detenerSync() async {
     _ronda?.cancel();
     _ronda = null;
     _cliente = null;
     _ultimosPares = [];
+    _ultimoFallo = null;
     await _discovery.detener();
     await _server?.detener();
     _server = null;

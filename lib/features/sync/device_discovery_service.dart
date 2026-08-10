@@ -62,6 +62,39 @@ class BonsoirDeviceDiscoveryService implements DeviceDiscoveryService {
     _broadcast = broadcast;
   }
 
+  /// La dirección con la que SÍ se puede abrir una conexión, de todas las que
+  /// anuncia un aparato.
+  ///
+  /// `service.hostAddress` devuelve la primera de la lista, y esa elección no
+  /// es inocente: un Android anuncia a la vez su IPv4, una IPv6 **link-local**
+  /// (`fe80::…`) y a veces una ULA. Si la primera sale link-local, el peer
+  /// queda con una dirección **a la que no se puede llegar** — una `fe80::` no
+  /// se enruta sin decir por qué interfaz sale.
+  ///
+  /// Se vio en el aparato: dos Registradoras en la misma WiFi, una anunciándose
+  /// por IPv4 y la otra por `fe80::`, y la sincronización quedaba **de una sola
+  /// dirección** — la que tenía IPv4 traía datos del otro, y al revés nunca.
+  /// Reproducible, y sin dejar rastro: el cliente se traga los fallos de
+  /// conexión por peer para que uno caído no tumbe la ronda.
+  ///
+  /// Se prefiere IPv4 porque es lo que siempre funciona en la red de una soda.
+  /// Una IPv6 normal sirve igual y se devuelve entre corchetes, que es como
+  /// tiene que ir dentro de una URL. Las link-local se descartan.
+  static String? direccionUtilDe(BonsoirService service) {
+    final direcciones = service.hostAddresses;
+    if (direcciones.isEmpty) return service.hostAddress;
+
+    for (final d in direcciones) {
+      if (!d.contains(':')) return d; // IPv4
+    }
+    for (final d in direcciones) {
+      // `fe80::` solo vale con el índice de interfaz, que no viaja en la URL.
+      if (d.toLowerCase().startsWith('fe80:')) continue;
+      return '[${d.split('%').first}]';
+    }
+    return null;
+  }
+
   @override
   Stream<List<PeerVisible>> descubrirPares() {
     final discovery = BonsoirDiscovery(type: _tipoServicio);
@@ -77,7 +110,7 @@ class BonsoirDeviceDiscoveryService implements DeviceDiscoveryService {
             case BonsoirDiscoveryServiceFoundEvent(:final service):
               discovery.serviceResolver.resolveService(service);
             case BonsoirDiscoveryServiceResolvedEvent(:final service):
-              final direccion = service.hostAddress;
+              final direccion = direccionUtilDe(service);
               if (direccion == null) break;
               pares[service.name] = PeerVisible(
                 deviceId: service.name,
