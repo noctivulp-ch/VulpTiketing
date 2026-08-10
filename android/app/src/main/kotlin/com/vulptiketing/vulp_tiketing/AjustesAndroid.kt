@@ -28,8 +28,9 @@ import io.flutter.plugin.common.MethodChannel
  */
 class AjustesAndroid(private val actividad: Activity) {
 
-    fun atender(metodo: String, resultado: MethodChannel.Result) {
+    fun atender(metodo: String, resultado: MethodChannel.Result, url: String? = null) {
         when (metodo) {
+            "abrirEnlace" -> resultado.success(url != null && abrirEnlace(url))
             "estado" -> resultado.success(estado())
             "bateria" -> resultado.success(abrirBateria())
             "permisos" -> resultado.success(abrir(detallesDeLaApp()))
@@ -112,6 +113,23 @@ class AjustesAndroid(private val actividad: Activity) {
             if (abrir(porDefecto)) return true
         }
         return abrir(detallesDeLaApp())
+    }
+
+    /**
+     * Abre una direccion en el navegador.
+     *
+     * Va por el mismo camino que el resto de estos atajos —un `Intent` y a ver
+     * quien lo atiende— en vez de traer `url_launcher`: es una linea de codigo
+     * nativo contra una dependencia mas, y en este proyecto cada plugin nuevo
+     * arrastra avisos de Gradle y riesgo de compilacion en tres plataformas.
+     */
+    private fun abrirEnlace(url: String): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            // La app no esta en una tarea de navegador: sin esto, la direccion se
+            // abre DENTRO de la pila de la app y al volver atras se sale de ella.
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return abrir(intent)
     }
 
     private fun detallesDeLaApp() = Intent(

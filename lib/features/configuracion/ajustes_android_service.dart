@@ -89,6 +89,39 @@ class AjustesAndroidService {
     }
   }
 
+  /// Abre una dirección en el navegador. `false` si no hay nada que la abra.
+  ///
+  /// Va por el mismo canal que los atajos de ajustes en vez de traer
+  /// `url_launcher`: es un `Intent` de una línea contra una dependencia más, y
+  /// en este proyecto cada plugin nuevo arrastra avisos de Gradle y riesgo de
+  /// compilación en tres plataformas.
+  ///
+  /// En Linux y Windows se delega a `xdg-open` / `start`, que es lo que haría el
+  /// plugin: no hay canal nativo en esas plataformas y tampoco hace falta.
+  Future<bool> abrirEnlace(String url) async {
+    if (Platform.isAndroid) {
+      try {
+        return await _canal.invokeMethod<bool>('abrirEnlace', {'url': url}) ?? false;
+      } on PlatformException {
+        return false;
+      }
+    }
+    final orden = Platform.isLinux
+        ? ['xdg-open', url]
+        : Platform.isWindows
+        ? ['cmd', '/c', 'start', '', url]
+        : Platform.isMacOS
+        ? ['open', url]
+        : null;
+    if (orden == null) return false;
+    try {
+      final resultado = await Process.run(orden.first, orden.sublist(1));
+      return resultado.exitCode == 0;
+    } on ProcessException {
+      return false;
+    }
+  }
+
   /// Devuelve `false` si el aparato no tiene esa pantalla.
   Future<bool> abrir(AjusteAndroid ajuste) async {
     if (!disponible) return false;

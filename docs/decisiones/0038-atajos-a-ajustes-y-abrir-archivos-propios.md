@@ -1,11 +1,11 @@
-# 0038 — Atajos a los ajustes de Android, y abrir los archivos propios
+# 0038 — Atajos a los ajustes de Android, abrir los archivos propios, y Acerca de
 
 **Estado:** Aceptada
 **Fecha:** 2026-08-10
 
 ## Contexto
 
-Dos huecos que aparecen al poner la app en manos de alguien, no al programarla.
+Tres cosas que aparecen al poner la app en manos de alguien, no al programarla.
 
 **El sistema mata la sincronización y nada lo dice.** Sin la exención de
 optimización de batería, Android congela la app cuando se apaga la pantalla: la
@@ -18,6 +18,11 @@ cinco toques de profundidad y con un nombre distinto en cada marca
 `.tiketback` en el explorador no hacía nada: había que abrir la app, entrar en
 Configuración y buscarlo con el selector. Para un respaldo que llega por WhatsApp
 eso son seis pasos y saber dónde lo dejó la descarga.
+
+**No había forma de saber qué versión corre un teléfono.** Con tres aparatos y
+reinstalaciones a mano, "los dos tienen la misma app" era una suposición. Y la
+app no llevaba firma de autoría: es a medida para un familiar, pero conviene
+dejar la marca.
 
 ## Decisión
 
@@ -68,9 +73,18 @@ de ofrecer atajos muertos.
 nuestras: el sistema no las conoce y las sirve como `application/octet-stream` o
 sin tipo. Un filtro por MIME o no engancha nada o engancha todos los binarios del
 teléfono. De ahí la receta fea pero estándar: `mimeType="*/*"` junto a
-`pathPattern`, con `host="*"` —obligatorio para que el patrón se evalúe— y cada
-patrón repetido con `.*` delante, porque `pathPattern` no está anclado y sin las
-dos formas las rutas con subcarpetas no coinciden.
+`pathPattern`, y cada patrón repetido con `.*` delante, porque `pathPattern` no
+está anclado y sin las dos formas las rutas con subcarpetas no coinciden.
+
+**Y en dos `intent-filter`, no en uno con los dos esquemas.** El `content://`
+necesita `host="*"` para que el patrón se evalúe; un `file:///` tiene el host
+**vacío**, y `host="*"` no casa con un host vacío. Medido en el aparato con
+`cmd package query-activities`: con los dos esquemas juntos, el `content://`
+enganchaba y el `file://` no. Separados, los dos sí — y un `.jpg` sigue sin
+enganchar, que es la otra mitad de la comprobación.
+
+El `content://` es el que manda un explorador de verdad; el `file://` lo usan
+gestores viejos y el `am start` de adb.
 
 **El archivo se copia al llegar, en código nativo.** Dos razones y las dos
 obligan:
@@ -81,7 +95,15 @@ obligan:
    al confirmar el diálogo no funcionaría: ahí ya no se puede abrir.
 
 Se copia a la caché con nombre único, así dos archivos que se llamen igual no se
-pisan y el sistema puede limpiarlo cuando le haga falta espacio.
+pisan y el sistema puede limpiarlo cuando le haga falta espacio. Y **se borra al
+terminar**, incluso si se canceló: es una copia, el original sigue donde estaba, y
+un respaldo del negocio olvidado en la caché es una copia de los datos que nadie
+sabe que existe.
+
+**Una copia de cero bytes es un fallo, no un archivo vacío.** Pasa con un
+`file:///sdcard` en Android 10 o superior: la app no puede leer el almacenamiento
+compartido sin permiso, y `openInputStream` no lanza nada — la copia sale vacía y
+la app se ofrecía a importar la nada. Medido en el aparato.
 
 **El nombre real se pregunta al ContentResolver.** El `content://` no lleva
 extensión, y la extensión es lo único que separa un catálogo de un respaldo
@@ -92,6 +114,12 @@ completo. Confundirlos sería importar productos donde se quería restaurar la b
 lado nativo lo guarda hasta que alguien lo recoge. Y se recoge una sola vez, no
 en cada arranque.
 
+**El lado nativo avisa; el ciclo de vida no basta.** Esperar el paso a `resumed`
+funciona cuando la app venía de atrás, pero tocar un archivo con la app **ya en
+primer plano** no produce ningún cambio de estado: el archivo quedaba esperando y
+no pasaba nada. Medido en el aparato. `onNewIntent` manda un aviso por el mismo
+canal en cuanto tiene algo.
+
 **Siempre pregunta.** Tocar un archivo es un gesto barato y fácil de dar por
 error; lo que hay detrás no lo es. Un catálogo ofrece Fusionar o Reemplazar; un
 respaldo dice que reemplaza todo y pide la contraseña **del archivo** —no la de la
@@ -99,6 +127,39 @@ app, que es el error probable ahí—.
 
 También se acepta `ACTION_SEND`: un respaldo suele llegar por WhatsApp o correo,
 sin pasar por el explorador.
+
+### Y una sección "Acerca de", con la firma del autor embebida
+
+Nombre visible, versión y número de compilación, y al final "Hecho por NoctiVulp"
+con el enlace del autor **embebido y sin decoración**.
+
+- **El nombre visible no es el del paquete.** `pubspec.yaml` dice
+  `vulp_tiketing` porque un nombre de paquete Dart no admite mayúsculas; lo que
+  se muestra es `VulpTiketing`. Ya lo había pedido el dueño: "vulp_tiketing eso
+  queda muy debug".
+- **El número de compilación no es adorno.** Cuando algo no cuadra en un
+  teléfono, lo primero que hay que saber es si corre el mismo código que los
+  demás; dos aparatos con la misma versión y distinto build no lo hacen.
+- **La versión se escribe a mano y una prueba la vigila.**
+  `test/version_test.dart` lee `pubspec.yaml` y falla si no coinciden. Es el
+  precio de no traer una dependencia nativa solo para leer un número, y es
+  barato: una constante duplicada se queda vieja sin que nadie lo note, y una
+  pantalla que miente sobre la versión es peor que no tenerla.
+- **El enlace no se ve.** La app es a medida para un familiar y no cobra nada: el
+  enlace es una marca de autoría —por si algún día alguien se la apropia—, no una
+  invitación a pagar. Se conserva tal cual lo dio el dueño, con sus parámetros de
+  seguimiento: recortarlos sería reescribir lo que pidió, y son los que le dicen
+  de dónde llegó la visita.
+- **Pero sí se anuncia a quien no ve la pantalla.** La etiqueta de accesibilidad
+  dice que abre la página del autor. Un enlace invisible es una decisión de
+  diseño para quien mira; con un lector de pantalla sería un elemento que hace
+  algo inesperado al tocarlo, y eso no es discreción, es una trampa.
+- **Si no hay navegador, el enlace se copia** al portapapeles. El toque tiene que
+  servir para algo; un "no se pudo" a secas deja al usuario sin nada.
+- **Sin `url_launcher`.** Abrir una dirección es un `Intent` de una línea por el
+  canal que ya existía, y en Linux/Windows/macOS un `xdg-open`/`start`/`open` —
+  que es lo que haría el plugin. Cada plugin nuevo arrastra avisos de Gradle y
+  riesgo de compilación en tres plataformas.
 
 ## Consecuencias
 

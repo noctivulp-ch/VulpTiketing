@@ -81,7 +81,9 @@ class MainActivity : FlutterActivity() {
 
         val ajustes = AjustesAndroid(this)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, canalAjustes)
-            .setMethodCallHandler { call, resultado -> ajustes.atender(call.method, resultado) }
+            .setMethodCallHandler { call, resultado ->
+                ajustes.atender(call.method, resultado, call.argument<String>("url"))
+            }
 
         val entrante = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, canalEntrante)
         entrante.setMethodCallHandler { call, resultado ->

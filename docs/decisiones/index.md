@@ -41,4 +41,4 @@ Volver a [../index](../index.md)
 | [0035](0035-token-para-el-harness-del-mcp.md) | Token aleatorio para el harness del MCP | Aceptada |
 | [0036](0036-sync-par-a-par-con-ronda-periodica.md) | Sync par a par, con ronda periódica | Aceptada |
 | [0037](0037-corte-de-caja-y-jornada-en-dos-turnos.md) | Corte de caja, y la jornada en dos turnos | Aceptada |
-| [0038](0038-atajos-a-ajustes-y-abrir-archivos-propios.md) | Atajos a los ajustes de Android, y abrir los archivos propios | Aceptada |
+| [0038](0038-atajos-a-ajustes-y-abrir-archivos-propios.md) | Atajos a los ajustes de Android, abrir los archivos propios, y Acerca de | Aceptada |

@@ -47,3 +47,9 @@ La asociación puede quedar tomada por otra app. Se rehace desde **Configuració
 Atajos a los ajustes de Android que la app necesita. No conceden nada —una app no puede darse permisos a sí misma—: abren la pantalla donde se marca.
 
 El que importa de verdad es **la optimización de batería**: sin la exención, el sistema congela la app al apagarse la pantalla y la sincronización se corta sin que nada avise. En marcas como Huawei o Xiaomi hay además una lista propia de apps protegidas, fuera de estos ajustes; el panel lo dice, con el fabricante del aparato.
+
+## Configuración › Acerca de
+
+Nombre visible, versión y número de compilación, y la firma del autor. El **build** es el dato que hace falta cuando algo no cuadra en un teléfono: dos aparatos con la misma versión y distinto build no corren el mismo código.
+
+La versión se escribe a mano en `lib/core/version.dart` y `test/version_test.dart` falla si no coincide con `pubspec.yaml` — así no se queda vieja sin que nadie lo note.
