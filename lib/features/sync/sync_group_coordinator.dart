@@ -21,10 +21,24 @@ class SyncGroupCoordinator {
     return ids.first;
   }
 
+  /// Si este dispositivo es el orquestador de su grupo.
+  ///
+  /// **Sin pares a la vista no hay orquestador**, y devuelve `false`. Antes
+  /// devolvia `true`: con la lista vacia, `[miDeviceId].first == miDeviceId` se
+  /// cumple siempre, asi que un aparato solo se declaraba lider de un grupo de
+  /// uno.
+  ///
+  /// No es un tecnicismo. Orquestar es coordinar CON alguien —el paso 3/4 de
+  /// 0007 es un handshake entre los orquestadores de los dos grupos— y no hay
+  /// nada que coordinar sin un segundo aparato. El sintoma en pantalla era
+  /// "0 dispositivos visibles — este es el orquestador", que se lee como que la
+  /// red funciona cuando en realidad no se esta viendo a nadie: es justo el
+  /// caso en el que hay que sospechar, y la app decia lo contrario.
   bool esOrquestador({
     required String miDeviceId,
     required List<PeerVisible> paresVisiblesDelMismoRol,
   }) {
+    if (paresVisiblesDelMismoRol.isEmpty) return false;
     return calcularOrquestador(
           miDeviceId: miDeviceId,
           paresVisiblesDelMismoRol: paresVisiblesDelMismoRol,

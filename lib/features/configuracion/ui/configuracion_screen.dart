@@ -371,6 +371,36 @@ class _TileConfiguracion extends StatelessWidget {
 /// son reales — al activar el switch, este dispositivo publica su servicio
 /// mDNS, levanta su servidor de sync y sincroniza con cada par del mismo
 /// rol que descubre. Lo que falta es la coordinacion *entre* grupos
+/// Qué está pasando con la sincronización, en una línea.
+///
+/// Distingue tres situaciones que antes se veían casi igual, y esa confusión
+/// costó una tarde: "0 dispositivos visibles — este es el orquestador" se lee
+/// como que la red funciona, cuando es justo el caso en el que hay que
+/// sospechar. Y una sincronización que fallaba contra el mismo aparato en cada
+/// ronda se veía idéntica a una que no tenía nada que traer.
+String _estadoDeSync(SyncNotifier notifier, {required bool activo}) {
+  if (!activo) return 'Detenida — actívala para sincronizar con otros dispositivos';
+
+  final diagnostico = notifier.diagnostico;
+  final partes = <String>[];
+
+  if (diagnostico.pares == 0) {
+    partes.add('Buscando otros dispositivos…');
+  } else {
+    partes.add('${diagnostico.pares} dispositivo(s) a la vista');
+    if (diagnostico.mismoRol > 0 && notifier.esOrquestadorDeMiGrupo) {
+      partes.add('este es el orquestador de su grupo');
+    }
+  }
+
+  // El último error, si lo hubo. Es lo que convierte "no pasa nada" en algo
+  // accionable sin tener que enchufar el teléfono a una computadora.
+  final fallo = diagnostico.fallo;
+  if (fallo != null) partes.add('último fallo: $fallo');
+
+  return partes.join(' · ');
+}
+
 /// (Gerente ↔ Registradora vía orquestadores, 0007) — ver nota en
 /// SyncNotifier.
 ///
@@ -393,12 +423,7 @@ class _PanelSincronizacion extends ConsumerWidget {
       children: [
         Text('Sincronización', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: BentoSpacing.unidad),
-        Text(
-          activo
-              ? '${notifier.paresVisibles.length} dispositivo(s) del mismo rol visibles'
-                    '${notifier.esOrquestadorDeMiGrupo ? " — este es el orquestador" : ""}'
-              : 'Detenida — actívala para sincronizar con dispositivos del mismo rol',
-        ),
+        Text(_estadoDeSync(notifier, activo: activo)),
         const SizedBox(height: BentoSpacing.gapCelda),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
