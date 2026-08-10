@@ -1,0 +1,106 @@
+# Registro de versiones
+
+Qué se instaló en los aparatos del negocio, cuándo, y qué llevaba dentro.
+
+Existe porque desde la primera instalación en producción **la app tiene datos
+reales que no se pueden perder**: ventas cobradas, cortes de caja y el catálogo
+de la carta. Sin este registro, "qué versión corre el teléfono de la caja" es una
+suposición, y una migración se planea a ciegas.
+
+## Reglas desde la 1.0.0
+
+Las puso el dueño al publicar: *"cualquier cosa que se cambie o agregue desde
+ahora se tiene que planear como un update con datos reales y críticos presentes,
+existan o no"*.
+
+1. **Nunca se borran datos de un aparato en producción.** Ni `pm clear`, ni
+   desinstalar, ni `reset_datos`. Los scripts de prueba se niegan a tocar los
+   seriales de producción — ver `scripts/pruebas-sync/comun.sh`.
+2. **Cada cambio de esquema es una migración probada sobre una base vieja de
+   verdad**, no sobre un esquema recreado. Es lo que ya hace
+   `test/migracion_esquema_test.dart`, y de acá en adelante es obligatorio.
+3. **Se sube `version` en `pubspec.yaml`** y se anota acá antes de instalar. El
+   número de compilación sube siempre, aunque la versión semántica no cambie:
+   es lo único que distingue dos instalaciones.
+4. **Un cambio en `esquemaSync` obliga a actualizar todos los aparatos a la
+   vez.** Un aparato viejo queda rechazado y deja de compartir ventas; en la
+   app no se ve nada raro, así que hay que saberlo de antemano.
+5. **Antes de instalar, respaldo.** Se exporta un `.tiketback` del aparato y se
+   guarda fuera de él. Restaurar es la única salida si una migración sale mal.
+6. **La clave de firma no se cambia.** Un APK firmado con otra clave no se
+   instala encima: Android exige desinstalar, y eso borra las ventas.
+
+## Versiones
+
+### 1.0.0 (build 1) — 2026-08-10 · **publicada**
+
+Primera instalación en producción. Aparato: teléfono de la soda
+(`0600NX265V005032`, Android 12).
+
+Antes de esta versión los tres aparatos llevaban la build del harness de
+desarrollo, con un token permanente de control remoto. Esta es la primera sin
+él.
+
+Qué lleva:
+
+| Función | Detalle |
+|---|---|
+| Venta rápida y panel de venta | Cobro por efectivo o SINPE, líneas libres, notas |
+| Catálogo | Productos y categorías, con iconos por categoría y banco de imágenes |
+| Reportes | Día, semana, mes y año; dos turnos de 12 h; exportación a PDF y CSV |
+| Corte de caja | Apertura, medio día y cierre, con la caja esperada calculada |
+| Sincronización | Par a par por la red local, ronda cada 15 s, LWW por `updated_at` |
+| Respaldo | `.tiketback` cifrado y `.tiketdata` de catálogo, abribles desde el explorador |
+| Roles | Gerente y Registradora, contraseñas de fábrica `Gen@1359#` y `1359` |
+
+Esquema de datos: **v5** (`categoria`, `producto`, `libro_ventas`, `corte_caja`,
+más `venta` y `linea_venta` en los libros anuales).
+Esquema de sincronización: **4**.
+
+Firmada con **clave propia**, creada para esta instalación (ver abajo). El
+aparato entró en producción con la base vacía: se instaló antes de que hubiera
+nada que perder, que era el único momento en que la decisión de la clave se podía
+tomar sin coste.
+
+Comprobado en el aparato tras instalar:
+
+- `versionName=1.0.0`, `versionCode=1`.
+- Firma `BF:A6:4B:7E:A7:06:C2:83…`, la del keystore propio y no la de depuración.
+- `run-as` responde **"package not debuggable"**: es la prueba de que es un
+  release de verdad y de que el token permanente de desarrollo —compilado bajo
+  `!kReleaseMode`— no está dentro.
+
+Lo que queda pendiente y afecta a la próxima actualización:
+
+- Sincronización PC ↔ teléfono sin probar.
+- Bluetooth como respaldo de la red, solo anotado.
+
+## La clave de firma
+
+**Resuelta el 2026-08-10, antes de la primera instalación con datos.**
+
+| | |
+|---|---|
+| Keystore | `~/.claves/vulptiketing/vulptiketing-release.p12` |
+| Formato | PKCS12 (JKS está obsoleto y `keytool` lo avisa) |
+| Alias | `vulptiketing` |
+| Clave | RSA 4096, válida hasta **2056** |
+| Huella SHA-256 | `BF:A6:4B:7E:A7:06:C2:83:76:CE:A4:07:31:59:C8:67:C1:94:2C:77:D0:69:50:A9:D8:77:17:BF:8C:DA:91:A3` |
+| Contraseña | `~/.claves/vulptiketing/contrasena.txt`, permisos 600 |
+
+**Hay que respaldar el keystore y su contraseña fuera de esta computadora.** Sin
+ellos no se puede firmar una actualización, y sin firma que coincida Android exige
+desinstalar — con las ventas dentro. Es el único archivo del proyecto que no se
+puede reconstruir.
+
+El keystore vive **fuera de la carpeta del proyecto** a propósito: un archivo de
+firma dentro del código acaba en un zip, en un respaldo compartido o en un commit.
+`android/key.properties` lo apunta y está en `.gitignore`.
+
+Por qué no se dejó la de depuración: vive en `~/.android/debug.keystore`, se
+regenera sola si se borra y es la misma que trae cualquier SDK de Android. Si
+cambiaba, la única vía para actualizar era desinstalar.
+
+Si `android/key.properties` no está, el release se firma con la de depuración y
+Gradle lo avisa al compilar. Sirve para probar en otra máquina; **ese APK no se
+instala encima del de producción**.

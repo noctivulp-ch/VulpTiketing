@@ -23,3 +23,8 @@ skills-lock.json
 
 # Mediciones del banco de rendimiento: se regeneran corriéndolo.
 build/banco/
+
+# La clave de firma del release: nunca al repositorio.
+android/key.properties
+*.jks
+*.p12

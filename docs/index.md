@@ -49,3 +49,7 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 ## Estado general (2026-07-28)
 
 Diseño cerrado (19 ADRs aceptados) y **scaffold de Flutter creado**: proyecto compilando en Linux desktop, modelos/DAOs/Notifiers de Producto/Categoria/Venta funcionando de verdad contra SQLite, shell de navegación bento con las 5 ventanas. Pendiente: implementar UI completa de Ventas/Reportes, sync (falta elegir paquete mDNS), cifrado de backup, y completar el Android SDK de este entorno. Ver [decisiones](decisiones/index.md) y [stack técnico](arquitectura/stack.md) para el detalle del scaffold.
+
+## Registro de versiones
+
+[versiones.md](versiones.md) — qué se instaló en los aparatos del negocio y cuándo. **Desde la 1.0.0 la app tiene datos reales**, así que todo cambio se planea como una actualización: ahí están las reglas y el estado de la clave de firma.
