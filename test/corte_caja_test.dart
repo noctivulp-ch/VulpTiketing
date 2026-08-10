@@ -192,6 +192,77 @@ void main() {
     await db.close();
   });
 
+  group('rehacer el último corte', () {
+    test('cambia el monto sin duplicar la fila ni mover su hora', () async {
+      // El caso real que lo motivó: un cierre anotado con un 5 y quince ceros.
+      // Sin corrección, el día quedaba en ₡5 000 000 000 000 000 y no había
+      // salida desde la app.
+      final db = await abrirDb();
+      await anotar(db, MomentoCorte.apertura, 5000000000000000, 7);
+
+      final dao = CorteCajaDao(db);
+      final antes = (await dao.listarDelDia(diaDe(hoy))).single;
+      await dao.corregirMonto(antes.id, 20000, DateTime(2026, 8, 10, 7, 2));
+
+      final despues = await dao.listarDelDia(diaDe(hoy));
+      expect(despues, hasLength(1), reason: 'corregir no crea un corte nuevo');
+      expect(despues.single.monto, 20000);
+      expect(despues.single.id, antes.id, reason: 'el mismo id, o el otro teléfono vería dos');
+      expect(
+        despues.single.fechaHora,
+        antes.fechaHora,
+        reason: 'la hora es la frontera del tramo: moverla saca ventas que sí ocurrieron dentro',
+      );
+      await db.close();
+    });
+
+    test('el updated_at sí avanza, para que la corrección gane el LWW', () async {
+      // Si no avanzara, el otro teléfono tendría el monto viejo con la misma
+      // marca de tiempo y la corrección no viajaría — o peor, volvería el
+      // número equivocado en la ronda siguiente.
+      final db = await abrirDb();
+      await anotar(db, MomentoCorte.apertura, 999, 7);
+
+      final dao = CorteCajaDao(db);
+      final antes = (await dao.listarDelDia(diaDe(hoy))).single;
+      final corregido = DateTime(2026, 8, 10, 7, 2);
+      await dao.corregirMonto(antes.id, 20000, corregido);
+
+      expect((await dao.listarDelDia(diaDe(hoy))).single.updatedAt, corregido);
+      expect(corregido.isAfter(antes.updatedAt), isTrue);
+      await db.close();
+    });
+
+    test('corregir el último no cambia qué corte toca', () async {
+      // Rehacer la apertura no puede hacer que "toque" la apertura otra vez: el
+      // día sigue en el mismo punto.
+      final db = await abrirDb();
+      await anotar(db, MomentoCorte.apertura, 999, 7);
+
+      final dao = CorteCajaDao(db);
+      final corte = (await dao.listarDelDia(diaDe(hoy))).single;
+      await dao.corregirMonto(corte.id, 20000, DateTime(2026, 8, 10, 7, 2));
+
+      final momentos = (await dao.listarDelDia(diaDe(hoy))).map((c) => c.momento).toSet();
+      expect(siguienteMomento(momentos), MomentoCorte.medioDia);
+      await db.close();
+    });
+
+    test('con el día cerrado sigue habiendo un último que corregir', () async {
+      // Es justo el estado en que apareció el problema: los tres anotados, nada
+      // que "toque", y un número imposible en pantalla.
+      final db = await abrirDb();
+      await anotar(db, MomentoCorte.apertura, 20000, 7);
+      await anotar(db, MomentoCorte.medioDia, 15000, 13);
+      await anotar(db, MomentoCorte.cierre, 5000000000000000, 21);
+
+      final cortes = await CorteCajaDao(db).listarDelDia(diaDe(hoy));
+      expect(siguienteMomento(cortes.map((c) => c.momento).toSet()), isNull);
+      expect(cortes.last.momento, MomentoCorte.cierre, reason: 'el cierre es el corregible');
+      await db.close();
+    });
+  });
+
   test('la clave de día lleva ceros: se compara como texto', () async {
     // `dia` se compara con `=` en SQL, así que "2026-8-9" y "2026-08-09" serían
     // dos días distintos y los cortes del 9 no aparecerían.

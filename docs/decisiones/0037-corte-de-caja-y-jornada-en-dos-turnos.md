@@ -82,13 +82,34 @@ comodidad de la pantalla, y `CajaNotifier.registrar` la repite porque es lo que
 impide que un cierre entre sin apertura. Un corte fuera de orden dejaría la caja
 inicial apuntando a un tramo que nunca existió.
 
-### Un corte no se edita ni se borra
+### Un corte no se edita ni se borra — salvo el último
 
 `CajaNotifier` tiene **solo `registrar`**. Se cuenta, se valida y se da por
 cerrado — así lo describió el dueño. Darle `actualizar` o `eliminar` "por
 consistencia" con otros notifiers sería inventarle un ciclo de vida que no tiene
 ([0009](0009-cruds-independientes-por-entidad.md)) y, peor, permitiría reescribir
 un conteo ya cerrado: exactamente lo que un corte de caja existe para impedir.
+
+**La rigidez falló en el primer uso, y hubo que abrir una excepción.** Un cierre
+se anotó con un 5 y quince ceros; el día quedó cerrado en
+₡5 000 000 000 000 000, con los tres cortes hechos y sin nada que "tocara", así
+que no había forma de arreglarlo desde la app. Un dedazo no puede inutilizar la
+jornada.
+
+Ahora el **último** corte se puede volver a anotar, y solo el último: los
+anteriores ya sirvieron de frontera para el efectivo que se contó después, y
+cambiarlos movería tramos que ya se cuadraron. La corrección:
+
+- **conserva el id**, para que la sincronización la vea como la misma fila
+  corregida y no como un corte nuevo — con un id nuevo, el otro teléfono acabaría
+  con dos cortes del mismo momento;
+- **conserva la hora**, porque es la frontera del tramo: el conteo se hizo a esa
+  hora aunque el dedazo se arregle dos minutos después;
+- **avanza `updated_at`**, o la corrección no ganaría el LWW y el número
+  equivocado volvería en la ronda siguiente.
+
+En el diálogo, el corte que toca va en botón relleno y el corregible en
+contorneado: corregir es la salida de emergencia, no el camino normal.
 
 ### Tabla propia en la base principal, y viaja por sincronización
 
@@ -137,6 +158,9 @@ donde no compite por espacio con nada.
 
 ## Lo que queda fuera
 
+- **No hay tope al monto.** Se evaluó rechazar cifras absurdas y se prefirió la
+  corrección: un tope es un número inventado que algún día estorbará, y corregir
+  arregla también los errores que caen dentro del rango.
 - **No se guarda el monto contado**, solo el que queda. El diálogo pide un
   número, como lo dibujó el dueño. Registrar las dos cifras permitiría dejar
   constancia de un descuadre; no se pidió y no se inventa.

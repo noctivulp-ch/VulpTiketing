@@ -23,6 +23,24 @@ class CorteCajaDao {
     return _db.insert('corte_caja', corte.toMap());
   }
 
+  /// Cambia el monto de un corte ya anotado, conservando su id y su hora.
+  ///
+  /// El id se conserva para que la sincronización lo vea como la misma fila
+  /// corregida y no como un corte nuevo: si cambiara, el otro teléfono acabaría
+  /// con dos cortes del mismo momento.
+  ///
+  /// Y la hora también, porque es la frontera del tramo: el conteo se hizo a esa
+  /// hora aunque el dedazo se arregle dos minutos después, así que mover la
+  /// frontera sacaría del tramo ventas que sí ocurrieron dentro.
+  Future<void> corregirMonto(String id, double monto, DateTime cuando) {
+    return _db.update(
+      'corte_caja',
+      {'monto': monto, 'updated_at': cuando.toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   /// Cuánto efectivo entró entre [desde] y [hasta].
   ///
   /// Solo efectivo: el SINPE no cae en la caja, así que sumarlo daría un

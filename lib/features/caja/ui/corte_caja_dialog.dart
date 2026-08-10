@@ -16,25 +16,45 @@ class CorteAnotado {
 /// Los tres momentos son botones y no una lista desplegable porque son tres y
 /// se ven de un golpe — así lo pidió el dueño y así se lee sin abrir nada.
 ///
-/// **Solo se puede pulsar el que toca.** El día va en orden: apertura, medio día,
-/// cierre. Los anteriores están hechos y los posteriores no han llegado, así que
-/// aparecen los tres —para que se vea en qué punto va la jornada— pero solo uno
-/// responde. Lo que habilita el siguiente es haber anotado el anterior, no la
-/// hora: el cambio de turno cae entre las 12 y las 2:30 según el día.
+/// **Se pueden pulsar dos: el que toca y el último anotado.** El día va en
+/// orden: apertura, medio día, cierre; lo que habilita el siguiente es haber
+/// anotado el anterior, no la hora, porque el cambio de turno cae entre las 12 y
+/// las 2:30 según el día. Los tres se dibujan siempre para que se vea en qué
+/// punto va la jornada.
+///
+/// El último se puede volver a pulsar para **corregirlo**, y eso entró porque el
+/// diseño sin corrección falló en el primer uso: un cierre anotado con un 5 y
+/// quince ceros dejó el día en ₡5 000 000 000 000 000 sin salida. Solo el
+/// último: los anteriores ya sirvieron de frontera para el efectivo que se contó
+/// después.
 Future<CorteAnotado?> mostrarDialogoDeCorte(
   BuildContext context, {
-  required MomentoCorte siguiente,
+  required MomentoCorte? siguiente,
+  required MomentoCorte? ultimo,
+  required double montoDelUltimo,
 }) {
   return showDialog<CorteAnotado>(
     context: context,
-    builder: (_) => _DialogoCorte(siguiente: siguiente),
+    builder: (_) =>
+        _DialogoCorte(siguiente: siguiente, ultimo: ultimo, montoDelUltimo: montoDelUltimo),
   );
 }
 
 class _DialogoCorte extends StatefulWidget {
-  const _DialogoCorte({required this.siguiente});
+  const _DialogoCorte({
+    required this.siguiente,
+    required this.ultimo,
+    required this.montoDelUltimo,
+  });
 
-  final MomentoCorte siguiente;
+  /// El que toca anotar, o `null` si el día ya se cerró — ahí solo se puede
+  /// corregir el cierre.
+  final MomentoCorte? siguiente;
+
+  /// El último anotado, o `null` si todavía no hay ninguno.
+  final MomentoCorte? ultimo;
+
+  final double montoDelUltimo;
 
   @override
   State<_DialogoCorte> createState() => _DialogoCorteState();
@@ -50,11 +70,11 @@ class _DialogoCorteState extends State<_DialogoCorte> {
     super.dispose();
   }
 
-  void _anotar() {
+  void _anotar(MomentoCorte momento) {
     if (_formulario.currentState?.validate() != true) return;
     Navigator.of(
       context,
-    ).pop(CorteAnotado(momento: widget.siguiente, monto: double.parse(_monto.text.trim())));
+    ).pop(CorteAnotado(momento: momento, monto: double.parse(_monto.text.trim())));
   }
 
   @override
@@ -95,11 +115,34 @@ class _DialogoCorteState extends State<_DialogoCorte> {
               runSpacing: BentoSpacing.unidad,
               children: [
                 for (final momento in MomentoCorte.values)
-                  momento == widget.siguiente
-                      ? FilledButton(onPressed: _anotar, child: Text(nombreDeMomento(momento)))
-                      : OutlinedButton(onPressed: null, child: Text(nombreDeMomento(momento))),
+                  if (momento == widget.siguiente)
+                    FilledButton(
+                      onPressed: () => _anotar(momento),
+                      child: Text(nombreDeMomento(momento)),
+                    )
+                  else if (momento == widget.ultimo)
+                    // Contorneado y no relleno: corregir es la salida de
+                    // emergencia, no el camino normal. Si los dos se vieran
+                    // igual, el de corregir competiría con el que toca.
+                    OutlinedButton(
+                      onPressed: () => _anotar(momento),
+                      child: Text(nombreDeMomento(momento)),
+                    )
+                  else
+                    OutlinedButton(onPressed: null, child: Text(nombreDeMomento(momento))),
               ],
             ),
+            if (widget.ultimo != null) ...[
+              const SizedBox(height: BentoSpacing.unidad),
+              // Se dice el monto que se va a reemplazar, no un "podés corregir"
+              // genérico: el número es lo que permite ver si el que está mal es
+              // ese, y sin él hay que salir a mirarlo al cuadro.
+              Text(
+                'Volver a pulsar ${nombreDeMomento(widget.ultimo!)} '
+                'reemplaza su conteo de ₡${widget.montoDelUltimo.toStringAsFixed(2)}',
+                style: textos.bodySmall,
+              ),
+            ],
           ],
         ),
       ),

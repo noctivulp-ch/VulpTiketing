@@ -16,9 +16,14 @@ class EstadoCaja {
     required this.cajaInicial,
     required this.efectivoDelTramo,
     required this.momentosAnotados,
+    this.ultimo,
   });
 
-  const EstadoCaja.vacia() : cajaInicial = 0, efectivoDelTramo = 0, momentosAnotados = const {};
+  const EstadoCaja.vacia()
+    : cajaInicial = 0,
+      efectivoDelTramo = 0,
+      momentosAnotados = const {},
+      ultimo = null;
 
   /// Lo que quedó en la caja en el último corte. Sin cortes todavía, cero.
   final double cajaInicial;
@@ -28,6 +33,10 @@ class EstadoCaja {
   final double efectivoDelTramo;
 
   final Set<MomentoCorte> momentosAnotados;
+
+  /// El último corte anotado hoy, o `null` si todavía no hay ninguno. Es el
+  /// único que se puede rehacer.
+  final CorteCaja? ultimo;
 
   /// Lo que debería haber en la caja ahora mismo. Es el número contra el que se
   /// compara el conteo a mano.
@@ -39,12 +48,19 @@ class EstadoCaja {
 
 /// Los cortes de caja del día de hoy.
 ///
-/// **Solo `registrar`.** Un corte no se edita ni se borra: se cuenta, se valida
-/// y se da por cerrado — así lo describió el dueño. Darle `actualizar` o
-/// `eliminar` "por consistencia" con otros notifiers sería inventarle al corte
-/// un ciclo de vida que no tiene (decisión 0009), y de paso permitiría reescribir
-/// un conteo ya cerrado, que es exactamente lo que un corte de caja existe para
-/// impedir.
+/// **`registrar`, y nada más.** Un corte se cuenta, se valida y se cierra. No
+/// hay `eliminar` ni un `actualizar` que apunte a cualquier fila: eso sería
+/// inventarle un ciclo de vida que no tiene (decisión 0009) y permitiría
+/// reescribir el historial del día, que es lo que un corte existe para impedir.
+///
+/// La única excepción es **rehacer el último**, y entró porque el diseño rígido
+/// falló en el primer uso real: un cierre anotado con un 5 y quince ceros dejó
+/// el día cerrado en ₡5 000 000 000 000 000 sin forma de arreglarlo desde la
+/// app. Un dedazo no puede inutilizar la jornada.
+///
+/// Solo el último, y por la misma razón que existe el resto de la regla: los
+/// anteriores ya sirvieron de frontera para el efectivo que se contó después, y
+/// cambiarlos movería tramos que ya se cuadraron.
 class CajaNotifier extends AsyncNotifier<EstadoCaja> {
   /// El DAO se resuelve en cada llamada, nunca se guarda en un campo — mismo
   /// motivo que en ProductoNotifier.
@@ -71,10 +87,13 @@ class CajaNotifier extends AsyncNotifier<EstadoCaja> {
       cajaInicial: cortes.isEmpty ? 0 : cortes.last.monto,
       efectivoDelTramo: efectivo,
       momentosAnotados: {for (final corte in cortes) corte.momento},
+      ultimo: cortes.isEmpty ? null : cortes.last,
     );
   }
 
-  /// Anota un corte. Devuelve `false` si no era el que tocaba.
+  /// Anota un corte, o corrige el último si es el que se vuelve a pulsar.
+  ///
+  /// Devuelve `false` si el momento no era ni el que toca ni el último anotado.
   ///
   /// La comprobación está acá y no solo en los botones: el botón deshabilitado
   /// es una comodidad de la pantalla, y esto es lo que impide que un cierre
@@ -82,20 +101,25 @@ class CajaNotifier extends AsyncNotifier<EstadoCaja> {
   /// dejaría la caja inicial apuntando a un tramo que nunca existió.
   Future<bool> registrar(MomentoCorte momento, double monto) async {
     final estado = state.valueOrNull ?? const EstadoCaja.vacia();
-    if (estado.siguiente != momento) return false;
-
     final ahora = DateTime.now();
     final dao = await _dao;
-    await dao.insertar(
-      CorteCaja(
-        id: _uuid.v4(),
-        dia: diaDe(ahora),
-        momento: momento,
-        monto: monto,
-        fechaHora: ahora,
-        updatedAt: ahora,
-      ),
-    );
+
+    if (estado.siguiente == momento) {
+      await dao.insertar(
+        CorteCaja(
+          id: _uuid.v4(),
+          dia: diaDe(ahora),
+          momento: momento,
+          monto: monto,
+          fechaHora: ahora,
+          updatedAt: ahora,
+        ),
+      );
+    } else if (estado.ultimo?.momento == momento) {
+      await dao.corregirMonto(estado.ultimo!.id, monto, ahora);
+    } else {
+      return false;
+    }
 
     state = AsyncData(await _calcular(dao, ahora));
     return true;

@@ -24,13 +24,16 @@ class CajaCortePozo extends ConsumerWidget {
   final bool editable;
 
   Future<void> _editar(BuildContext context, WidgetRef ref, EstadoCaja estado) async {
-    final siguiente = estado.siguiente;
-    if (siguiente == null) {
-      mostrarAviso(context, 'La caja de hoy ya se cerró');
-      return;
-    }
-
-    final resultado = await mostrarDialogoDeCorte(context, siguiente: siguiente);
+    // Con el día ya cerrado el diálogo sigue abriéndose: no queda nada que
+    // anotar, pero sí se puede corregir el cierre. Antes acá se avisaba "ya se
+    // cerró" y se cerraba la puerta, y eso es lo que dejó un cierre mal escrito
+    // sin arreglo posible.
+    final resultado = await mostrarDialogoDeCorte(
+      context,
+      siguiente: estado.siguiente,
+      ultimo: estado.ultimo?.momento,
+      montoDelUltimo: estado.ultimo?.monto ?? 0,
+    );
     if (resultado == null || !context.mounted) return;
 
     final ok = await ref
@@ -63,12 +66,15 @@ class CajaCortePozo extends ConsumerWidget {
           _linea(context, 'Caja Inicial', estado.cajaInicial),
           const SizedBox(height: BentoSpacing.unidad),
           _linea(context, 'Caja Total', estado.cajaTotal),
-          if (estado.siguiente != null && editable) ...[
+          if (editable) ...[
             const SizedBox(height: BentoSpacing.unidad / 2),
-            // Qué corte toca, dicho en el propio cuadro: sin esto hay que abrir
-            // el diálogo para averiguar en qué punto del día va la caja.
+            // En qué punto del día va la caja, dicho en el propio cuadro: sin
+            // esto hay que abrir el diálogo para averiguarlo. Con el día cerrado
+            // lo dice también, que es lo que explica por qué ya no pide nada.
             Text(
-              'Toca: ${nombreDeMomento(estado.siguiente!)}',
+              estado.siguiente == null
+                  ? 'Caja cerrada'
+                  : 'Toca: ${nombreDeMomento(estado.siguiente!)}',
               style: textos.bodySmall,
               maxLines: 1,
             ),

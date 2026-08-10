@@ -31,6 +31,7 @@ import 'package:vulp_tiketing/app.dart';
 import 'package:vulp_tiketing/core/crypto/cifrado_nativo.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/features/reportes/reporte_export_service.dart';
+import 'package:vulp_tiketing/features/caja/caja_notifier.dart';
 import 'package:vulp_tiketing/features/reportes/reportes_provider.dart';
 import 'package:vulp_tiketing/features/import_export/carpeta_exportacion.dart';
 import 'package:vulp_tiketing/features/import_export/almacen_publico.dart';
@@ -428,12 +429,16 @@ Future<dynamic> _ejecutar(
       final db = await container.read(databaseProvider.future);
       // `venta` y `linea_venta` viven en el libro adjunto (0025); los nombres
       // sin calificar resuelven contra el.
-      for (final tabla in ['linea_venta', 'venta', 'producto', 'categoria']) {
+      // `corte_caja` entra en la lista: se olvido al agregar la tabla y una
+      // prueba arrancaba con el corte de la anterior, asi que el cuadro de caja
+      // mostraba una caja inicial que nadie habia anotado en esa corrida.
+      for (final tabla in ['linea_venta', 'venta', 'producto', 'categoria', 'corte_caja']) {
         await db.delete(tabla);
       }
       container.invalidate(productoNotifierProvider);
       container.invalidate(categoriaNotifierProvider);
       container.invalidate(ventaNotifierProvider);
+      container.invalidate(cajaNotifierProvider);
       return {'borrado': true};
 
     case 'listar_productos':

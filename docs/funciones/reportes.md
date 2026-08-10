@@ -28,7 +28,7 @@ Debajo del total, y solo para el **Gerente** en el rango de **día**, hay un cua
 
 Se anota tocando el cuadro: pide el monto que **queda** en la caja y en qué momento del día se está —Apertura, Medio Día, Cierre—. Los tres se ven siempre, pero solo se puede pulsar el que toca: la apertura habilita el medio día y el medio día habilita el cierre. La regla no es horaria porque la hora del cambio de turno varía cada día.
 
-Un corte no se edita ni se borra, y solo se anota sobre el día de hoy. El detalle del razonamiento está en la [decisión 0037](../decisiones/0037-corte-de-caja-y-jornada-en-dos-turnos.md).
+El **último** corte se puede volver a anotar para corregir un dedazo —el diálogo dice qué monto va a reemplazar—; los anteriores quedan cerrados. Solo se anota sobre el día de hoy. El detalle del razonamiento está en la [decisión 0037](../decisiones/0037-corte-de-caja-y-jornada-en-dos-turnos.md).
 
 ## Permisos por rol
 
