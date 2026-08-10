@@ -90,10 +90,23 @@ class BentoTallado extends StatelessWidget {
     final luz = Color.lerp(sobre, Colors.white, _luzIntensidad)!;
     final sombra = Color.lerp(sobre, Colors.black, _sombraIntensidad)!;
 
+    // Las dos capas de relieve son DECORACIÓN: el mismo glifo repintado en
+    // sombra y en luz. `ExcludeSemantics` las saca del árbol de accesibilidad.
+    //
+    // Sin esto cada texto tallado aparecía TRES veces: un lector de pantalla
+    // leía "Arroz cantones (entero)" tres seguidas, y la navegación por
+    // semántica del harness recibía la etiqueta triplicada. Se vio al listar
+    // los interactuables de Venta Rápida — el efecto visual no lo delataba de
+    // ninguna manera.
     Widget capa(Color color, double dy) {
-      return Transform.translate(
-        offset: Offset(0, dy),
-        child: ColorFiltered(colorFilter: ColorFilter.mode(color, BlendMode.srcATop), child: child),
+      return ExcludeSemantics(
+        child: Transform.translate(
+          offset: Offset(0, dy),
+          child: ColorFiltered(
+            colorFilter: ColorFilter.mode(color, BlendMode.srcATop),
+            child: child,
+          ),
+        ),
       );
     }
 

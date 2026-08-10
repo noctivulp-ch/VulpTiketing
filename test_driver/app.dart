@@ -50,6 +50,7 @@ import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/features/configuracion/token_mcp_service.dart';
 
 import 'diagnostico.dart';
+import 'navegacion_semantica.dart';
 
 const _uuid = Uuid();
 
@@ -90,6 +91,10 @@ void main() {
   //
   // Vive en test_driver/, asi que no existe en produccion.
   DiagnosticoDev.instalar();
+
+  // La semantica se enciende de una vez: Flutter solo construye ese arbol si
+  // alguien lo pide, y sin el la navegacion no ve un solo boton.
+  encenderSemantica();
 
   runApp(UncontrolledProviderScope(container: container, child: const VulpTiketingApp()));
 }
@@ -143,6 +148,66 @@ Future<dynamic> _ejecutar(
     // nada es el punto: comprobar la llave no puede tener efectos.
     case 'ping':
       return 'pong';
+
+    // --- Navegacion por semantica (test_driver/navegacion_semantica.dart) ---
+    //
+    // Los cuatro devuelven SIEMPRE la instantanea de la pantalla resultante:
+    // interactuables, textos y medidas. Asi una accion y "que hay ahora" son
+    // una sola llamada, que es lo que hace que navegar salga barato.
+
+    case 'ui_ver':
+      return instantanea();
+
+    case 'ui_tocar':
+    case 'ui_mantener':
+      final accion = cmd == 'ui_tocar' ? 'tap' : 'longPress';
+      final nodo = buscar(
+        id: (args['id'] as num?)?.toInt(),
+        etiqueta: args['etiqueta'] as String?,
+      );
+      if (nodo == null) {
+        // Se devuelve la pantalla ADEMAS del error: si no, quien llama tiene
+        // que pedirla aparte solo para enterarse de que se equivoco de nombre.
+        return {
+          'ok': false,
+          'error': 'no hay nada que se llame "${args['etiqueta'] ?? args['id']}"',
+          ...await instantanea(),
+        };
+      }
+      if (!accionar(nodo.id, accion)) {
+        return {
+          'ok': false,
+          'error': '"${nodo.etiqueta}" no acepta $accion (acepta: ${nodo.acciones.join(", ")})',
+          ...await instantanea(),
+        };
+      }
+      return {'ok': true, 'accionado': nodo.etiqueta, ...await instantanea()};
+
+    case 'ui_escribir':
+      final nodo = buscar(
+        id: (args['id'] as num?)?.toInt(),
+        etiqueta: args['etiqueta'] as String?,
+      );
+      if (nodo == null || !nodo.esCampoDeTexto) {
+        return {
+          'ok': false,
+          'error': 'no hay un campo de texto llamado "${args['etiqueta'] ?? args['id']}"',
+          ...await instantanea(),
+        };
+      }
+      // Primero el foco y luego el texto: `setText` sobre un campo sin foco no
+      // lo abre, y el texto se va al vacio sin dar error.
+      accionar(nodo.id, 'tap');
+      await asentar();
+      accionar(nodo.id, 'setText', argumento: args['texto'] as String? ?? '');
+      return {'ok': true, ...await instantanea()};
+
+    case 'ui_esperar':
+      final aparecio = await esperarEtiqueta(
+        args['etiqueta'] as String? ?? '',
+        limite: Duration(milliseconds: (args['ms'] as num?)?.toInt() ?? 5000),
+      );
+      return {'ok': aparecio, ...await instantanea()};
 
     case 'import_tiketdata':
       final db = await container.read(databaseProvider.future);
