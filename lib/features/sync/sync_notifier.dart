@@ -146,7 +146,20 @@ class SyncNotifier extends Notifier<EstadoSync> {
     _ronda?.cancel();
     _ronda = Timer.periodic(_cadaRonda, (_) => _repasarPares());
 
-    _discovery.descubrirPares().listen((pares) async {
+    _discovery.descubrirPares().listen((todos) async {
+      // FUERA uno mismo. mDNS devuelve también el anuncio propio —comprobado en
+      // el log: un aparato resolvía dos servicios y uno era el suyo—, y sin
+      // este filtro cada ronda gasta una conexión en hablar consigo mismo.
+      //
+      // No es solo desperdicio. Con el cerrojo de ronda, si esa conexión se
+      // atasca bloquea la ronda entera y el peer de verdad no llega a
+      // consultarse nunca. Es la explicación más probable de que la
+      // sincronización fallara de forma intermitente y en una sola dirección.
+      //
+      // Antes pasaba desapercibido porque el filtro por rol recortaba la lista;
+      // al sincronizar con todos los pares quedó a la vista.
+      final pares = todos.where((p) => p.deviceId != miDeviceId).toList();
+
       _ultimosPares = pares;
       // Cualquier par cuenta, sea del rol que sea: lo que decide si este
       // aparato está solo es si HAY otro en la red, no si es de su grupo.
