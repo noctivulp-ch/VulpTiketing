@@ -754,10 +754,10 @@ class _DialogoEditarLineaState extends ConsumerState<_DialogoEditarLinea> {
         ],
       ),
       acciones: BentoAcciones(
-        izquierda: [FilledButton(onPressed: _guardar, child: const Text('Guardar'))],
-        derecha: [
+        izquierda: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
         ],
+        derecha: [FilledButton(onPressed: _guardar, child: const Text('Guardar'))],
       ),
     );
   }
@@ -813,15 +813,15 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
         ),
         acciones: BentoAcciones(
           izquierda: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Agregar'),
-            ),
-          ],
-          derecha: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancelar'),
+            ),
+          ],
+          derecha: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Agregar'),
             ),
           ],
         ),

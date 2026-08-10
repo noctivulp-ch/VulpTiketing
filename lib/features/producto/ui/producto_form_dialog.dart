@@ -105,15 +105,15 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
         ),
         acciones: BentoAcciones(
           izquierda: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Eliminar'),
-            ),
-          ],
-          derecha: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancelar'),
+            ),
+          ],
+          derecha: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Eliminar'),
             ),
           ],
         ),
@@ -149,15 +149,15 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
         contenido: TextField(controller: controller, autofocus: true),
         acciones: BentoAcciones(
           izquierda: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
-              child: const Text('Crear'),
-            ),
-          ],
-          derecha: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancelar'),
+            ),
+          ],
+          derecha: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('Crear'),
             ),
           ],
         ),
@@ -329,19 +329,26 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
     // operación reversible que le corresponde.
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
 
+    // Cancelar y Guardar en la MISMA fila, Cancelar a la izquierda. Antes iban
+    // apilados los dos en la columna derecha, así que el sitio al que va el
+    // pulgar sin mirar caía en Cancelar la mitad de las veces.
+    //
+    // Reactivar y Eliminar bajan a las filas siguientes de la izquierda: quedan
+    // lejos de donde se pulsa para guardar, que es justo donde no se quiere un
+    // borrado.
     final acciones = BentoAcciones(
-      izquierda: _esEdicion && !widget.producto!.activo
-          ? [
-              TextButton(onPressed: _guardando ? null : _reactivar, child: const Text('Reactivar')),
-              if (esGerente)
-                TextButton(onPressed: _guardando ? null : _eliminar, child: const Text('Eliminar')),
-            ]
-          : const [],
-      derecha: [
+      izquierda: [
         TextButton(
           onPressed: _guardando ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
         ),
+        if (_esEdicion && !widget.producto!.activo) ...[
+          TextButton(onPressed: _guardando ? null : _reactivar, child: const Text('Reactivar')),
+          if (esGerente)
+            TextButton(onPressed: _guardando ? null : _eliminar, child: const Text('Eliminar')),
+        ],
+      ],
+      derecha: [
         FilledButton(
           onPressed: _guardando ? null : _guardar,
           child: _guardando

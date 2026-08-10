@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
+import 'package:vulp_tiketing/core/theme/bento_bandeja.dart';
 import 'package:vulp_tiketing/core/theme/bento_theme.dart';
 import 'package:vulp_tiketing/features/auth/login_screen.dart';
 import 'package:vulp_tiketing/features/auth/sesion_notifier.dart';
@@ -206,12 +207,19 @@ void main() {
     // columnas, así que son 3 por fila den 360 dp o 1440.
     await montar(tester, const ConfiguracionScreen(), const Size(360, 800), Rol.gerente);
 
+    // Se mide el POZO de cada tile, no su texto. Las etiquetas encogen cada una
+    // lo suyo para no partirse (`BentoEtiquetaAjustada`), así que su alto ya no
+    // es idéntico entre vecinas y comparar la cima del texto daba tres valores
+    // distintos para una misma fila.
+    double cimaDelTile(String etiqueta) => tester
+        .getTopLeft(find.ancestor(of: find.text(etiqueta), matching: find.byType(BentoPozo)).first)
+        .dy;
+
     final primeros = ['Contraseña', 'Exportar', 'Restaurar'];
-    final ys = {for (final t in primeros) tester.getTopLeft(find.text(t)).dy};
+    final ys = {for (final t in primeros) cimaDelTile(t)};
     expect(ys, hasLength(1), reason: 'los tres primeros tiles van en la misma fila');
 
-    final cuarto = tester.getTopLeft(find.text('Catálogo')).dy;
-    expect(cuarto, greaterThan(ys.first), reason: 'el cuarto abre una fila nueva');
+    expect(cimaDelTile('Catálogo'), greaterThan(ys.first), reason: 'el cuarto abre fila nueva');
   });
 
   testWidgets('Configuración muestra el panel al lado en escritorio y debajo en teléfono', (

@@ -105,6 +105,27 @@ void main() {
     expect(find.text('Guardar'), findsOneWidget);
   });
 
+  testWidgets('Guardar queda a la derecha de Cancelar, y en la misma fila', (tester) async {
+    // Lo vio el dueño usando la app: para guardar se pulsa a la derecha sin
+    // mirar, y este formulario apilaba Cancelar encima de Guardar en la columna
+    // derecha — así que la mitad de las veces el pulgar caía en Cancelar.
+    await montar(tester, producto(activo: true, categoriaId: 'cat-viva'));
+
+    final guardar = tester.getCenter(find.text('Guardar'));
+    final cancelar = tester.getCenter(find.text('Cancelar'));
+
+    expect(guardar.dx, greaterThan(cancelar.dx));
+    expect(guardar.dy, cancelar.dy, reason: 'en la misma fila, no apilados');
+  });
+
+  testWidgets('y lo destructivo queda lejos del botón de guardar', (tester) async {
+    await montar(tester, producto(activo: false, categoriaId: 'cat-viva'));
+
+    final guardar = tester.getCenter(find.text('Guardar'));
+    expect(tester.getCenter(find.text('Eliminar')).dx, lessThan(guardar.dx));
+    expect(tester.getCenter(find.text('Eliminar')).dy, greaterThan(guardar.dy));
+  });
+
   testWidgets('uno activo no ofrece ninguna de las dos', (tester) async {
     await montar(tester, producto(activo: true, categoriaId: 'cat-viva'));
 

@@ -32,6 +32,11 @@ void main() {
           'texto sobre bandeja': (laca.textoEnBandeja, laca.bandeja),
           'texto atenuado sobre bandeja': (laca.textoAtenuadoEnBandeja, laca.bandeja),
           'texto sobre error': (scheme.onError, scheme.error),
+          // Un enlace va en el color del acento sobre el pozo (`BentoEnlace`).
+          // Es lo primero que se rompe al añadir un tinte nuevo: el metal se
+          // elige por cómo se ve como borde o como relleno de botón, no por si
+          // se lee como texto.
+          'enlace en pozo': (scheme.primary, scheme.surface),
         };
 
         paresDeTexto.forEach((nombre, par) {

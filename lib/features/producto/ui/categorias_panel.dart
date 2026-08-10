@@ -95,13 +95,13 @@ class _PanelCategoriasState extends ConsumerState<PanelCategorias> {
         contenido: TextField(controller: controller, autofocus: true),
         acciones: BentoAcciones(
           izquierda: [
+            TextButton(onPressed: () => Navigator.pop(dialogo), child: const Text('Cancelar')),
+          ],
+          derecha: [
             FilledButton(
               onPressed: () => Navigator.pop(dialogo, controller.text.trim()),
               child: const Text('Guardar'),
             ),
-          ],
-          derecha: [
-            TextButton(onPressed: () => Navigator.pop(dialogo), child: const Text('Cancelar')),
           ],
         ),
       ),
@@ -185,13 +185,13 @@ class _PanelCategoriasState extends ConsumerState<PanelCategorias> {
         ),
         acciones: BentoAcciones(
           izquierda: [
-            FilledButton(onPressed: () => Navigator.pop(dialogo, true), child: const Text('Sacar')),
-          ],
-          derecha: [
             TextButton(
               onPressed: () => Navigator.pop(dialogo, false),
               child: const Text('Cancelar'),
             ),
+          ],
+          derecha: [
+            FilledButton(onPressed: () => Navigator.pop(dialogo, true), child: const Text('Sacar')),
           ],
         ),
       ),
@@ -413,14 +413,14 @@ class _DialogoDeIcono extends StatelessWidget {
       ),
       acciones: BentoAcciones(
         izquierda: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ],
+        derecha: [
           if (actual != null)
             TextButton(
               onPressed: () => Navigator.pop(context, ''),
               child: const Text('Automático'),
             ),
-        ],
-        derecha: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
         ],
       ),
     );

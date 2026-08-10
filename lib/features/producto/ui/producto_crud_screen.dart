@@ -251,15 +251,15 @@ class ProductoCrudScreen extends ConsumerWidget {
         ),
         acciones: BentoAcciones(
           izquierda: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Purgar'),
-            ),
-          ],
-          derecha: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Cancelar'),
+            ),
+          ],
+          derecha: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Purgar'),
             ),
           ],
         ),

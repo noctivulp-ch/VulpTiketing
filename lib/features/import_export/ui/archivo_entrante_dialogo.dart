@@ -58,19 +58,22 @@ Future<void> _atenderCatalogo(BuildContext context, WidgetRef ref, ArchivoEntran
         'Reemplazar deja el catálogo exactamente como el del archivo: lo que no '
         'esté en él se saca de la carta.',
       ),
+      // Fusionar abajo a la derecha: es la opción segura y la que se pulsa sin
+      // mirar. Reemplazar queda encima —también es una confirmación, pero de las
+      // que conviene leer antes de tocar— y Cancelar a la izquierda.
       acciones: BentoAcciones(
         izquierda: [
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogo, ModoImportacion.fusionar),
-            child: const Text('Fusionar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(dialogo), child: const Text('Cancelar')),
+        ],
+        derecha: [
           TextButton(
             onPressed: () => Navigator.pop(dialogo, ModoImportacion.reemplazar),
             child: const Text('Reemplazar'),
           ),
-        ],
-        derecha: [
-          TextButton(onPressed: () => Navigator.pop(dialogo), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogo, ModoImportacion.fusionar),
+            child: const Text('Fusionar'),
+          ),
         ],
       ),
     ),
@@ -160,6 +163,9 @@ class _DialogoRespaldoState extends State<_DialogoRespaldo> {
       ),
       acciones: BentoAcciones(
         izquierda: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ],
+        derecha: [
           FilledButton(
             onPressed: () {
               final clave = _contrasena.text;
@@ -168,9 +174,6 @@ class _DialogoRespaldoState extends State<_DialogoRespaldo> {
             },
             child: const Text('Restaurar'),
           ),
-        ],
-        derecha: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
         ],
       ),
     );

@@ -13,6 +13,7 @@ import '../../sync/sync_notifier.dart';
 import '../../../core/theme/bento_efectos.dart';
 import '../../../core/theme/bento_fotos.dart';
 import '../../../core/ui/bento_dialogo.dart';
+import '../../../core/ui/bento_etiqueta_ajustada.dart';
 import '../../../core/ui/bento_falla.dart';
 import '../preferencias_notifier.dart';
 import '../../producto/ui/categorias_panel.dart';
@@ -379,13 +380,10 @@ class _TileConfiguracion extends StatelessWidget {
         children: [
           Icon(icono, size: 32, color: seleccionado ? scheme.primary : null),
           const SizedBox(height: BentoSpacing.unidad),
-          Text(
-            etiqueta,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          // Encoge la tipografía antes que partir una palabra: "Optimización"
+          // no entra en los ~69 dp de texto que deja el tile a 360 dp, y
+          // Flutter la cortaba a mitad ("Optimizaci / ón").
+          BentoEtiquetaAjustada(etiqueta, estilo: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );

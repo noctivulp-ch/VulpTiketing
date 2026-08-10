@@ -107,8 +107,12 @@ class _BancoDeImagenesDialogState extends ConsumerState<_BancoDeImagenesDialog> 
           ],
         ),
       ),
+      // Acá no hay un "guardar" —la foto se elige tocándola arriba— pero Cancelar
+      // no puede quedarse abajo a la derecha: es el sitio donde el pulgar espera
+      // una confirmación en todos los demás diálogos.
       acciones: BentoAcciones(
         izquierda: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           TextButton.icon(
             onPressed: _ocupado ? null : () => _agregar(ImageSource.camera),
             icon: const Icon(Icons.photo_camera_outlined),
@@ -124,7 +128,6 @@ class _BancoDeImagenesDialogState extends ConsumerState<_BancoDeImagenesDialog> 
           // Vaciar la imagen es una elección, no un cancelar: devuelve al
           // producto su figura propia.
           TextButton(onPressed: () => Navigator.pop(context, ''), child: const Text('Sin imagen')),
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
         ],
       ),
     );

@@ -171,6 +171,52 @@ pozos tocables, botones y filas de lista.
 bandeja comprometida son fugas. La navegación es una banda de bandeja; las
 celdas son pozos.
 
+### 9. Confirmar está a la derecha; cancelar, a su izquierda
+
+En un diálogo, la acción que **confirma** —guardar, crear, agregar, restaurar—
+va abajo a la derecha, y cancelar a su izquierda, **en la misma fila**. Las
+acciones sobre el objeto (reactivar, eliminar, cámara) bajan a las filas
+siguientes de la columna izquierda: lejos del sitio al que va el pulgar a
+confirmar, que es justo donde no se quiere un borrado.
+
+No es estética. Para guardar se pulsa a la derecha sin mirar, y la app lo tenía
+al revés en todas sus ventanas: en "crear categoría al vuelo" eso significa
+pulsar Cancelar creyendo guardar. Lo encontró el dueño usándola.
+
+Un diálogo cuya única acción es salir la deja a la derecha: sin nada que
+confirmar no hay confusión posible, y es donde llega el dedo.
+
+Y **nunca apilados en la misma columna**. El formulario de producto ponía
+Cancelar encima de Guardar, las dos a la derecha: el pulgar caía en una o en
+otra según la altura.
+
+Lo vigila `test/orden_acciones_test.dart` con la geometría real, porque es una
+convención que se rompe sola — al agregar un botón, lo natural es ponerlo donde
+quepa.
+
+### 10. Una etiqueta encoge antes que partirse
+
+Los rótulos de una rejilla no se cortan a mitad de palabra. Si no entran,
+**baja el tamaño de letra**; si ya entran, no se toca nada.
+
+Venía de "Optimización" saliendo como "Optimizaci / ón" en un tile de ~69 dp:
+Flutter parte por carácter cuando una palabra sola es más ancha que la línea.
+`BentoEtiquetaAjustada` lo resuelve con `FittedBox`, y no con un `LayoutBuilder`
+que mida el hueco — dentro del `IntrinsicHeight` de la cuadrícula, un
+`LayoutBuilder` no sabe dar dimensiones intrínsecas y reventaba la pantalla
+entera.
+
+### 11. Un enlace se ve como un enlace
+
+Color del acento **y** subrayado, las dos cosas. El color solo no basta: quien
+no distingue ese tono ve texto normal, y el subrayado es la pista que no depende
+del color. El acento cumple 4,5:1 sobre el pozo en los tres tintes y las dos
+luminosidades — medido, y con prueba que lo vigila.
+
+Puede no mostrar la dirección: la firma del autor dice su nombre, no la URL. Lo
+que no puede es no parecer tocable. Un texto que hace algo al tocarlo sin
+anunciarlo no es discreto, es indescifrable.
+
 ---
 
 ## Contraste verificado

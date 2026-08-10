@@ -95,13 +95,22 @@ class BentoDialogo extends StatelessWidget {
 /// entran de ancho, y cuando no entran `AlertDialog` los apila alineados a la
 /// derecha, perdiendo de qué habla cada uno.
 ///
-/// Cómo se reparten:
-/// - **Formulario con acciones sobre el objeto** (editar un producto fuera de
-///   la carta): a la izquierda lo que le pasa al objeto —reactivar, eliminar—;
-///   a la derecha lo que le pasa al formulario —cancelar, guardar—. Dos filas.
-/// - **Confirmación de dos botones**: a la izquierda la acción, a la derecha
-///   cancelar. Una fila, que es lo que ya hacía y lo que se espera de un
-///   "¿seguro?".
+/// **La acción que confirma va a la DERECHA y Cancelar a su izquierda, en la
+/// misma fila.** No es una preferencia estética: lo pidió el dueño porque para
+/// guardar se pulsa a la derecha sin mirar. Estaba al revés en toda la app —la
+/// acción a la izquierda y Cancelar a la derecha— y en el diálogo de crear una
+/// categoría al vuelo eso significa pulsar Cancelar creyendo guardar.
+///
+/// Las acciones **sobre el objeto** (reactivar, eliminar, cámara, galería) van en
+/// las filas siguientes de la columna izquierda: quedan lejos del sitio al que va
+/// el pulgar a confirmar, que es justo donde no se quiere un borrado.
+///
+/// Un diálogo cuya única acción es salir deja ese botón a la derecha: ahí no hay
+/// nada que confirmar, así que no hay confusión posible y es donde llega el dedo.
+///
+/// Hay una prueba que lo vigila diálogo por diálogo —`test/orden_acciones_test`—
+/// porque es una convención que se rompe sola: al agregar un botón, lo natural es
+/// ponerlo donde quepa.
 class BentoAcciones extends StatelessWidget {
   const BentoAcciones({super.key, this.izquierda = const [], required this.derecha});
 
