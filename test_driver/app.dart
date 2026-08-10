@@ -127,7 +127,7 @@ Future<String> _manejarComandoDirecto(ProviderContainer container, String? mensa
         'ok': false,
         'error':
             'Token inválido o ausente. Pedile a la persona que atiende el aparato '
-                'que lo genere en Configuración → Herramientas y te lo dé.',
+            'que lo genere en Configuración → Herramientas y te lo dé.',
       });
     }
 
@@ -164,13 +164,15 @@ Future<dynamic> _ejecutar(
       final nodo = buscar(
         id: (args['id'] as num?)?.toInt(),
         etiqueta: args['etiqueta'] as String?,
+        indice: (args['indice'] as num?)?.toInt(),
       );
       if (nodo == null) {
         // Se devuelve la pantalla ADEMAS del error: si no, quien llama tiene
         // que pedirla aparte solo para enterarse de que se equivoco de nombre.
         return {
           'ok': false,
-          'error': 'no hay nada que se llame "${args['etiqueta'] ?? args['id']}"',
+          'error':
+              ambiguedad(args) ?? 'no hay nada que se llame "${args['etiqueta'] ?? args['id']}"',
           ...await instantanea(),
         };
       }
@@ -187,11 +189,14 @@ Future<dynamic> _ejecutar(
       final nodo = buscar(
         id: (args['id'] as num?)?.toInt(),
         etiqueta: args['etiqueta'] as String?,
+        indice: (args['indice'] as num?)?.toInt(),
       );
       if (nodo == null || !nodo.esCampoDeTexto) {
         return {
           'ok': false,
-          'error': 'no hay un campo de texto llamado "${args['etiqueta'] ?? args['id']}"',
+          'error':
+              ambiguedad(args) ??
+              'no hay un campo de texto llamado "${args['etiqueta'] ?? args['id']}"',
           ...await instantanea(),
         };
       }
@@ -488,10 +493,7 @@ Future<dynamic> _ejecutar(
       }
       // Siempre se sueltan: un puntero que se queda abajo deja la pantalla
       // inservible hasta reiniciar la app.
-      emitir(
-        (i, p) => PointerUpEvent(pointer: 900 + i, position: p),
-        Offset(dx, dy),
-      );
+      emitir((i, p) => PointerUpEvent(pointer: 900 + i, position: p), Offset(dx, dy));
       return {'dedos': dedos, 'dx': dx, 'dy': dy};
 
     case 'orientacion':
@@ -508,6 +510,30 @@ Future<dynamic> _ejecutar(
         _ => DeviceOrientation.values,
       });
       return {'modo': modo};
+
+    case 'consolidar_diario':
+      // Vuelca el WAL dentro del .db y lo vacia.
+      //
+      // Las pruebas leen la base copiandola con `run-as cat`, y SQLite escribe
+      // en modo WAL: lo ultimo guardado vive en el archivo `-wal` hasta que hay
+      // un checkpoint. Copiar los dos archivos por separado no arregla nada,
+      // porque entre una copia y otra la app sigue escribiendo y SQLite
+      // descarta un `-wal` que no case con su `.db` — sin decir nada, con la
+      // consulta devolviendo el estado viejo tan campante. Eso mando una
+      // corrida entera de la prueba de conflicto a buscar el fallo en la
+      // sincronizacion, cuando el precio SI se habia guardado.
+      //
+      // Entra tambien en los libros adjuntos: las ventas viven ahi, no en la
+      // base principal (decision 0025).
+      final base = await container.read(databaseProvider.future);
+      final esquemas = await base.rawQuery('PRAGMA database_list');
+      final consolidados = <String>[];
+      for (final fila in esquemas) {
+        final nombre = fila['name'] as String;
+        await base.rawQuery('PRAGMA "$nombre".wal_checkpoint(TRUNCATE)');
+        consolidados.add(nombre);
+      }
+      return {'esquemas': consolidados};
 
     case 'diagnostico':
       // Errores acumulados y frames fuera de presupuesto desde el arranque o

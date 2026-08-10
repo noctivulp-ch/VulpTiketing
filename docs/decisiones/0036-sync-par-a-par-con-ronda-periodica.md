@@ -83,12 +83,36 @@ Tras el cambio, con un Gerente y una Registradora en la misma WiFi:
   el Gerente **sin tocar nada**, en la ronda siguiente.
 - **Gerente ↔ Gerente**: seguía funcionando y sigue.
 
-## Lo que sigue abierto
+Y después, con las pruebas automáticas `scripts/pruebas-sync/` sobre dos
+teléfonos, comprobando **ids** y no solo totales:
 
-- **El interruptor no persiste.** Al reiniciar la app el sync queda apagado y
-  hay que activarlo a mano. La 0007 ya anotaba que arrancarlo solo es una
-  decisión de producto pendiente; ahora hay un motivo más concreto para
-  tomarla.
+- **Ventas simultáneas** (5 y 5 a la vez): las diez en los dos, mismo conjunto,
+  ninguna repetida.
+- **Conflicto sobre el mismo producto**: las dos bases acaban iguales y gana la
+  edición más reciente.
+- **Cobrar durante una transferencia grande** (40 ventas entrando mientras se
+  cobran 3): 43 en los dos, mismo conjunto, sin repetidas.
+
+### El interruptor se recuerda encendido, y apagarlo saca al aparato de la red
+
+Recién instalada la app arranca con la sincronización **apagada** — no se pone a
+hablar con la red sin que nadie se lo pida. Pero encenderla vale para el
+siguiente arranque: en la soda nadie va a acordarse de activarla cada mañana, y
+el día que no se acuerden las cajas dejan de compartir ventas sin que se note.
+
+Se guarda dentro de `iniciarSync`, no al mover el interruptor: si arranca mal
+por falta de sesión, no hay nada que recordar. Y el `DashboardShell` observa el
+provider aunque no lo muestre, porque un `Notifier` de Riverpod no existe hasta
+que alguien lo mira — si solo lo mirara Configuración, la preferencia no serviría
+hasta entrar ahí.
+
+Al apagarlo, el aparato **deja de anunciarse**. No era así: cada encendido creaba
+un `BonsoirBroadcast` nuevo y solo se guardaba el último, así que los anteriores
+seguían anunciando sin que nadie pudiera pararlos. El síntoma fue un teléfono
+visible en la red con la sincronización apagada, metiendo sus datos en las
+pruebas de los demás. Lo mismo pasaba con el descubrimiento.
+
+## Lo que sigue abierto
 - **El anuncio mDNS conserva el rol viejo** un rato después de cambiar de rol:
   se vio un aparato anunciándose como `gerente` con la app ya en Registradora.
   Con el cruce implementado es inofensivo —se sincroniza igual— pero deja la

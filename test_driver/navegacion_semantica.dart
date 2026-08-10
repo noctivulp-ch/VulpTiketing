@@ -210,24 +210,68 @@ String _sinRepetidos(String texto) {
 /// coincidencia exacta, luego "contiene". Lo exacto va antes a proposito —
 /// con "Cerrar" hay un tile y un boton dentro del panel, y quedarse con el
 /// primero que contenga el texto es como se acaba tocando el equivocado.
-NodoInteractuable? buscar({int? id, String? etiqueta}) {
+/// Todos los que responden a una etiqueta, en orden de arriba a abajo.
+///
+/// Primero los que se llaman EXACTAMENTE asi; si no hay ninguno, los que la
+/// contienen. Las dos listas no se mezclan: un boton que se llama "Guardar" no
+/// compite con otro que se llama "Guardar y salir".
+List<NodoInteractuable> buscarTodos(String etiqueta) {
+  final buscado = etiqueta.trim().toLowerCase();
   final nodos = listarInteractuables();
+
+  final exactos = [
+    for (final n in nodos)
+      if (n.etiqueta.toLowerCase() == buscado) n,
+  ];
+  if (exactos.isNotEmpty) return exactos;
+
+  return [
+    for (final n in nodos)
+      if (n.etiqueta.toLowerCase().contains(buscado)) n,
+  ];
+}
+
+/// El nodo que toca una etiqueta, o `null` si no hay ninguno.
+///
+/// Con `indice` se elige entre varios homonimos. Sin el, **varios homonimos son
+/// un error**, no el primero de la lista: en Configuracion hay un recuadro que
+/// se llama "Catalogo" y en la banda de navegacion hay un destino que tambien
+/// se llama "Catalogo". Quedarse con el primero mandaba una prueba a la
+/// pantalla equivocada y todo lo que venia despues fallaba lejos de la causa —
+/// que es exactamente como se perdio una corrida de la prueba de conflicto.
+NodoInteractuable? buscar({int? id, String? etiqueta, int? indice}) {
   if (id != null) {
-    for (final nodo in nodos) {
+    for (final nodo in listarInteractuables()) {
       if (nodo.id == id) return nodo;
     }
     return null;
   }
   if (etiqueta == null) return null;
 
-  final buscado = etiqueta.trim().toLowerCase();
-  for (final nodo in nodos) {
-    if (nodo.etiqueta.toLowerCase() == buscado) return nodo;
+  final candidatos = buscarTodos(etiqueta);
+  if (indice != null) {
+    return indice >= 0 && indice < candidatos.length ? candidatos[indice] : null;
   }
-  for (final nodo in nodos) {
-    if (nodo.etiqueta.toLowerCase().contains(buscado)) return nodo;
-  }
-  return null;
+  return candidatos.length == 1 ? candidatos.first : null;
+}
+
+/// El mensaje de "hay varios que se llaman asi", o `null` si no es el caso.
+///
+/// Devuelve los candidatos con su id para que quien llama pueda repetir la
+/// orden apuntando a uno concreto, sin tener que pedir la pantalla aparte.
+String? ambiguedad(Map<String, dynamic> args) {
+  if (args['id'] != null || args['indice'] != null) return null;
+  final etiqueta = args['etiqueta'] as String?;
+  if (etiqueta == null) return null;
+
+  final candidatos = buscarTodos(etiqueta);
+  if (candidatos.length < 2) return null;
+
+  final lista = [
+    for (var i = 0; i < candidatos.length; i++) 'indice $i = id ${candidatos[i].id}',
+  ].join(', ');
+  return 'hay ${candidatos.length} que se llaman "$etiqueta" ($lista): '
+      'repetilo con "indice" o con "id"';
 }
 
 /// Dispara una accion sobre un nodo, por el mismo camino que el dedo.

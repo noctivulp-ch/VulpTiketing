@@ -12,11 +12,17 @@ Ver también: [datos](datos.md) · [seguridad](seguridad.md) · [../funciones/ro
 
 El esquema soporta más de dos dispositivos: una Gerente principal y posiblemente varias Registradoras (los roles son de interfaz, no de privilegio estricto — ver [roles-y-auth](../funciones/roles-y-auth.md)).
 
-**Diseño aceptado** (dos redes lógicas por rol, con orquestador electo por red) — ver el diseño completo en [decisión 0007](../decisiones/0007-topologia-sync.md):
+**Diseño vigente:** cada dispositivo sincroniza con **todos** los pares que ve, sin mirar el rol, y repasa los ya conocidos en una ronda cada 15 segundos — ver [decisión 0036](../decisiones/0036-sync-par-a-par-con-ronda-periodica.md).
 
-1. Dispositivos del mismo rol sincronizan directo entre sí (pairwise) al descubrirse por mDNS.
-2. Cada grupo de rol elige un orquestador de forma agnóstica (regla determinista, ej. UUID más bajo visible entre el `device_id` de cada dispositivo — ver [esquema-db, sección de configuración local](esquema-db.md#configuración-local-del-dispositivo-fuera-de-sqlite), aún pendiente de diseñar a detalle) para coordinar la sync *entre* grupos.
-3. Cuando ambos grupos están sin tareas de sync pendientes internamente, sus orquestadores sincronizan entre sí y propagan el resultado a su propio grupo.
+Sustituye al diseño de dos redes lógicas por rol de la [decisión 0007](../decisiones/0007-topologia-sync.md), que quedó a medias: el paso que unía los dos grupos (el handshake entre orquestadores) nunca se implementó, así que una Registradora veía al Gerente por mDNS y no sincronizaba nunca con él. La separación por rol **no era de seguridad** — los roles son de interfaz, no de privilegio — sino un ahorro de tráfico que a esta escala no compra nada.
+
+El coordinador de orquestador sigue existiendo por si ese ahorro hiciera falta algún día. Un aparato que no ve a nadie **no** es orquestador: orquestar es coordinar con alguien.
+
+## El interruptor de sincronización
+
+Está en Configuración → Sincronizar. Recién instalada la app arranca **apagada**; encenderla se recuerda para el siguiente arranque y no se auto-apaga al cerrar la app.
+
+Al apagarlo el aparato **deja de anunciarse** por mDNS y deja de descubrir. Importa más de lo que parece: un teléfono que sigue anunciando con el interruptor apagado entra en las rondas de todos los demás, y sus datos aparecen donde nadie los puso.
 
 ## Borrados
 

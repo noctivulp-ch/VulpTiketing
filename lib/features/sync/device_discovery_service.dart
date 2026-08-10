@@ -56,6 +56,12 @@ class BonsoirDeviceDiscoveryService implements DeviceDiscoveryService {
       port: puerto,
       attributes: {'rol': rol},
     );
+    // Se cierra el anuncio anterior antes de abrir el nuevo. Encender y apagar
+    // el interruptor varias veces dejaba un `BonsoirBroadcast` vivo por cada
+    // encendido, y como solo se guardaba el último, los demás quedaban
+    // anunciando sin que nadie pudiera pararlos: el aparato seguía visible en
+    // la red con la sincronización apagada.
+    await _broadcast?.stop();
     final broadcast = BonsoirBroadcast(service: service);
     await broadcast.initialize();
     await broadcast.start();
@@ -97,6 +103,9 @@ class BonsoirDeviceDiscoveryService implements DeviceDiscoveryService {
 
   @override
   Stream<List<PeerVisible>> descubrirPares() {
+    // Misma cuenta que con el anuncio: un descubrimiento anterior que no se
+    // para sigue escuchando y sumando pares a un grupo que ya no existe.
+    final anterior = _discovery;
     final discovery = BonsoirDiscovery(type: _tipoServicio);
     _discovery = discovery;
 
@@ -104,6 +113,7 @@ class BonsoirDeviceDiscoveryService implements DeviceDiscoveryService {
     late final StreamController<List<PeerVisible>> controller;
     controller = StreamController<List<PeerVisible>>.broadcast(
       onListen: () async {
+        await anterior?.stop();
         await discovery.initialize();
         discovery.eventStream?.listen((evento) {
           switch (evento) {
@@ -135,7 +145,14 @@ class BonsoirDeviceDiscoveryService implements DeviceDiscoveryService {
 
   @override
   Future<void> detener() async {
-    await _broadcast?.stop();
-    await _discovery?.stop();
+    // Se sueltan las dos referencias además de pararlas: un broadcast parado
+    // que se sigue guardando es indistinguible de uno vivo desde fuera, y era
+    // por ahí por donde se colaba el anuncio fantasma.
+    final broadcast = _broadcast;
+    final discovery = _discovery;
+    _broadcast = null;
+    _discovery = null;
+    await broadcast?.stop();
+    await discovery?.stop();
   }
 }
