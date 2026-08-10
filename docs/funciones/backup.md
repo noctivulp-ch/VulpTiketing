@@ -28,3 +28,22 @@ Dos tipos de archivo con propósitos distintos — ver [decisión 0017](../decis
   - Ambos modos reutilizan `RowSyncEngine.resolver()` fila por fila — el mismo mecanismo LWW de la sync entre dispositivos (0005), no es un algoritmo de merge nuevo.
 - Exportar deja el archivo en **Descargas › VulpTiketing**, igual que el backup. Importar abre el selector nativo (`file_picker`), también igual.
 - El catálogo se publica como `application/octet-stream` **aunque sea JSON por dentro**: MediaStore renombra el archivo para que la extensión case con el tipo, y con `application/json` salía `catalogo.tiketdata.json` — y la extensión es lo que hace que el selector de importar lo reconozca.
+
+## Abrir un archivo tocándolo en el explorador
+
+Un `.tiketdata` o un `.tiketback` se abren en la app al tocarlos en Archivos, o al recibirlos compartidos desde WhatsApp o el correo ([decisión 0038](../decisiones/0038-atajos-a-ajustes-y-abrir-archivos-propios.md)).
+
+**Siempre pregunta antes de aplicar nada.** Tocar un archivo es un gesto fácil de dar por error y lo que hay detrás no lo es:
+
+| Archivo | Qué ofrece |
+|---|---|
+| `.tiketdata` | Fusionar (agrega y actualiza) o Reemplazar (deja el catálogo igual al del archivo) |
+| `.tiketback` | Avisa de que reemplaza TODO y pide la contraseña **del archivo** — la que se eligió al exportarlo, no la de la app |
+
+La asociación puede quedar tomada por otra app. Se rehace desde **Configuración › Sistema › Abrir archivos de la app**.
+
+## Configuración › Sistema
+
+Atajos a los ajustes de Android que la app necesita. No conceden nada —una app no puede darse permisos a sí misma—: abren la pantalla donde se marca.
+
+El que importa de verdad es **la optimización de batería**: sin la exención, el sistema congela la app al apagarse la pantalla y la sincronización se corta sin que nada avise. En marcas como Huawei o Xiaomi hay además una lista propia de apps protegidas, fuera de estos ajustes; el panel lo dice, con el fabricante del aparato.

@@ -22,6 +22,8 @@ import '../reporte_export_service.dart';
 import '../../venta/venta_model.dart';
 import '../../venta/venta_notifier.dart';
 import '../../caja/caja_notifier.dart';
+import '../../caja/corte_caja_dao.dart';
+import '../../caja/corte_caja_model.dart';
 import '../../caja/ui/caja_corte_pozo.dart';
 import '../reportes_provider.dart';
 import 'elegir_periodo.dart';
@@ -92,6 +94,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       sufijoArchivo: _rango.name,
       total: reporte.total,
       porTurno: reporte.porTurno,
+      cortes: true,
       // TODAS las ventas del período, sin el tope de la pantalla. Ese tope
       // existe porque nadie desplaza 5.000 filas en un teléfono; un informe es
       // otra cosa, y uno que dijera "incluye las 300 más recientes de 2.847" no
@@ -119,6 +122,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     required double total,
     required Future<Stream<List<VentaConLineas>>> Function() lotes,
     Map<Turno, double>? porTurno,
+    bool cortes = false,
   }) async {
     final formato = await showDialog<FormatoReporte>(
       context: context,
@@ -126,8 +130,16 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     );
     if (formato == null || !mounted) return;
 
-    final (desde, _) = rangoDeFechas(_rango, _fecha);
+    final (desde, hasta) = rangoDeFechas(_rango, _fecha);
     final servicio = const ReporteExportService();
+
+    // Se leen de la base y no del cuadro de pantalla porque el cuadro es de HOY
+    // y acá se puede estar exportando un día pasado — que es justo cuando el
+    // corte hace falta en papel: al día siguiente, para cuadrar lo de ayer.
+    final cortesDelDia = cortes
+        ? await CorteCajaDao(await ref.read(databaseProvider.future)).listarDelDia(diaDe(_fecha))
+        : const <CorteCaja>[];
+    if (!mounted) return;
     try {
       // A la carpeta de exportación, sin selector: se elige una vez desde
       // Configuración y de ahí en adelante exportar es un toque.
@@ -146,6 +158,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
             titulo: titulo,
             total: total,
             porTurno: porTurno,
+            cortes: cortesDelDia,
             lotes: await lotes(),
           );
         case FormatoReporte.pdf:
@@ -161,6 +174,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               titulo: titulo,
               total: total,
               porTurno: porTurno,
+              cortes: cortesDelDia,
               ventas: ventas,
             ),
           );

@@ -19,6 +19,21 @@ class CorteCajaDao {
     return rows.map(CorteCaja.fromMap).toList();
   }
 
+  /// Los cortes de un rango de días, del más viejo al más nuevo.
+  ///
+  /// Los límites son claves de día (`2026-08-01`) y los dos entran. Se comparan
+  /// como texto, que con el formato `AAAA-MM-DD` ordena igual que la fecha — es
+  /// por eso que `dia` se guarda con los ceros puestos.
+  Future<List<CorteCaja>> listarEntreDias(String desde, String hasta) async {
+    final rows = await _db.query(
+      'corte_caja',
+      where: 'dia >= ? AND dia <= ? AND deleted_at IS NULL',
+      whereArgs: [desde, hasta],
+      orderBy: 'fecha_hora',
+    );
+    return rows.map(CorteCaja.fromMap).toList();
+  }
+
   Future<void> insertar(CorteCaja corte) {
     return _db.insert('corte_caja', corte.toMap());
   }

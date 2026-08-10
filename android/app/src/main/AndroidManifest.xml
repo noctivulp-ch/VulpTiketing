@@ -3,6 +3,16 @@
          se pide almacenamiento: las fotos de galería llegan por el selector del
          sistema, que ya entrega el archivo sin que la app pueda leer el resto. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Para poder ABRIR el diálogo de exención de batería. No la concede: sin
+         declararla, el sistema arranca la pantalla de Ajustes y la cierra en el
+         mismo instante — comprobado en el aparato, el diálogo aparecía y
+         desaparecía sin que nada fallara ni se registrara un error.
+
+         Google Play la restringe, pero esta app se instala a mano: no pasa por
+         la tienda. Y sin la exención el sistema congela la sincronización al
+         apagarse la pantalla, que es el fallo que nadie puede diagnosticar
+         porque en la app no cambia nada. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Sin cámara la app sigue sirviendo entera: solo se pierde el atajo de
          sacar la foto en el momento, y queda la galería. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -34,6 +44,62 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- Abrir un .tiketdata o un .tiketback tocándolo en el explorador.
+
+                 Se filtra por EXTENSIÓN y no por tipo MIME porque estas dos son
+                 nuestras: el sistema no las conoce y las sirve como
+                 application/octet-stream o sin tipo, así que un filtro por MIME
+                 o no engancha nada o engancha todos los binarios del teléfono.
+
+                 De ahí el mimeType="*/*" junto al pathPattern: Android exige un
+                 tipo cuando el esquema es content://, y el que discrimina es el
+                 patrón. El pathPattern se repite con .* delante porque no está
+                 anclado: sin las dos formas, las rutas con subcarpetas no
+                 coinciden.
+
+                 host="*" es obligatorio para que pathPattern se evalúe. Sin él
+                 el filtro acepta cualquier content:// y la app aparecería
+                 ofreciéndose para abrir archivos que no entiende.
+
+                 Y va en DOS filtros, no en uno con los dos esquemas: un
+                 file:/// tiene el host VACÍO, y host="*" no casa con un host
+                 vacío. Medido en el aparato con `cmd package query-activities`:
+                 con los dos esquemas juntos, el content:// enganchaba y el
+                 file:// no. El content:// es el que manda un explorador de
+                 verdad; el file:// lo usan gestores viejos y el `am start` de
+                 adb, y por eso se conserva. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="content"/>
+                <data android:host="*"/>
+                <data android:mimeType="*/*"/>
+                <data android:pathPattern=".*\\.tiketdata"/>
+                <data android:pathPattern=".*\\..*\\.tiketdata"/>
+                <data android:pathPattern=".*\\.tiketback"/>
+                <data android:pathPattern=".*\\..*\\.tiketback"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="file"/>
+                <data android:mimeType="*/*"/>
+                <data android:pathPattern=".*\\.tiketdata"/>
+                <data android:pathPattern=".*\\..*\\.tiketdata"/>
+                <data android:pathPattern=".*\\.tiketback"/>
+                <data android:pathPattern=".*\\..*\\.tiketback"/>
+            </intent-filter>
+
+            <!-- Y recibirlos compartidos desde otra app: un respaldo suele llegar
+                 por WhatsApp o correo, sin pasar por el explorador. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="application/octet-stream"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

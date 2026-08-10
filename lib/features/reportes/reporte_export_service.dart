@@ -6,6 +6,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../caja/corte_caja_model.dart';
 import '../venta/venta_model.dart';
 import 'reportes_provider.dart';
 
@@ -49,21 +50,62 @@ class ReporteExportService {
     required double total,
     required List<VentaConLineas> ventas,
     Map<Turno, double>? porTurno,
+    List<CorteCaja> cortes = const [],
     String? nota,
   }) async {
     switch (formato) {
       case FormatoReporte.csv:
         return Uint8List.fromList(
           utf8.encode(
-            _csv(titulo: titulo, total: total, porTurno: porTurno, ventas: ventas, nota: nota),
+            _csv(
+              titulo: titulo,
+              total: total,
+              porTurno: porTurno,
+              cortes: cortes,
+              ventas: ventas,
+              nota: nota,
+            ),
           ),
         );
       case FormatoReporte.pdf:
         return Uint8List.fromList(
-          await _pdf(titulo: titulo, total: total, porTurno: porTurno, ventas: ventas, nota: nota),
+          await _pdf(
+            titulo: titulo,
+            total: total,
+            porTurno: porTurno,
+            cortes: cortes,
+            ventas: ventas,
+            nota: nota,
+          ),
         );
     }
   }
+
+  /// Las filas del corte de caja, para el CSV.
+  ///
+  /// Va aparte porque las escriben dos caminos —el CSV en memoria y el que va
+  /// por lotes— y una tabla que se arma dos veces acaba diciendo dos cosas.
+  ///
+  /// **Con fecha**, a diferencia de la del PDF: el CSV se exporta hasta el mes,
+  /// así que la tabla puede llevar noventa filas de días distintos y sin fecha
+  /// no se sabría a cuál pertenece cada una.
+  ///
+  /// El encabezado dice "Queda en caja" y no "Monto": lo anotado es lo que se
+  /// dejó en el cajón, no lo que se contó ni lo que se vendió. Sin esa palabra,
+  /// quien abra el archivo dentro de un mes suma la columna y obtiene un número
+  /// que no es ningún dinero que haya existido — son fotos del mismo cajón en
+  /// momentos distintos.
+  List<List<String>> _filasDeCortes(List<CorteCaja> cortes) => [
+    ['Corte de caja'],
+    ['Fecha', 'Momento', 'Hora', 'Queda en caja'],
+    for (final corte in cortes)
+      [
+        _fecha(corte.fechaHora),
+        nombreDeMomento(corte.momento),
+        _hora(corte.fechaHora),
+        corte.monto.toStringAsFixed(2),
+      ],
+  ];
 
   /// Escribe un CSV **completo** lote a lote, sin cargar el período entero en
   /// memoria.
@@ -81,6 +123,7 @@ class ReporteExportService {
     required double total,
     required Stream<List<VentaConLineas>> lotes,
     Map<Turno, double>? porTurno,
+    List<CorteCaja> cortes = const [],
   }) async {
     final salida = destino.openWrite(encoding: utf8);
     var ventas = 0;
@@ -96,6 +139,12 @@ class ReporteExportService {
       if (porTurno != null) {
         for (final turno in Turno.values) {
           fila([_nombreTurno(turno), porTurno[turno]!.toStringAsFixed(2)]);
+        }
+      }
+      if (cortes.isNotEmpty) {
+        salida.write('\r\n');
+        for (final linea in _filasDeCortes(cortes)) {
+          fila(linea);
         }
       }
       salida.write('\r\n');
@@ -181,6 +230,7 @@ class ReporteExportService {
     required double total,
     required List<VentaConLineas> ventas,
     Map<Turno, double>? porTurno,
+    List<CorteCaja> cortes = const [],
     String? nota,
   }) {
     final articulos = ventas.fold<int>(
@@ -195,6 +245,7 @@ class ReporteExportService {
       if (porTurno != null)
         for (final turno in Turno.values)
           _fila([_nombreTurno(turno), porTurno[turno]!.toStringAsFixed(2)]),
+      if (cortes.isNotEmpty) ...['', for (final fila in _filasDeCortes(cortes)) _fila(fila)],
       '',
       // Una fila por LÍNEA, no por venta. Con una fila por venta lo único que
       // salía era "2 línea(s)": un archivo del que no se puede sacar qué se
@@ -235,6 +286,7 @@ class ReporteExportService {
     required double total,
     required List<VentaConLineas> ventas,
     Map<Turno, double>? porTurno,
+    List<CorteCaja> cortes = const [],
     String? nota,
   }) async {
     final doc = pw.Document(theme: await _tema());
@@ -278,6 +330,25 @@ class ReporteExportService {
               data: [
                 for (final turno in Turno.values)
                   [_nombreTurno(turno), '₡${porTurno[turno]!.toStringAsFixed(2)}'],
+              ],
+            ),
+            pw.SizedBox(height: 16),
+          ],
+          // El corte de caja, antes del ranking: cuadrar el cajón es lo primero
+          // que se hace al cerrar el día, y este es el papel con el que se hace.
+          if (cortes.isNotEmpty) ...[
+            pw.Text('Corte de caja', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 4),
+            pw.TableHelper.fromTextArray(
+              headers: const ['Momento', 'Hora', 'Queda en caja'],
+              cellAlignments: const {2: pw.Alignment.centerRight},
+              data: [
+                for (final corte in cortes)
+                  [
+                    nombreDeMomento(corte.momento),
+                    _hora(corte.fechaHora),
+                    '₡${corte.monto.toStringAsFixed(2)}',
+                  ],
               ],
             ),
             pw.SizedBox(height: 16),

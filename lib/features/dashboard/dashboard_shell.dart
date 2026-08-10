@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/bento_bandeja.dart';
 import '../../core/nav/atajos_escritorio.dart';
+import '../import_export/archivo_entrante_service.dart';
+import '../import_export/ui/archivo_entrante_dialogo.dart';
 import '../sync/sync_notifier.dart';
 import '../../core/nav/gesto_navegacion.dart';
 import '../../core/theme/bento_cuadricula.dart';
@@ -41,7 +45,44 @@ class DashboardShell extends ConsumerStatefulWidget {
   ConsumerState<DashboardShell> createState() => _DashboardShellState();
 }
 
-class _DashboardShellState extends ConsumerState<DashboardShell> {
+class _DashboardShellState extends ConsumerState<DashboardShell> with WidgetsBindingObserver {
+  StreamSubscription<void>? _archivos;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // El aviso del lado nativo, para el caso en que la app ya estaba abierta:
+    // ahí no hay cambio de ciclo de vida al que engancharse.
+    _archivos = ArchivoEntranteService.avisos.listen((_) {
+      if (mounted) atenderArchivoEntrante(context, ref);
+    });
+    // El archivo con el que se abrió la app, si se abrió tocando uno. Se atiende
+    // acá y no en el arranque porque importar o restaurar necesita la sesión ya
+    // abierta — y el archivo espera: el lado nativo lo guarda hasta que alguien
+    // lo recoge.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) atenderArchivoEntrante(context, ref);
+    });
+  }
+
+  @override
+  void dispose() {
+    _archivos?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState estado) {
+    // Con la app ya abierta, tocar un archivo la trae al frente sin recrear
+    // nada: el intent llega por `onNewIntent` y este es el único aviso de que
+    // hay algo que recoger.
+    if (estado == AppLifecycleState.resumed && mounted) {
+      atenderArchivoEntrante(context, ref);
+    }
+  }
+
   int _indice = 0;
 
   static const _iconos = [

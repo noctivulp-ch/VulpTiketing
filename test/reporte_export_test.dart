@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vulp_tiketing/features/reportes/reporte_export_service.dart';
+import 'package:vulp_tiketing/features/caja/corte_caja_model.dart';
 import 'package:vulp_tiketing/features/reportes/reportes_provider.dart';
 import 'package:vulp_tiketing/features/venta/linea_venta_model.dart';
 import 'package:vulp_tiketing/features/venta/venta_model.dart';
@@ -256,5 +258,140 @@ void main() {
 
     expect(bytes.length, greaterThan(10000));
     expect(String.fromCharCodes(bytes.take(4)), '%PDF');
+  });
+
+  group('el corte de caja en el archivo', () {
+    /// Un día cuadrado: se abre con 20 000, a media jornada se guarda la plata y
+    /// quedan 15 000, y al cerrar quedan 5 000.
+    final cortes = [
+      CorteCaja(
+        id: 'c1',
+        dia: '2026-03-04',
+        momento: MomentoCorte.apertura,
+        monto: 20000,
+        fechaHora: DateTime(2026, 3, 4, 7),
+        updatedAt: DateTime(2026, 3, 4, 7),
+      ),
+      CorteCaja(
+        id: 'c2',
+        dia: '2026-03-04',
+        momento: MomentoCorte.medioDia,
+        monto: 15000,
+        fechaHora: DateTime(2026, 3, 4, 13, 5),
+        updatedAt: DateTime(2026, 3, 4, 13, 5),
+      ),
+      CorteCaja(
+        id: 'c3',
+        dia: '2026-03-04',
+        momento: MomentoCorte.cierre,
+        monto: 5000,
+        fechaHora: DateTime(2026, 3, 4, 21, 30),
+        updatedAt: DateTime(2026, 3, 4, 21, 30),
+      ),
+    ];
+
+    test('el CSV lleva los tres cortes con su hora', () async {
+      final bytes = await const ReporteExportService().generar(
+        formato: FormatoReporte.csv,
+        titulo: 'Ventas del día · 4/3/2026',
+        total: 3000,
+        porTurno: {Turno.primero: 3000, Turno.segundo: 0},
+        cortes: cortes,
+        ventas: ventas,
+      );
+      final csv = utf8.decode(bytes);
+
+      expect(csv, contains('"Corte de caja"'));
+      expect(csv, contains('"04/03/2026","Apertura","07:00","20000.00"'));
+      expect(csv, contains('"04/03/2026","Medio Día","13:05","15000.00"'));
+      expect(csv, contains('"04/03/2026","Cierre","21:30","5000.00"'));
+    });
+
+    test('la columna se llama "Queda en caja", no "Monto"', () async {
+      // Sin esa palabra, quien abra el archivo dentro de un mes suma la columna
+      // y obtiene 40 000, que no es ningún dinero que haya existido: son tres
+      // fotos del mismo cajón en momentos distintos.
+      final bytes = await const ReporteExportService().generar(
+        formato: FormatoReporte.csv,
+        titulo: 'Ventas del día · 4/3/2026',
+        total: 3000,
+        cortes: cortes,
+        ventas: ventas,
+      );
+
+      expect(utf8.decode(bytes), contains('"Fecha","Momento","Hora","Queda en caja"'));
+    });
+
+    test('sin cortes no aparece la sección', () async {
+      // Un período sin cortes anotados —o un mes, donde no se exportan— no puede
+      // llevar un encabezado vacío: parecería que se perdieron los datos.
+      final bytes = await const ReporteExportService().generar(
+        formato: FormatoReporte.csv,
+        titulo: 'Ventas del mes · 3/2026',
+        total: 3000,
+        ventas: ventas,
+      );
+
+      expect(utf8.decode(bytes), isNot(contains('Corte de caja')));
+    });
+
+    test('el CSV por lotes también los lleva', () async {
+      // Es el camino que se usa de verdad para el día completo: el otro solo
+      // corre para el PDF.
+      final ruta = '${dir.path}/con-cortes.csv';
+      await const ReporteExportService().escribirCsvPorLotes(
+        destino: File(ruta),
+        titulo: 'Ventas del día · 4/3/2026',
+        total: 3000,
+        cortes: cortes,
+        lotes: Stream.value(ventas),
+      );
+
+      final csv = await File(ruta).readAsString();
+      expect(csv, contains('"04/03/2026","Apertura","07:00","20000.00"'));
+      expect(csv, contains('"04/03/2026","Cierre","21:30","5000.00"'));
+    });
+
+    test('el CSV de un mes lleva los cortes de días distintos, cada uno con su fecha', () async {
+      // Es lo que hace útil la columna Fecha: hasta el mes la tabla mezcla días,
+      // y sin ella no se sabría a cuál pertenece cada conteo.
+      final deVariosDias = [
+        cortes.first,
+        CorteCaja(
+          id: 'c9',
+          dia: '2026-03-05',
+          momento: MomentoCorte.apertura,
+          monto: 18000,
+          fechaHora: DateTime(2026, 3, 5, 7, 10),
+          updatedAt: DateTime(2026, 3, 5, 7, 10),
+        ),
+      ];
+
+      final bytes = await const ReporteExportService().generar(
+        formato: FormatoReporte.csv,
+        titulo: 'Ventas del mes · 3/2026',
+        total: 3000,
+        cortes: deVariosDias,
+        ventas: ventas,
+      );
+      final csv = utf8.decode(bytes);
+
+      expect(csv, contains('"04/03/2026","Apertura","07:00","20000.00"'));
+      expect(csv, contains('"05/03/2026","Apertura","07:10","18000.00"'));
+    });
+
+    test('el PDF sale y no revienta con los cortes dentro', () async {
+      final bytes = await const ReporteExportService().generar(
+        formato: FormatoReporte.pdf,
+        titulo: 'Ventas del día · 4/3/2026',
+        total: 3000,
+        porTurno: {Turno.primero: 3000, Turno.segundo: 0},
+        cortes: cortes,
+        ventas: ventas,
+      );
+
+      expect(String.fromCharCodes(bytes.take(4)), '%PDF');
+      expect(bytes.length, greaterThan(1000));
+    });
   });
 }

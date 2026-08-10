@@ -1,6 +1,7 @@
 package com.vulptiketing.vulp_tiketing
 
 import android.content.ContentValues
+import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -25,6 +26,43 @@ import java.io.File
  */
 class MainActivity : FlutterActivity() {
     private val canal = "vulp/almacen_publico"
+    private val canalAjustes = "vulp/ajustes_android"
+    private val canalEntrante = "vulp/archivo_entrante"
+
+    /**
+     * El canal del archivo entrante, guardado para poder AVISAR a Dart.
+     *
+     * Sin el aviso, Dart solo se enteraba al volver la app a primer plano, y eso
+     * no ocurre cuando ya estaba ahi: el archivo quedaba esperando y no pasaba
+     * nada. Medido en el aparato.
+     */
+    private var avisoEntrante: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        // El intent del arranque en frio: se atiende aca porque cuando la app se
+        // abre tocando un archivo, este es el unico sitio donde ese intent
+        // existe todavia.
+        ArchivoEntrante.recibir(this, intent)
+    }
+
+    /**
+     * La app ya estaba abierta y se toco otro archivo.
+     *
+     * Con `launchMode="singleTop"` no se crea una actividad nueva: llega por aca.
+     * Sin esto, abrir un respaldo con la app en segundo plano no hacia nada — se
+     * traia la app al frente y el archivo se perdia.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        ArchivoEntrante.recibir(this, intent)
+        // Se avisa siempre que haya algo: Dart decide si lo atiende. Va en el
+        // hilo principal porque un MethodChannel solo se puede usar desde ahi.
+        if (ArchivoEntrante.hayPendiente()) {
+            runOnUiThread { avisoEntrante?.invokeMethod("llego", null) }
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -40,6 +78,19 @@ class MainActivity : FlutterActivity() {
                     else -> resultado.notImplemented()
                 }
             }
+
+        val ajustes = AjustesAndroid(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, canalAjustes)
+            .setMethodCallHandler { call, resultado -> ajustes.atender(call.method, resultado) }
+
+        val entrante = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, canalEntrante)
+        entrante.setMethodCallHandler { call, resultado ->
+            when (call.method) {
+                "recoger" -> resultado.success(ArchivoEntrante.recoger())
+                else -> resultado.notImplemented()
+            }
+        }
+        avisoEntrante = entrante
     }
 
     private fun publicar(

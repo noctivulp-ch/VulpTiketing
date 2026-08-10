@@ -54,12 +54,18 @@ class TiketbackNotifier extends Notifier<void> {
 
   /// Restaurar es SIEMPRE reemplazo (0017); [alcance] dice qué se reemplaza.
   /// La UI que llama a esto debe confirmar con el usuario antes.
+  /// [rutaYaElegida] cuando el archivo no lo eligió el selector — el caso de
+  /// abrir un `.tiketback` desde el explorador o desde un mensaje recibido.
   Future<ResultadoTiketback> restaurar(
     String contrasenaExportacion, {
     AlcanceRestauracion alcance = AlcanceRestauracion.todo,
+    String? rutaYaElegida,
   }) async {
-    final resultado = await FilePicker.platform.pickFiles(dialogTitle: 'Elegir backup a restaurar');
-    final ruta = resultado?.files.single.path;
+    final ruta =
+        rutaYaElegida ??
+        (await FilePicker.platform.pickFiles(
+          dialogTitle: 'Elegir backup a restaurar',
+        ))?.files.single.path;
     if (ruta == null) return ResultadoTiketback.cancelado;
 
     try {

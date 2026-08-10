@@ -17,6 +17,7 @@ import '../../../core/ui/bento_falla.dart';
 import '../preferencias_notifier.dart';
 import '../../producto/ui/categorias_panel.dart';
 import 'cambiar_contrasena_panel.dart';
+import 'panel_ajustes_sistema.dart';
 import 'token_mcp_panel.dart';
 
 enum _Opcion {
@@ -30,6 +31,7 @@ enum _Opcion {
   acento,
   modoTema,
   optimizacion,
+  permisosSistema,
   categorias,
   tokenMcp,
 }
@@ -142,6 +144,15 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
             seleccionado: _seleccion == _Opcion.optimizacion,
             onTap: () => setState(() => _seleccion = _Opcion.optimizacion),
           ),
+          // Para los dos roles: quien atiende la caja es quien va a tener el
+          // teléfono en la mano cuando el sistema le corte la sincronización, y
+          // no puede depender de que venga el Gerente a marcar una casilla.
+          _TileConfiguracion(
+            icono: Icons.shield_outlined,
+            etiqueta: 'Sistema',
+            seleccionado: _seleccion == _Opcion.permisosSistema,
+            onTap: () => setState(() => _seleccion = _Opcion.permisosSistema),
+          ),
           // Solo el Gerente: es la llave que deja manejar la app entera desde
           // fuera, o sea cobrar y borrar en nombre de quien la tenga.
           if (esGerente)
@@ -246,6 +257,8 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
         return const PanelCategorias();
       case _Opcion.optimizacion:
         return const _PanelOptimizacion();
+      case _Opcion.permisosSistema:
+        return const PanelAjustesSistema();
       case _Opcion.tokenMcp:
         return const PanelTokenMcp();
     }

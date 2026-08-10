@@ -150,6 +150,27 @@ se anota cuando toca.
 
 No hay datos que migrar: el turno se calcula desde `fecha_hora`, nunca se guardó.
 
+### Los cortes salen en el archivo exportado, hasta donde sirven
+
+Lo pidió el dueño: son datos útiles, no solo una ayuda de pantalla.
+
+| Formato | Hasta dónde |
+|---|---|
+| CSV (Excel) | día, semana y **mes** |
+| PDF | solo el **día** |
+| — | el **anual queda fuera** de los dos |
+
+El CSV es la hoja que ve el contador, y ahí una tabla de noventa cortes con su
+fecha se lee y se cruza. El PDF es el papel de cerrar la jornada; un PDF mensual
+con noventa filas de conteos no es lo que nadie va a mirar.
+
+Por eso la tabla del CSV **lleva fecha** y la del PDF no: el CSV mezcla días y sin
+la fecha no se sabría a cuál pertenece cada conteo.
+
+La columna se llama **"Queda en caja"** y no "Monto". Sin esa palabra, quien abra
+el archivo dentro de un mes suma la columna y obtiene un número que no es ningún
+dinero que haya existido: son tres fotos del mismo cajón en momentos distintos.
+
 ### "Menos vendidos" sale de la pantalla del Gerente
 
 Su sitio lo ocupa el cuadro de caja, que se usa todos los días. El dato **sigue
@@ -164,8 +185,6 @@ donde no compite por espacio con nada.
 - **No se guarda el monto contado**, solo el que queda. El diálogo pide un
   número, como lo dibujó el dueño. Registrar las dos cifras permitiría dejar
   constancia de un descuadre; no se pidió y no se inventa.
-- **Los cortes no salen en el reporte exportado.** El cuadro es de la jornada en
-  curso.
 - **Solo se anotan sobre el día de hoy.** Mirando un día pasado el cuadro no
   aparece: anotar el conteo de ayer no tiene lectura, y dejar el gesto
   disponible invita a hacerlo por costumbre.

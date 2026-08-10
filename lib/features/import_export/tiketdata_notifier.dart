@@ -31,11 +31,17 @@ class TiketdataNotifier extends Notifier<void> {
     }
   }
 
-  Future<ResultadoTiketdata> importarCatalogo(ModoImportacion modo) async {
-    final resultado = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Elegir catálogo a importar',
-    );
-    final ruta = resultado?.files.single.path;
+  /// [rutaYaElegida] cuando el archivo no lo eligió el selector.
+  ///
+  /// Es el caso de abrir un `.tiketdata` desde el explorador: el archivo ya está
+  /// identificado y volver a preguntar por él sería pedirle al usuario que
+  /// busque el que acaba de tocar.
+  Future<ResultadoTiketdata> importarCatalogo(ModoImportacion modo, {String? rutaYaElegida}) async {
+    final ruta =
+        rutaYaElegida ??
+        (await FilePicker.platform.pickFiles(
+          dialogTitle: 'Elegir catálogo a importar',
+        ))?.files.single.path;
     if (ruta == null) return ResultadoTiketdata.cancelado;
 
     final db = await ref.read(databaseProvider.future);
