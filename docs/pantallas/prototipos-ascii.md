@@ -323,25 +323,33 @@ Tocar un producto (toque simple) → se agrega al carrito, cantidad 1. Mantener 
 
 Jerarquía por tamaño: el total del período consultado es el bloque más grande (hero), el desglose por turno son celdas pares más chicas, el ranking va debajo.
 
-**Nivel 1 (vista por defecto para el rango seleccionado, ej. Día = hoy):**
+**Nivel 1 — Gerente, rango Día** (dos turnos y corte de caja, [decisión 0037](../decisiones/0037-corte-de-caja-y-jornada-en-dos-turnos.md)):
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│ ┌───────────────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │
-│ │                    │ │ Mañana  │ │ Tarde   │ │ Noche   │ │  ← tocar cualquiera
-│ │   HOY: ₡45,000     │ │ ₡12,000 │ │ ₡20,000 │ │ ₡13,000 │ │     hace drill-down
-│ │      (hero)        │ │         │ │         │ │         │ │     (nivel 2, abajo)
-│ └───────────────────┘ └─────────┘ └─────────┘ └─────────┘ │
-│ ┌─────────────────────────────┬─────────────────────────┐ │
-│ │  Más vendidos    ◄ desliza ►│  Menos vendidos ◄desliza► │ │  ← listas deslizantes,
-│ │  1. Café          (42)      │  1. Té frío        (2)    │ │     sin exportar por ahora
-│ │  2. Gallo pinto   (30)      │  2. Jugo naranja   (5)    │ │
-│ └─────────────────────────────┴─────────────────────────┘ │
+│ ┌───────────────────┐ ┌─────────────────────┐             │
+│ │                   │ │  Caja Inicial       │             │
+│ │   HOY: ₡45,000    │ │  ₡15,000.00         │  ← tocar    │
+│ │      (hero)       │ │  Caja Total         │    anota    │
+│ │  efectivo + SINPE │ │  ₡35,000.00         │    el corte │
+│ └───────────────────┘ │  Toca: Cierre       │             │
+│                       └─────────────────────┘             │
+│ ┌─────────────────────────┐ ┌─────────────────────────┐   │
+│ │ Primer turno            │ │ Segundo turno           │   │  ← tocar cualquiera
+│ │ ₡25,000                 │ │ ₡20,000                 │   │     hace drill-down
+│ └─────────────────────────┘ └─────────────────────────┘   │
+│ ┌───────────────────────────────────────────────────────┐ │
+│ │  Más vendidos                            ◄ desliza ►  │ │  ← a todo el ancho:
+│ │  1. Café          (42)                                │ │     "Menos vendidos"
+│ │  2. Gallo pinto   (30)                                │ │     cedió su sitio al
+│ └───────────────────────────────────────────────────────┘ │     corte de caja
 │  [ Día ] [ Semana ] [ Mes ] [ Año ]           [ 📤 Exportar ]│
 └───────────────────────────────────────────────────────────┘
 ```
 
-**Nivel 2 (tras tocar "Tarde", por ejemplo) — desglose de ese turno:**
+En teléfono el corte queda **debajo** del total en vez de al lado, y los dos turnos comparten fila. La Registradora ve los dos rankings y no ve el corte.
+
+**Nivel 2 (tras tocar un turno) — desglose de ese turno:**
 
 ```
 ┌───────────────────────────────────────────────────────────┐

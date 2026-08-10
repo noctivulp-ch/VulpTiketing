@@ -20,7 +20,7 @@
 
 Servidor HTTP embebido con el paquete `shelf` (puro Dart, verificado que compila limpio en Linux antes de comprometerse — mismo criterio de debida diligencia que con `bonsoir` y `file_picker`). Cada dispositivo:
 
-- Levanta un `SyncServer` (`lib/features/sync/sync_server.dart`) que expone `GET /sync/exportar`, devolviendo el contenido completo (JSON) de las 4 tablas sincronizables: `categoria`, `producto`, `venta`, `linea_venta`.
+- Levanta un `SyncServer` (`lib/features/sync/sync_server.dart`) que expone `GET /sync/exportar`, devolviendo el contenido completo (JSON) de las tablas sincronizables: `categoria`, `producto`, `venta`, `linea_venta` y —desde la [0037](0037-corte-de-caja-y-jornada-en-dos-turnos.md)— `corte_caja`.
 - Usa un `SyncClient` (`lib/features/sync/sync_client.dart`, sobre `dart:io HttpClient`, sin dependencia nueva) para hacer *pull* de cada peer descubierto del mismo rol y aplicar sus filas.
 
 ### Puerto: asignado por el SO, nunca fijo
@@ -35,7 +35,7 @@ Esto es el patrón estándar de Zeroconf/Bonjour (mismo principio detrás de por
 
 ### Exportación completa, sin filtro incremental
 
-`GET /sync/exportar` devuelve **todas** las filas de las 4 tablas en cada llamada, sin filtrar por `updated_at` desde la última sync. Para el volumen esperado de una soda pequeña esto es simple y suficientemente rápido en LAN; no hay necesidad real de una consulta incremental todavía. Se puede agregar después (ej. `GET /sync/exportar?desde=<timestamp>`) sin romper el contrato del endpoint actual.
+`GET /sync/exportar` devuelve **todas** las filas de esas tablas en cada llamada, sin filtrar por `updated_at` desde la última sync. Para el volumen esperado de una soda pequeña esto es simple y suficientemente rápido en LAN; no hay necesidad real de una consulta incremental todavía. Se puede agregar después (ej. `GET /sync/exportar?desde=<timestamp>`) sin romper el contrato del endpoint actual.
 
 A diferencia de `.tiketdata` (que solo exporta catálogo activo, sin `deleted_at`, pensado para compartir un catálogo plantilla), `/sync/exportar` incluye filas con `deleted_at` — la sync real entre dispositivos del mismo negocio debe propagar tombstones (0005), de lo contrario un producto descontinuado en un dispositivo "resucitaría" al sincronizar con otro que todavía no se enteró.
 

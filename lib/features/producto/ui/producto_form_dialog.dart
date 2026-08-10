@@ -6,7 +6,9 @@ import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_fotos.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_dialogo.dart';
+import '../../../core/ui/monto_editable.dart';
 import '../../../core/ui/bento_falla.dart';
+import '../../auth/sesion_notifier.dart';
 import '../../sync/sync_notifier.dart';
 import '../categoria_model.dart';
 import '../categoria_notifier.dart';
@@ -57,7 +59,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
     super.initState();
     _nombreController = TextEditingController(text: widget.producto?.nombre ?? '');
     _precioController = TextEditingController(
-      text: widget.producto?.precioBase.toStringAsFixed(2) ?? '',
+      text: widget.producto == null ? '' : montoParaEditar(widget.producto!.precioBase),
     );
     _categoriaId = widget.producto?.categoriaId;
     _imagen = widget.producto?.imagen;
@@ -319,11 +321,20 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
       ),
     );
 
+    // Borrar de verdad es solo del Gerente. La lista del catálogo ya lo tenía
+    // así, pero este diálogo ofrecía "Eliminar" a cualquiera: la Registradora
+    // abría un producto descontinuado y podía purgarlo. Un borrado físico no se
+    // deshace ni se recupera del otro teléfono —se propaga como borrado—, y una
+    // caja no tiene por qué poder hacer eso. Descontinuar sí: eso es la
+    // operación reversible que le corresponde.
+    final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
+
     final acciones = BentoAcciones(
       izquierda: _esEdicion && !widget.producto!.activo
           ? [
               TextButton(onPressed: _guardando ? null : _reactivar, child: const Text('Reactivar')),
-              TextButton(onPressed: _guardando ? null : _eliminar, child: const Text('Eliminar')),
+              if (esGerente)
+                TextButton(onPressed: _guardando ? null : _eliminar, child: const Text('Eliminar')),
             ]
           : const [],
       derecha: [

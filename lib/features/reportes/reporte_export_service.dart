@@ -379,9 +379,5 @@ class ReporteExportService {
   String _hora(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
-  String _nombreTurno(Turno turno) => switch (turno) {
-    Turno.manana => 'Mañana',
-    Turno.tarde => 'Tarde',
-    Turno.noche => 'Noche',
-  };
+  String _nombreTurno(Turno turno) => nombreDeTurno(turno);
 }

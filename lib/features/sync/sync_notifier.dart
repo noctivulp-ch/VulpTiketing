@@ -9,6 +9,7 @@ import '../auth/device_identity_service.dart';
 import '../auth/sesion_notifier.dart';
 import '../producto/categoria_notifier.dart';
 import '../producto/producto_notifier.dart';
+import '../caja/caja_notifier.dart';
 import '../reportes/reportes_provider.dart';
 import '../venta/libro_ventas.dart';
 import '../venta/venta_notifier.dart';
@@ -319,6 +320,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
       ref.invalidate(ventaNotifierProvider);
       ref.invalidate(reportesProvider);
       ref.invalidate(detalleRangoProvider);
+      ref.invalidate(cajaNotifierProvider);
     }
   }
 

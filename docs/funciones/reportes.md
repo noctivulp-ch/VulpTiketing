@@ -4,20 +4,36 @@ Ver también: [ventas](ventas.md) · [roles-y-auth](roles-y-auth.md) · [../../f
 
 ## Turnos horarios
 
-Los reportes agrupan ventas por hora del día en tres turnos fijos (no configurables, salvo que se pida lo contrario más adelante):
+Los reportes agrupan ventas en dos turnos fijos de 12 horas ([decisión 0037](../decisiones/0037-corte-de-caja-y-jornada-en-dos-turnos.md)):
 
 | Turno | Rango horario |
 |-------|---------------|
-| Mañana | 00:00 – 11:59 |
-| Tarde | 12:00 – 17:59 |
-| Noche | 18:00 – 23:59 |
+| Primer turno | 00:00 – 11:59 |
+| Segundo turno | 12:00 – 23:59 |
 
-No hay corte de caja estricto — el turno es solo una agrupación temporal para el reporte, no un evento de apertura/cierre operativo (ver [ventas](ventas.md)).
+Eran tres tramos desiguales —mañana de 12 h, tarde y noche de 6— y no se correspondían con cómo trabaja la soda: hay **un** cambio de turno, en algún punto entre las 12 y las 2:30 de la tarde. Dos mitades iguales dan la comparación que sí se usa: cuánto entró antes del cambio y cuánto después.
+
+El turno sigue siendo una agrupación temporal calculada desde `fecha_hora`, no un evento operativo. Lo operativo es el **corte de caja**, que es otra cosa y se anota a mano (abajo).
+
+## Corte de caja
+
+Debajo del total, y solo para el **Gerente** en el rango de **día**, hay un cuadro con dos números:
+
+| | Qué es |
+|---|---|
+| **Caja Inicial** | Lo que quedó en el cajón en el último corte anotado |
+| **Caja Total** | Lo que **debería** haber ahora: `Caja Inicial + efectivo cobrado desde ese corte` |
+
+**No sustituye al total del día ni se confunde con él.** El total reúne los ingresos de la tienda por efectivo *y* SINPE — cuánto vendió el negocio. El corte contesta cuánto hay en el cajón, así que solo mira efectivo: una transferencia nunca entró ahí.
+
+Se anota tocando el cuadro: pide el monto que **queda** en la caja y en qué momento del día se está —Apertura, Medio Día, Cierre—. Los tres se ven siempre, pero solo se puede pulsar el que toca: la apertura habilita el medio día y el medio día habilita el cierre. La regla no es horaria porque la hora del cambio de turno varía cada día.
+
+Un corte no se edita ni se borra, y solo se anota sobre el día de hoy. El detalle del razonamiento está en la [decisión 0037](../decisiones/0037-corte-de-caja-y-jornada-en-dos-turnos.md).
 
 ## Permisos por rol
 
-- **Gerente**: consulta por turno/día arbitrario, reportes semanal/mensual/anual, totales y ranking de productos más/menos vendidos.
-- **Registradora**: solo semana actual, día actual, y desglose de turno del día actual.
+- **Gerente**: consulta por turno/día arbitrario, reportes semanal/mensual/anual, totales, ranking de más vendidos y el **corte de caja**. **No** ve el ranking de menos vendidos en pantalla: su sitio lo ocupa el corte de caja, que se usa todos los días — el dato sigue calculándose y sigue en el reporte exportado.
+- **Registradora**: solo semana actual, día actual, y desglose de turno del día actual. Ve los dos rankings y **no** el corte de caja.
 
 Igual que en [Operations](../../features/Operations.feature), la restricción a la Registradora es de alcance de datos (no necesita ver histórico completo para su función), no una medida de seguridad estricta — ver [roles-y-auth](roles-y-auth.md).
 
@@ -25,9 +41,9 @@ Igual que en [Operations](../../features/Operations.feature), la restricción a 
 
 Ver bocetos completos en [pantallas/prototipos-ascii.md](../pantallas/prototipos-ascii.md#ventana-4--reportes-revisada--confirmada-como-reporte-unificado-interactivo-y-exportable).
 
-- **Drill-down**: implementado — tocar un turno dentro del período consultado muestra el desglose de ese turno (ventas individuales, cada una con **qué se vendió**: "2× Casado, Fresco", no "2 línea(s)"), con navegación "← Volver" hacia el nivel anterior. El desglose por turno solo aplica al rango "Día" (no tiene sentido mostrar 3 tiles de turno para "todo el mes").
+- **Drill-down**: implementado — tocar un turno dentro del período consultado muestra el desglose de ese turno (ventas individuales, cada una con **qué se vendió**: "2× Casado, Fresco", no "2 línea(s)"), con navegación "← Volver" hacia el nivel anterior. El desglose por turno solo aplica al rango "Día" (no tiene sentido mostrar tiles de turno para "todo el mes").
 - **Selector de rango**: Día/Semana (Gerente y Registradora) + Mes/Año (solo Gerente). Para Gerente, "Día" admite elegir una fecha arbitraria (selector de fecha); Registradora queda fija al día/semana actual simplemente porque no tiene ese selector — no hace falta lógica de permisos aparte para eso.
-- **Exportar el período o un turno**: **implementado**. Se mantiene presionado el total —o la celda de Mañana, Tarde o Noche— y se elige PDF o CSV. El archivo va a **Descargas › VulpTiketing**, sin selector: se dice en el aviso dónde quedó ([decisión 0029](../decisiones/0029-exportar-a-descargas-por-mediastore.md)). Exporta exactamente lo que está en pantalla —mismo período, mismo total— porque recibe el reporte ya calculado en vez de volver a consultar.
+- **Exportar el período o un turno**: **implementado**. Se mantiene presionado el total —o la celda de un turno— y se elige PDF o CSV. El archivo va a **Descargas › VulpTiketing**, sin selector: se dice en el aviso dónde quedó ([decisión 0029](../decisiones/0029-exportar-a-descargas-por-mediastore.md)). Exporta exactamente lo que está en pantalla —mismo período, mismo total— porque recibe el reporte ya calculado en vez de volver a consultar.
   - **Una fila por LÍNEA, no por venta.** Hasta 2026-08-02 el archivo decía "2 línea(s)" y no había forma de saber qué se había vendido: el nombre no está en `linea_venta` —la línea de catálogo guarda `producto_id` y la libre `nombre_libre` ([decisión 0016](../decisiones/0016-linea-libre-en-venta.md))— y la consulta no lo resolvía. El CSV lleva Fecha, Hora, Producto, Cantidad, Precio unitario, Subtotal, Nota e id de venta; ese id agrupa las líneas, porque sin él dos ventas de la misma hora se confunden al ordenar la tabla en Excel.
   - **El PDF abre con lo más vendido** (top 10) antes del detalle: es lo que se mira primero para decidir qué reponer. Se calcula sobre las mismas ventas que van en el detalle, no consultando de nuevo, para que el archivo cuadre consigo mismo.
   - **CSV y no `.xlsx`**: se abre igual en Excel, LibreOffice y Google Sheets, se puede mirar con un editor de texto si algo sale mal, y no arrastra una dependencia para escribir un formato binario. Lleva BOM y saltos CRLF: sin eso, Excel en Windows —el destino más probable— lo abre en una sola columna y con los acentos rotos.

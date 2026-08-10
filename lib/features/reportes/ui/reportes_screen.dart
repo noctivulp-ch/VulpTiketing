@@ -21,6 +21,8 @@ import '../../import_export/carpeta_exportacion.dart';
 import '../reporte_export_service.dart';
 import '../../venta/venta_model.dart';
 import '../../venta/venta_notifier.dart';
+import '../../caja/caja_notifier.dart';
+import '../../caja/ui/caja_corte_pozo.dart';
 import '../reportes_provider.dart';
 import 'elegir_periodo.dart';
 
@@ -53,6 +55,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       if (!mounted) return;
       ref.invalidate(reportesProvider);
       ref.invalidate(detalleRangoProvider);
+      ref.invalidate(cajaNotifierProvider);
     });
   }
 
@@ -427,11 +430,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 /// ya no entra, y hay ancho de sobra para repartirlos a lo largo.
 const double _altoAcostado = 520;
 
-String _nombreTurno(Turno turno) => switch (turno) {
-  Turno.manana => 'Mañana',
-  Turno.tarde => 'Tarde',
-  Turno.noche => 'Noche',
-};
+String _nombreTurno(Turno turno) => nombreDeTurno(turno);
 
 /// Carga el detalle del rango bajo demanda: pedirlo por adelantado haría que
 /// abrir Reportes trajera el año entero aunque nadie mire la lista.
@@ -665,24 +664,31 @@ class _VistaGeneral extends StatelessWidget {
     );
   }
 
+  /// El cuadro de corte de caja se muestra solo con el rango de día y solo al
+  /// Gerente, que es donde lo pidió el dueño.
+  ///
+  /// Y solo en el día: la caja se cuadra sobre la jornada, no sobre un mes.
+  bool get _muestraCaja => esGerente && rango == RangoReporte.dia;
+
   Widget _resumen(BuildContext context, bool esHoy) {
     return BentoCuadricula(
       hijos: [
         BentoCelda(compacto: 6, medio: 6, amplio: 3, hijo: _hero(context, esHoy)),
+        // Debajo del total en teléfono y a su lado en escritorio. Es un cuadro
+        // hermano del total, no una parte suya: uno dice cuánto vendió la tienda
+        // —efectivo y SINPE— y el otro cuánto debería haber en el cajón.
+        if (_muestraCaja)
+          BentoCelda(compacto: 6, medio: 6, amplio: 3, hijo: CajaCortePozo(editable: esHoy)),
         if (rango == RangoReporte.dia)
-          for (final celda in _turnos()) BentoCelda(compacto: 2, medio: 2, amplio: 1, hijo: celda),
+          for (final celda in _turnos()) BentoCelda(compacto: 3, medio: 3, amplio: 3, hijo: celda),
       ],
     );
   }
 
   List<Widget> _turnos() => [
-    for (final (nombre, turno) in const [
-      ('Mañana', Turno.manana),
-      ('Tarde', Turno.tarde),
-      ('Noche', Turno.noche),
-    ])
+    for (final turno in Turno.values)
       _TarjetaTurno(
-        nombre: nombre,
+        nombre: nombreDeTurno(turno),
         monto: reporte.porTurno[turno]!,
         onTap: () => onSeleccionarTurno(turno),
         onExportar: () => onExportarTurno(turno),
@@ -756,22 +762,29 @@ class _VistaGeneral extends StatelessWidget {
 
   /// Lado a lado desde tablet y apilados en teléfono, donde dos listas de
   /// ~156 dp con nombre y cantidad no se leen.
+  /// El Gerente ve un solo ranking, a todo el ancho.
+  ///
+  /// "Menos vendidos" salió por pedido del dueño: su sitio lo ocupa el cuadro de
+  /// corte de caja, que se usa todos los días. El dato sigue calculándose y la
+  /// Registradora lo sigue viendo — no se quitó del reporte exportado, donde no
+  /// compite por espacio con nada.
   Widget _rankings() {
     return BentoCuadricula(
       llenarAlto: true,
       hijos: [
         BentoCelda(
           compacto: 6,
-          medio: 3,
-          amplio: 3,
+          medio: esGerente ? 6 : 3,
+          amplio: esGerente ? 6 : 3,
           hijo: _Ranking(titulo: 'Más vendidos', items: reporte.masVendidos),
         ),
-        BentoCelda(
-          compacto: 6,
-          medio: 3,
-          amplio: 3,
-          hijo: _Ranking(titulo: 'Menos vendidos', items: reporte.menosVendidos),
-        ),
+        if (!esGerente)
+          BentoCelda(
+            compacto: 6,
+            medio: 3,
+            amplio: 3,
+            hijo: _Ranking(titulo: 'Menos vendidos', items: reporte.menosVendidos),
+          ),
       ],
     );
   }

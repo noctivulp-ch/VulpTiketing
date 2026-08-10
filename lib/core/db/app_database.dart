@@ -108,6 +108,11 @@ class AppDatabase {
         // que las filas existentes quedan exactamente como estaban sin tener
         // que reescribir ninguna.
         if (viejo < 4) await agregarIconoDeCategoria(db);
+
+        // v4 -> v5: los cortes de caja. Tabla nueva y vacia: no hay nada que
+        // migrar, y una base sin cortes se comporta como el dia en que todavia
+        // no se ha anotado la apertura.
+        if (viejo < 5) await crearCorteCaja(db);
       },
     );
 
@@ -122,7 +127,14 @@ class AppDatabase {
     return db;
   }
 
-  static const version = 4;
+  static const version = 5;
+
+  /// v4 -> v5. Publica por el mismo motivo que la anterior: que las pruebas
+  /// suban una base vieja de verdad.
+  static Future<void> crearCorteCaja(DatabaseExecutor db) async {
+    await db.execute(_createCorteCaja);
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_corte_caja_dia ON corte_caja(dia);');
+  }
 
   /// v3 -> v4. Publica para que las pruebas de migracion la apliquen sobre una
   /// base vieja de verdad en vez de recrear el esquema nuevo y dar por sentado
@@ -144,7 +156,7 @@ class AppDatabase {
   /// lo que hace que funcione — SQLite resuelve los nombres sin calificar
   /// contra las bases adjuntas, asi que `SELECT * FROM venta` va solo al libro
   /// abierto y el resto del codigo no tuvo que cambiar.
-  static const esquema = [_createCategoria, _createProducto, _createLibroVentas];
+  static const esquema = [_createCategoria, _createProducto, _createLibroVentas, _createCorteCaja];
 
   /// Indices de la base principal. Desde v3 los de `venta`/`linea_venta` no
   /// estan aca: se aplican a cada libro (ver `esquemaLibro`), porque es ahi
@@ -153,6 +165,9 @@ class AppDatabase {
     // Agrupar productos por categoria, que es uno de los ordenes de la
     // Ventana 1 (decision 0018).
     'CREATE INDEX IF NOT EXISTS idx_producto_categoria ON producto(categoria_id);',
+    // Los cortes se leen siempre por dia, y es la consulta que corre cada vez
+    // que se abre Reportes.
+    'CREATE INDEX IF NOT EXISTS idx_corte_caja_dia ON corte_caja(dia);',
   ];
 
   /// Indices que tenia la base principal en v2, cuando `venta` y `linea_venta`
@@ -266,6 +281,34 @@ class AppDatabase {
     await db.execute('DROP TABLE linea_venta');
     await db.execute('DROP TABLE venta');
   }
+
+  /// Los conteos de caja del dia: apertura, medio dia y cierre.
+  ///
+  /// Vive en la base principal y no en el libro de ventas aunque sea un dato
+  /// diario: son tres filas al dia —mil al ano— y el libro existe para lo que
+  /// crece sin techo (decision 0025). Meterlas ahi obligaria a abrir libros
+  /// viejos para leer un numero de hoy.
+  ///
+  /// `dia` guarda la fecha suelta (`2026-08-10`) ademas de `fecha_hora`. Es
+  /// redundante a proposito: la regla de orden —no se puede anotar el medio dia
+  /// sin haber anotado la apertura— es POR DIA, y comparar una fecha suelta es
+  /// mas barato y mucho menos delicado que recortar un instante con zona
+  /// horaria en cada consulta.
+  ///
+  /// `monto` es lo que QUEDA en la caja, no lo que se conto: en el cambio de
+  /// turno se guarda la mayor parte del efectivo y se deja una cantidad para
+  /// vueltos, asi que este numero es la caja inicial del tramo siguiente.
+  static const _createCorteCaja = '''
+    CREATE TABLE corte_caja (
+      id            TEXT PRIMARY KEY,
+      dia           TEXT NOT NULL,
+      momento       TEXT NOT NULL,
+      monto         REAL NOT NULL,
+      fecha_hora    TEXT NOT NULL,
+      updated_at    TEXT NOT NULL,
+      deleted_at    TEXT
+    );
+  ''';
 
   static const _createCategoria = '''
     CREATE TABLE categoria (

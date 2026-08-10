@@ -8,6 +8,7 @@ import '../../../core/theme/bento_cuadricula.dart';
 import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_dialogo.dart';
+import '../../../core/ui/monto_editable.dart';
 import '../../producto/producto_model.dart';
 import '../venta_en_curso_notifier.dart';
 import 'casilla_sinpe.dart';
@@ -40,7 +41,7 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
   @override
   void initState() {
     super.initState();
-    _precioController = TextEditingController(text: widget.producto.precioBase.toStringAsFixed(2));
+    _precioController = TextEditingController(text: montoParaEditar(widget.producto.precioBase));
   }
 
   @override

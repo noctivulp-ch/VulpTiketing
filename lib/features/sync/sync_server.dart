@@ -21,7 +21,10 @@ import 'package:sqflite/sqflite.dart';
 /// dispositivo, con sus nombres y sus fechas de corte, que son suyos y de nadie
 /// más. Propagarlo dejaría al otro aparato con filas apuntando a archivos que
 /// no existen. Además no tiene `updated_at`, que `RowSyncEngine` exige.
-const tablasSincronizables = ['categoria', 'producto', 'venta', 'linea_venta'];
+/// `corte_caja` viaja como todo lo demas: si el Gerente mira los reportes en su
+/// telefono y la caja se cuenta en el de la caja, el corte tiene que estar en
+/// los dos o el cuadro diria que la apertura no se anoto.
+const tablasSincronizables = ['categoria', 'producto', 'venta', 'linea_venta', 'corte_caja'];
 
 /// Tablas que viven en el libro adjunto y por lo tanto pueden no existir: una
 /// instalación sin ninguna venta todavía no tiene libro.
@@ -34,7 +37,13 @@ const versionProtocoloSync = 1;
 /// versiones distintas no deben mezclar filas: en v2 las ventas vivían en la
 /// base principal y en v3 en un libro, y aplicar unas sobre otras a ciegas
 /// produce una contabilidad que no es la de ninguno de los dos.
-const esquemaSync = 3;
+///
+/// Sube a 4 con los cortes de caja: un aparato viejo no tiene la tabla, así que
+/// pediría `corte_caja` y recibiría un error a mitad de ronda. Rechazarlo por
+/// versión lo deja claro en la pantalla en vez de dejar rondas fallando en
+/// silencio — pero implica que **todos los aparatos hay que actualizarlos**, no
+/// se puede dejar uno atrás.
+const esquemaSync = 4;
 
 /// Servidor HTTP embebido para sync entre dispositivos (decisión 0022).
 /// Expone `GET /sync/exportar` con el contenido completo de las tablas

@@ -5,6 +5,7 @@ import 'package:vulp_tiketing/core/theme/bento_theme.dart';
 import 'package:vulp_tiketing/features/producto/categoria_model.dart';
 import 'package:vulp_tiketing/features/producto/categoria_notifier.dart';
 import 'package:vulp_tiketing/features/producto/producto_model.dart';
+import 'package:vulp_tiketing/features/auth/sesion_notifier.dart';
 import 'package:vulp_tiketing/features/producto/ui/producto_form_dialog.dart';
 
 /// El formulario de producto tiene que aguantar datos rotos y ofrecer las
@@ -23,7 +24,12 @@ void main() {
     updatedAt: DateTime(2026),
   );
 
-  Future<void> montar(WidgetTester tester, Producto p, {Size? tamano}) async {
+  Future<void> montar(
+    WidgetTester tester,
+    Producto p, {
+    Size? tamano,
+    Rol rol = Rol.gerente,
+  }) async {
     if (tamano != null) {
       tester.view.physicalSize = tamano;
       tester.view.devicePixelRatio = 1.0;
@@ -33,6 +39,7 @@ void main() {
       ProviderScope(
         overrides: [
           categoriaNotifierProvider.overrideWith(() => _CategoriasFijas([categoria])),
+          sesionNotifierProvider.overrideWith(() => _SesionFija(rol)),
         ],
         child: MaterialApp(
           theme: buildBentoTheme(AcentoTinte.oro, brightness: Brightness.dark),
@@ -63,11 +70,25 @@ void main() {
     expect(find.text('Categoría eliminada'), findsNothing);
   });
 
-  testWidgets('un producto fuera de la carta ofrece reactivar y eliminar', (tester) async {
+  testWidgets('al Gerente, un producto fuera de la carta le ofrece reactivar y eliminar', (
+    tester,
+  ) async {
     await montar(tester, producto(activo: false, categoriaId: 'cat-viva'));
 
     expect(find.text('Reactivar'), findsOneWidget);
     expect(find.text('Eliminar'), findsOneWidget);
+  });
+
+  testWidgets('a la Registradora, solo reactivar — nunca eliminar', (tester) async {
+    // Lo encontró el dueño usando la app: la lista del catálogo ya escondía el
+    // borrado físico a la Registradora, pero este diálogo lo ofrecía a
+    // cualquiera. Un borrado físico no se deshace y se propaga a los demás
+    // aparatos como borrado; descontinuar, que sí es reversible, es lo que le
+    // corresponde a una caja.
+    await montar(tester, producto(activo: false, categoriaId: 'cat-viva'), rol: Rol.registradora);
+
+    expect(find.text('Reactivar'), findsOneWidget);
+    expect(find.text('Eliminar'), findsNothing);
   });
 
   testWidgets('acostado no desborda: las acciones se van al costado', (tester) async {
@@ -90,6 +111,15 @@ void main() {
     expect(find.text('Reactivar'), findsNothing);
     expect(find.text('Eliminar'), findsNothing);
   });
+}
+
+class _SesionFija extends SesionNotifier {
+  _SesionFija(this.rol);
+
+  final Rol rol;
+
+  @override
+  Rol? build() => rol;
 }
 
 class _CategoriasFijas extends CategoriaNotifier {

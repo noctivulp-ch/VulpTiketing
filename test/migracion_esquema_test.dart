@@ -176,7 +176,7 @@ void main() {
     addTearDown(db.close);
     await AppDatabase.crearEsquema(db);
 
-    expect(await indicesDe(db), equals(['idx_producto_categoria']));
+    expect(await indicesDe(db), equals(['idx_corte_caja_dia', 'idx_producto_categoria']));
   });
 
   test('un libro trae sus propios indices', () async {
@@ -264,6 +264,62 @@ void main() {
 
       expect(columnas.map((c) => c['name']), contains('icono'));
       await db.close();
+    });
+  });
+
+  group('v4 → v5: los cortes de caja', () {
+    /// Una base v4: con categoría e icono, y sin `corte_caja`.
+    Future<Database> baseV4(String nombre) async {
+      final db = await databaseFactory.openDatabase(
+        p.join(temporal.path, nombre),
+        options: OpenDatabaseOptions(singleInstance: false),
+      );
+      await db.execute(
+        'CREATE TABLE categoria ('
+        '  id TEXT PRIMARY KEY,'
+        '  nombre TEXT NOT NULL,'
+        '  icono TEXT,'
+        '  updated_at TEXT NOT NULL,'
+        '  deleted_at TEXT'
+        ');',
+      );
+      return db;
+    }
+
+    test('crea la tabla vacía, sin tocar lo que ya había', () async {
+      // No hay nada que migrar: un día sin cortes anotados se comporta igual que
+      // el rato que va antes de la apertura, que es el estado real de una base
+      // que viene de una versión sin cortes.
+      final db = await baseV4('v4-a.db');
+
+      await AppDatabase.crearCorteCaja(db);
+
+      expect(await db.query('corte_caja'), isEmpty);
+      final columnas = (await db.rawQuery(
+        'PRAGMA table_info(corte_caja)',
+      )).map((c) => c['name']).toList();
+      expect(columnas, containsAll(['id', 'dia', 'momento', 'monto', 'fecha_hora', 'updated_at']));
+      await db.close();
+    });
+
+    test('una base nueva la trae igual que una migrada', () async {
+      // Mismo motivo que en v4: si el esquema de `onCreate` y el de la migración
+      // divergen, una instalación nueva y una actualizada dejan de ser la misma
+      // app — y esta tabla además viaja por sincronización entre las dos.
+      final nueva = await databaseFactory.openDatabase(
+        p.join(temporal.path, 'nueva-v5.db'),
+        options: OpenDatabaseOptions(singleInstance: false),
+      );
+      await AppDatabase.crearEsquema(nueva);
+      final migrada = await baseV4('v4-b.db');
+      await AppDatabase.crearCorteCaja(migrada);
+
+      Future<List<Object?>> columnasDe(Database db) async =>
+          (await db.rawQuery('PRAGMA table_info(corte_caja)')).map((c) => c['name']).toList();
+
+      expect(await columnasDe(nueva), await columnasDe(migrada));
+      await nueva.close();
+      await migrada.close();
     });
   });
 }

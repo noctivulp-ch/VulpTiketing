@@ -172,7 +172,7 @@ void main() {
 
     // El dia lo necesita para el drill-down; el anio no lo usa y llenarlo
     // significaba retener en memoria todas las ventas del anio con sus lineas.
-    expect(dia.ventasPorTurno[Turno.manana], hasLength(1));
+    expect(dia.ventasPorTurno[Turno.primero], hasLength(1));
     expect(anio.ventasPorTurno.values.every((l) => l.isEmpty), isTrue);
     // Pero el total del anio sigue siendo correcto.
     expect(anio.total, closeTo(800, 0.001));
@@ -195,11 +195,11 @@ void main() {
     await sembrar(db, 10, 900); // línea libre
 
     final reporte = await reporteDelDia(db);
-    final manana = reporte.ventasPorTurno[Turno.manana]!;
+    final primerTurno = reporte.ventasPorTurno[Turno.primero]!;
 
-    expect(manana, hasLength(2));
+    expect(primerTurno, hasLength(2));
     expect(
-      manana.map((v) => v.lineas.single.descripcion),
+      primerTurno.map((v) => v.lineas.single.descripcion),
       containsAll(['Casado con pollo', 'linea libre']),
       reason: 'tanto el producto de catálogo como la línea libre tienen nombre',
     );

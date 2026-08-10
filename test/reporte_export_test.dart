@@ -41,8 +41,8 @@ void main() {
 
   final reporte = ReporteResultado(
     total: 3000,
-    porTurno: {Turno.manana: 1000, Turno.tarde: 2000, Turno.noche: 0},
-    ventasPorTurno: {Turno.manana: const [], Turno.tarde: const [], Turno.noche: const []},
+    porTurno: {Turno.primero: 1000, Turno.segundo: 2000},
+    ventasPorTurno: {Turno.primero: const [], Turno.segundo: const []},
     masVendidos: const [],
     menosVendidos: const [],
   );
@@ -74,7 +74,7 @@ void main() {
     final csv = await exportarCsv();
 
     expect(csv, contains('"Total","3000.00"'));
-    expect(csv, contains('"Mañana","1000.00"'));
+    expect(csv, contains('"Primer turno","1000.00"'));
     // QUÉ se vendió, no cuántas líneas tenía la venta: el reporte decía
     // "2 línea(s)" y con eso no se puede revisar un día raro ni cuadrar caja.
     expect(csv, contains('"04/03/2026","09:05","Casado con pollo","1","1000.00","1000.00"'));
@@ -187,15 +187,15 @@ void main() {
     await const ReporteExportService().exportar(
       rutaDestino: ruta,
       formato: FormatoReporte.csv,
-      titulo: 'Tarde · 4/3/2026',
+      titulo: 'Segundo turno · 4/3/2026',
       total: 2000,
       ventas: ventas,
     );
 
     final csv = await File(ruta).readAsString();
     expect(csv, contains('"Total","2000.00"'));
-    expect(csv, isNot(contains('"Mañana"')));
-    expect(csv, isNot(contains('"Noche"')));
+    expect(csv, isNot(contains('"Primer turno"')));
+    expect(csv, isNot(contains('"Segundo turno","')));
   });
 
   test('un período sin ventas exporta igual, no falla', () async {
@@ -250,7 +250,7 @@ void main() {
       formato: FormatoReporte.pdf,
       titulo: 'Ventas del año · 2026',
       total: 1500000,
-      porTurno: {Turno.manana: 500000, Turno.tarde: 700000, Turno.noche: 300000},
+      porTurno: {Turno.primero: 500000, Turno.segundo: 1000000},
       ventas: muchas,
     );
 

@@ -6,7 +6,7 @@ Volver a [../index](../index.md)
 |---|--------|--------|
 | [0001](0001-lib-raw-vs-lib.md) | `lib_raw/` en vez de `lib/` para recursos crudos | Aceptada |
 | [0002](0002-roles-funcionales-no-seguridad.md) | Roles como separación funcional, no de seguridad interna | Aceptada |
-| [0003](0003-turnos-sin-corte-de-caja.md) | Turnos horarios fijos, sin corte de caja | Aceptada |
+| [0003](0003-turnos-sin-corte-de-caja.md) | Turnos horarios fijos, sin corte de caja | Sustituida por la [0037](0037-corte-de-caja-y-jornada-en-dos-turnos.md) |
 | [0004](0004-alcance-base-vs-futuro.md) | Impresión e inventario de insumos: pospuestos, no descartados | Aceptada |
 | [0005](0005-borrados-en-sync.md) | Manejo de borrados en sync (tombstones) | Aceptada |
 | [0006](0006-encriptacion-backup.md) | Esquema de encriptación del backup | Aceptada |
@@ -40,3 +40,4 @@ Volver a [../index](../index.md)
 | [0034](0034-iconos-por-categoria-y-fotos-apagables.md) | La cara de un producto: iconos por categoría, y fotos apagables por ventana | Aceptada |
 | [0035](0035-token-para-el-harness-del-mcp.md) | Token aleatorio para el harness del MCP | Aceptada |
 | [0036](0036-sync-par-a-par-con-ronda-periodica.md) | Sync par a par, con ronda periódica | Aceptada |
+| [0037](0037-corte-de-caja-y-jornada-en-dos-turnos.md) | Corte de caja, y la jornada en dos turnos | Aceptada |

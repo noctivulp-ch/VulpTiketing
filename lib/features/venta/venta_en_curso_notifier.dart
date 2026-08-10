@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/db/db_providers.dart';
+import '../caja/caja_notifier.dart';
 import '../reportes/reportes_provider.dart';
 import 'linea_venta_model.dart';
 import 'libro_ventas.dart';
@@ -166,6 +167,9 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
     // arrancar, que en una caja es un número equivocado a la vista.
     ref.invalidate(reportesProvider);
     ref.invalidate(detalleRangoProvider);
+    // Y la caja esperada: cada venta en efectivo es plata que entra al cajón, así
+    // que el número contra el que se cuadra cambia con cada cobro.
+    ref.invalidate(cajaNotifierProvider);
     ref.invalidateSelf(); // fuerza un ventaIdBorrador nuevo para la próxima venta
   }
 }

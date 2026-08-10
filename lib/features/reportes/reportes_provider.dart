@@ -11,14 +11,28 @@ import '../venta/venta_model.dart';
 
 enum RangoReporte { dia, semana, mes, anio }
 
-enum Turno { manana, tarde, noche }
+/// La jornada se parte en dos mitades de 12 horas.
+///
+/// Eran tres tramos desiguales —una mañana de 12 h y dos de 6— y no se
+/// correspondían con cómo trabaja la soda: hay **un** cambio de turno, en algún
+/// punto entre las 12 y las 2:30 de la tarde, y a partir de ahí es otra caja y
+/// otra gente. Dos mitades iguales dan la comparación que sí se usa (cuánto
+/// entró antes del cambio y cuánto después) y calzan con los tres cortes de
+/// caja: apertura → medio día es el primer turno, medio día → cierre el segundo.
+///
+/// El corte está en las 12 en punto y no en la hora real del cambio de turno
+/// porque esa hora varía cada día. Para cuadrar la caja está el corte de medio
+/// día, que se anota cuando toca y no cuando lo diga el reloj.
+enum Turno { primero, segundo }
 
-Turno turnoDe(DateTime fechaHora) {
-  final hora = fechaHora.hour;
-  if (hora < 12) return Turno.manana;
-  if (hora < 18) return Turno.tarde;
-  return Turno.noche;
-}
+Turno turnoDe(DateTime fechaHora) => fechaHora.hour < 12 ? Turno.primero : Turno.segundo;
+
+/// El nombre de cada turno, en un solo sitio: lo usan la pantalla y el archivo
+/// exportado, y dos listas separadas acaban diciendo cosas distintas.
+String nombreDeTurno(Turno turno) => switch (turno) {
+  Turno.primero => 'Primer turno',
+  Turno.segundo => 'Segundo turno',
+};
 
 class ReportesParametros {
   const ReportesParametros({required this.rango, required this.fechaReferencia});
@@ -143,9 +157,8 @@ const limiteRanking = 10;
 /// hay una prueba que compara las dos implementaciones fila por fila.
 const _sqlTurno = '''
   CASE
-    WHEN CAST(strftime('%H', v.fecha_hora) AS INTEGER) < 12 THEN 'manana'
-    WHEN CAST(strftime('%H', v.fecha_hora) AS INTEGER) < 18 THEN 'tarde'
-    ELSE 'noche'
+    WHEN CAST(strftime('%H', v.fecha_hora) AS INTEGER) < 12 THEN 'primero'
+    ELSE 'segundo'
   END''';
 
 const _sqlRangoActivo = "v.estado = 'activa' AND v.fecha_hora >= ? AND v.fecha_hora < ?";
@@ -158,11 +171,7 @@ const _sqlRangoActivo = "v.estado = 'activa' AND v.fecha_hora >= ? AND v.fecha_h
 const _sqlDescripcionLinea = 'COALESCE(p.nombre, lv.nombre_libre) AS descripcion';
 const _sqlJoinProducto = 'LEFT JOIN main.producto p ON p.id = lv.producto_id';
 
-Turno _turnoDeNombre(String nombre) => switch (nombre) {
-  'manana' => Turno.manana,
-  'tarde' => Turno.tarde,
-  _ => Turno.noche,
-};
+Turno _turnoDeNombre(String nombre) => nombre == 'primero' ? Turno.primero : Turno.segundo;
 
 /// Agrega en SQL, no en Dart.
 ///

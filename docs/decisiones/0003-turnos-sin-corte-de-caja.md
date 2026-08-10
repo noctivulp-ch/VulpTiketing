@@ -1,7 +1,7 @@
 # 0003 — Turnos horarios fijos, sin corte de caja
 
 **Fecha:** 2026-07-26
-**Estado:** Aceptada
+**Estado:** Sustituida por la [0037](0037-corte-de-caja-y-jornada-en-dos-turnos.md)
 
 ## Contexto
 
@@ -18,3 +18,12 @@ Reports.feature menciona reportes por "Morning/Afternoon/Night" sin definir los 
 ## Consecuencias
 
 Los reportes se calculan agrupando por el timestamp de la venta contra estas bandas, sin necesidad de un estado de "caja abierta/cerrada" en el modelo de datos.
+
+## Qué cambió después
+
+Las dos mitades de esta decisión cayeron, y por el mismo motivo: se escribió antes de saber cómo trabaja la soda.
+
+- **Los tres turnos pasaron a dos** de 12 horas. Hay un solo cambio de turno, no dos, y tramos de distinto tamaño no se pueden comparar entre sí.
+- **Sí hay corte de caja.** No es un estado de "caja abierta/cerrada" en el modelo —eso sigue sin existir— pero se anotan tres conteos al día para cuadrar el efectivo del cajón.
+
+Ver la [0037](0037-corte-de-caja-y-jornada-en-dos-turnos.md).

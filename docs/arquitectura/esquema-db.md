@@ -109,6 +109,31 @@ CREATE TABLE linea_venta (
 
 **Sobre `nota`:** descriptivo opcional por línea, pensado principalmente para justificar un `precio_aplicado` distinto al `precio_base` (ej. "promoción", "cliente frecuente", "producto en mal estado"), aunque nada impide usarlo para cualquier otra anotación puntual de esa línea. Es distinta de `venta.detalle` (nota general de toda la venta). Va como columna `TEXT` simple en la propia fila — no como JSON — porque cada línea ya es su propia fila; un JSON en `venta` keyed por nombre de producto colisionaría si el mismo producto aparece dos veces en la misma venta con notas distintas (ver [decisión 0013](../decisiones/0013-nota-por-linea-no-json-en-venta.md)).
 
+## CorteCaja
+
+Los tres conteos de caja del día ([decisión 0037](../decisiones/0037-corte-de-caja-y-jornada-en-dos-turnos.md)).
+
+Vive en la base **principal** y no en el libro de ventas aunque sea un dato diario: son tres filas al día —mil al año— y el libro existe para lo que crece sin techo ([0025](../decisiones/0025-archivado-anual-rodante.md)). Meterlas ahí obligaría a abrir libros viejos para leer un número de hoy.
+
+```sql
+CREATE TABLE corte_caja (
+  id            TEXT PRIMARY KEY,      -- UUID v4
+  dia           TEXT NOT NULL,         -- '2026-08-10'. Redundante con fecha_hora a propósito:
+                                       -- la regla de orden es POR DÍA, y comparar una fecha
+                                       -- suelta es más barato y menos delicado que recortar
+                                       -- un instante con zona horaria en cada consulta
+  momento       TEXT NOT NULL,         -- 'apertura' | 'medioDia' | 'cierre'
+  monto         REAL NOT NULL,         -- lo que QUEDA en la caja, no lo que se contó: en el
+                                       -- cambio de turno se guarda la mayor parte del efectivo
+  fecha_hora    TEXT NOT NULL,         -- separa las ventas de antes del corte de las de después
+  updated_at    TEXT NOT NULL,
+  deleted_at    TEXT
+);
+CREATE INDEX idx_corte_caja_dia ON corte_caja(dia);
+```
+
+Se **sincroniza** como el resto: si el Gerente mira los reportes en su teléfono y la caja se cuenta en el de la caja, el corte tiene que estar en los dos.
+
 ## Configuración local del dispositivo (fuera de SQLite)
 
 No son tablas de negocio — viven en almacenamiento seguro nativo del dispositivo (ej. `flutter_secure_storage`, que usa Keychain/Keystore del sistema operativo), no en la base de datos SQLite ni se sincronizan entre dispositivos (ver decisión 0011):
