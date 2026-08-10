@@ -16,7 +16,11 @@ import 'package:flutter_driver/flutter_driver.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
-const _puertoBridge = 8765;
+/// Por defecto 8765; se cambia con `--puerto` para poder tener VARIOS bridges
+/// a la vez, uno por aparato. Las pruebas de sincronizacion necesitan hablarle
+/// a tres telefonos en la misma corrida, y con el puerto fijo el segundo bridge
+/// moria con "address already in use".
+int _puertoBridge = 8765;
 
 FlutterDriver? _driver;
 
@@ -35,7 +39,9 @@ const _tokenDeDesarrollo = 'vulp-dev-no-usar-en-produccion';
 void main(List<String> args) async {
   final vmService = _leerArg(args, '--vm-service');
   if (vmService == null) {
-    stderr.writeln('Uso: dart run test_driver/bridge.dart --vm-service=<url> [--token=<token>]');
+    stderr.writeln(
+      'Uso: dart run test_driver/bridge.dart --vm-service=<url> [--token=<token>] [--puerto=N]',
+    );
     stderr.writeln();
     stderr.writeln('Sin --token se usa el de desarrollo, que solo aceptan los builds');
     stderr.writeln('de debug y profile. Contra un release hay que pedirle el token a');
@@ -45,6 +51,7 @@ void main(List<String> args) async {
   }
   final token = _leerArg(args, '--token') ?? _tokenDeDesarrollo;
   _token = token;
+  _puertoBridge = int.tryParse(_leerArg(args, '--puerto') ?? '') ?? _puertoBridge;
 
   stdout.writeln('Conectando a $vmService ...');
   _driver = await FlutterDriver.connect(dartVmServiceUrl: vmService);
