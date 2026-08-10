@@ -128,12 +128,34 @@ class SyncNotifier extends Notifier<EstadoSync> {
   static const _cadaRonda = Duration(seconds: 15);
 
   @override
-  EstadoSync build() => const EstadoSync.detenida();
+  EstadoSync build() {
+    // Se restaura en segundo plano: `build` es síncrono y leer la preferencia
+    // —y arrancar el servidor— no lo es. Arranca detenida y se enciende sola si
+    // corresponde, que es lo que se ve en pantalla de todas formas.
+    Future.microtask(_restaurarSiEstabaEncendida);
+    return const EstadoSync.detenida();
+  }
+
+  Future<void> _restaurarSiEstabaEncendida() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_keySyncActivo) ?? false) await iniciarSync();
+  }
 
   /// Guarda que este aparato VIO a otro alguna vez. Se escribe cuando el
   /// descubrimiento encuentra un par y no se borra: un aparato que ya estuvo
   /// acompañado no vuelve a estar solo por apagar el otro.
   static const _keyVioPares = 'sync_vio_pares';
+
+  /// Si la sincronización quedó encendida la última vez.
+  ///
+  /// **El defecto es apagado**: una app recién instalada no se pone a hablar
+  /// con la red sin que nadie se lo pida. Pero encenderla es una decisión, y se
+  /// respeta — antes se perdía en cada arranque y había que volver a activarla
+  /// a mano, que en una soda significa que alguien tiene que acordarse cada
+  /// mañana.
+  ///
+  /// No se auto-apaga: solo la apaga quien toca el interruptor.
+  static const _keySyncActivo = 'sync_activo';
 
   /// El gate de purga de la [decisión 0015].
   ///
@@ -191,6 +213,11 @@ class SyncNotifier extends Notifier<EstadoSync> {
     final puerto = await server.iniciar();
     _server = server;
     state = const EstadoSync(fase: FaseSync.syncing);
+    // Se recuerda ENCENDIDA para el próximo arranque. Se guarda acá y no al
+    // tocar el interruptor porque este es el punto donde de verdad quedó
+    // andando: si `iniciarSync` sale antes —sin rol, por ejemplo— no hay nada
+    // que recordar.
+    (await SharedPreferences.getInstance()).setBool(_keySyncActivo, true);
 
     await _discovery.anunciar(deviceId: miDeviceId, rol: rol.name, puerto: puerto);
 
@@ -317,6 +344,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
       (pares: _ultimosPares.length, mismoRol: _paresDelMismoRol.length, fallo: _ultimoFallo);
 
   Future<void> detenerSync() async {
+    (await SharedPreferences.getInstance()).setBool(_keySyncActivo, false);
     _ronda?.cancel();
     _ronda = null;
     _cliente = null;

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/bento_bandeja.dart';
 import '../../core/nav/atajos_escritorio.dart';
+import '../sync/sync_notifier.dart';
 import '../../core/nav/gesto_navegacion.dart';
 import '../../core/theme/bento_cuadricula.dart';
 import '../../core/theme/bento_icon.dart';
@@ -32,14 +34,14 @@ import '../venta/ui/venta_rapida_screen.dart';
 /// podia saltar a un campo de busqueda o boton de una pantalla invisible
 /// (bug real encontrado al verificar la navegacion por teclado de las
 /// fases siguientes).
-class DashboardShell extends StatefulWidget {
+class DashboardShell extends ConsumerStatefulWidget {
   const DashboardShell({super.key});
 
   @override
-  State<DashboardShell> createState() => _DashboardShellState();
+  ConsumerState<DashboardShell> createState() => _DashboardShellState();
 }
 
-class _DashboardShellState extends State<DashboardShell> {
+class _DashboardShellState extends ConsumerState<DashboardShell> {
   int _indice = 0;
 
   static const _iconos = [
@@ -94,6 +96,13 @@ class _DashboardShellState extends State<DashboardShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Se observa el sync aunque esta pantalla no lo muestre: el notifier no
+    // existe hasta que alguien lo mira, y si solo lo mirara Configuración, la
+    // sincronización no arrancaría sola hasta entrar ahí. Encenderla es una
+    // decisión que se recuerda entre arranques, y tiene que valer desde que se
+    // abre la app.
+    ref.watch(syncNotifierProvider);
+
     // El rail lateral aparece desde tablet. Antes esto era un `>= 720` suelto,
     // el ÚNICO punto de toda la app que reaccionaba al tamaño; ahora sale del
     // mismo sistema de cortes que usan las cinco pantallas (decisión 0026).
