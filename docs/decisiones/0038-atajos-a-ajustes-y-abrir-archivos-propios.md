@@ -156,6 +156,18 @@ con el enlace del autor **embebido y sin decoración**.
   algo inesperado al tocarlo, y eso no es discreción, es una trampa.
 - **Si no hay navegador, el enlace se copia** al portapapeles. El toque tiene que
   servir para algo; un "no se pudo" a secas deja al usuario sin nada.
+- **Dice con qué se escribió.** El dueño lo pidió con estas palabras: *"no quiero
+  esconder ni mentir, mi fuerte es Java, de Dart y Flutter sé poco y el
+  desarrollo completo fue un powered by en toda regla, ya que la idea y forma de
+  la app fue guiada por mí y escrita / traducida de lenguaje natural a código"*.
+
+  Así que la pantalla dice **las dos mitades**: "Producto, diseño y decisiones:
+  NoctiVulp. Código escrito por Claude Code a partir de sus indicaciones." Un
+  "powered by" a secas se leería como una herramienta de las que usa cualquiera;
+  omitirlo sería atribuirse un trabajo a medias. La nota va **fuera** del área
+  tocable: la firma lleva el enlace, esto es una nota al pie, y si entrara en el
+  mismo toque abriría la página del autor — que no es lo que la nota dice que
+  hace.
 - **Sin `url_launcher`.** Abrir una dirección es un `Intent` de una línea por el
   canal que ya existía, y en Linux/Windows/macOS un `xdg-open`/`start`/`open` —
   que es lo que haría el plugin. Cada plugin nuevo arrastra avisos de Gradle y

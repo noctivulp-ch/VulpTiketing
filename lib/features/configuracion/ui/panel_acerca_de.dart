@@ -68,6 +68,12 @@ class PanelAcercaDe extends StatelessWidget {
             ),
           ),
         ),
+        // Fuera del área tocable: la firma lleva el enlace, esto es una nota al
+        // pie. Si entrara en el mismo `InkWell`, tocar la atribución abriría la
+        // página del autor, que no es lo que la nota dice que hace.
+        Text(motorApp, style: textos.bodySmall),
+        const SizedBox(height: BentoSpacing.unidad / 2),
+        Text(atribucionApp, style: textos.bodySmall),
       ],
     );
   }

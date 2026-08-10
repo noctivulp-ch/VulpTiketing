@@ -53,3 +53,5 @@ El que importa de verdad es **la optimización de batería**: sin la exención, 
 Nombre visible, versión y número de compilación, y la firma del autor. El **build** es el dato que hace falta cuando algo no cuadra en un teléfono: dos aparatos con la misma versión y distinto build no corren el mismo código.
 
 La versión se escribe a mano en `lib/core/version.dart` y `test/version_test.dart` falla si no coincide con `pubspec.yaml` — así no se queda vieja sin que nadie lo note.
+
+La pantalla también dice con qué se escribió la app, y las dos mitades: producto, diseño y decisiones del autor; código escrito por Claude Code a partir de sus indicaciones. Lo pidió así el dueño — "no quiero esconder ni mentir".

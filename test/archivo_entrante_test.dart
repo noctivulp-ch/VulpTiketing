@@ -10,10 +10,7 @@ import 'package:vulp_tiketing/features/import_export/archivo_entrante_service.da
 /// nuestro, así que acá se vuelve a comprobar.
 void main() {
   test('un .tiketdata es catálogo', () {
-    expect(
-      ArchivoEntranteService.claseDe('menu-de-ejemplo.tiketdata'),
-      ClaseDeArchivo.catalogo,
-    );
+    expect(ArchivoEntranteService.claseDe('menu-de-ejemplo.tiketdata'), ClaseDeArchivo.catalogo);
   });
 
   test('un .tiketback es respaldo', () {

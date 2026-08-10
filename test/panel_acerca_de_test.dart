@@ -48,6 +48,33 @@ void main() {
     expect(find.text('Hecho por NoctiVulp'), findsOneWidget);
   });
 
+  testWidgets('dice con qué se escribió, y las dos mitades', (tester) async {
+    // El dueño lo pidió explícitamente: "no quiero esconder ni mentir, el
+    // desarrollo completo fue un powered by en toda regla". Así que la pantalla
+    // dice quién decidió qué hace la app Y quién escribió el código. Un "powered
+    // by" a secas se leería como una herramienta cualquiera; omitirlo sería
+    // atribuirse un trabajo a medias.
+    await montar(tester);
+
+    expect(find.text('Powered by Anthropic · Claude Code'), findsOneWidget);
+    expect(find.textContaining('Producto, diseño y decisiones: NoctiVulp'), findsOneWidget);
+    expect(find.textContaining('Código escrito por Claude Code'), findsOneWidget);
+  });
+
+  testWidgets('la atribución no lleva el enlace: solo la firma', (tester) async {
+    // Si entrara en el mismo área tocable, tocar la nota al pie abriría la
+    // página del autor — que no es lo que la nota dice que hace.
+    await montar(tester);
+
+    expect(
+      find.ancestor(
+        of: find.text('Powered by Anthropic · Claude Code'),
+        matching: find.byType(InkWell),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('la dirección NO se ve en ninguna parte', (tester) async {
     await montar(tester);
 

@@ -25,6 +25,22 @@ const compilacionApp = 1;
 /// Quien la hizo, con el nombre corto que usa como desarrollador.
 const autorApp = 'NoctiVulp';
 
+/// Con qué se escribió, dicho sin adornos.
+///
+/// Lo pidió el dueño y lo pidió así: "no quiero esconder ni mentir, mi fuerte es
+/// Java, de Dart y Flutter sé poco y el desarrollo completo fue un powered by en
+/// toda regla, ya que la idea y forma de la app fue guiada por mí y escrita /
+/// traducida de lenguaje natural a código".
+///
+/// Así que dice las dos mitades, no una: quién decidió qué hace la app y quién
+/// escribió el código. Un "powered by" a secas se leería como una herramienta de
+/// las que usa cualquiera; y omitirlo sería atribuirse un trabajo a medias.
+const motorApp = 'Powered by Anthropic · Claude Code';
+
+const atribucionApp =
+    'Producto, diseño y decisiones: $autorApp. '
+    'Código escrito por Claude Code a partir de sus indicaciones.';
+
 /// A dónde lleva el toque sobre el nombre del autor.
 ///
 /// La app es a medida para un familiar y no cobra nada; el enlace es una marca
