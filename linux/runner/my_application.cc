@@ -59,6 +59,16 @@ static void my_application_activate(GApplication* application) {
   // matchea la regla de niri.
   gtk_window_set_title(window, titulo);
 
+  // Sin marco cuando se pide (VULP_SIN_MARCO=1). Es para grabar: la barra de
+  // titulo del escritorio en medio de un tutorial de una app de telefono se ve
+  // como lo que es, un pegote, y recortarla despues en el editor obliga a
+  // acertar el recorte en cada toma.
+  const gchar* sin_marco = g_getenv("VULP_SIN_MARCO");
+  if (sin_marco != nullptr && *sin_marco == '1') {
+    use_header_bar = FALSE;
+    gtk_window_set_decorated(window, FALSE);
+  }
+
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
@@ -67,7 +77,33 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   }
 
-  gtk_window_set_default_size(window, 1280, 720);
+  // Tamano de ventana sobreescribible (VULP_VENTANA="360x770"), en pixeles
+  // LOGICOS.
+  //
+  // Existe para poder dar a la ventana la forma de un telefono y grabar
+  // tutoriales que se vean como lo que el personal va a usar. Los aparatos del
+  // negocio miden 1080x2312 fisicos a 480 dpi, o sea 360x770 logicos — y son
+  // esos 360 los que disparan la composicion compacta (decision 0026).
+  //
+  // Para que ademas grabe a 1080 de ancho hace falta GDK_SCALE=3 en el entorno:
+  // sin el, en Linux el factor de escala es 1 y 360 logicos son 360 pixeles.
+  //
+  // Esto es del runner de Linux, que NO entra en el APK: la app publicada no
+  // compila este archivo.
+  int ancho = 1280;
+  int alto = 720;
+  const gchar* ventana = g_getenv("VULP_VENTANA");
+  if (ventana != nullptr) {
+    int a = 0;
+    int b = 0;
+    if (sscanf(ventana, "%dx%d", &a, &b) == 2 && a > 0 && b > 0) {
+      ancho = a;
+      alto = b;
+    } else {
+      g_warning("VULP_VENTANA=\"%s\" no tiene la forma ANCHOxALTO; se ignora", ventana);
+    }
+  }
+  gtk_window_set_default_size(window, ancho, alto);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(
