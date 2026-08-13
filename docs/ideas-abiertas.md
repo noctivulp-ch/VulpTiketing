@@ -16,38 +16,80 @@ semántica y es agnóstico al aparato: un tutorial es un guion de toques, igual 
 una prueba. Y la app corre en la PC, así que se puede grabar una ventana en vez
 de un teléfono.
 
-**El punto que decide la calidad: los toques no se ven.** Las acciones sintéticas
-llaman al mismo callback que el dedo, pero **no dibujan la onda de Material ni
-mueven ningún puntero**. Un video así muestra pantallas que cambian solas, y para
-enseñar eso es peor que inútil: no se ve dónde hay que tocar. Tres salidas:
+**Decidido:** las indicaciones y el texto los pone el dueño a mano en DaVinci
+Resolve. Así que **no hace falta puntero sintético ni onda de toque** — la toma
+solo tiene que mostrar la app haciendo lo suyo, limpia y a buena resolución.
 
-| Salida | Qué implica |
+### El tamaño: los números
+
+Los tres teléfonos miden lo mismo, medido por `adb shell wm size` y `wm density`:
+
+| | |
 |---|---|
-| Inyectar punteros de verdad | El harness ya tiene `gesto`, que entra por `handlePointerEvent` y sí dispara la onda. Habría que apuntar por coordenada, que es lo que se quitó por frágil |
-| Dibujar un puntero falso | Una capa encima que pinta un círculo donde va a tocar. Independiente del gesto, y controlable |
-| Ninguna | Sirve para "mirá cómo queda", no para "hacé esto" |
+| Físico | **1080 × 2312** px |
+| Densidad | **480 dpi** → DPR **3** |
+| Lógico | **360 × 770,67** dp |
 
-**Lo demás a resolver:** la ventana de escritorio no tiene la forma de un
-teléfono (habría que fijarla en 360×800 lógicos para que se parezca a lo que van a
-usar), y el grabador en Wayland/Niri hay que elegirlo y probarlo.
+Los 360 dp de ancho son los que disparan el diseño compacto (decisión 0026), así
+que una ventana de 360 lógicos en la PC se ve **exactamente** como el teléfono.
 
-**A decidir antes de empezar:**
+Para que además grabe a 1080 de ancho hacen falta las dos cosas a la vez:
 
-- ¿Toques visibles? — mi recomendación: puntero falso dibujado, porque no ata el
-  guion a coordenadas.
-- ¿Con voz o mudo con subtítulos? Mudo se puede regenerar entero sin volver a
-  grabar audio.
-- ¿Marco de teléfono alrededor, o ventana limpia?
+```
+GDK_SCALE=3   +   ventana de 360×770 lógicos   =   1080×2312 físicos
+```
+
+Sin `GDK_SCALE`, en Linux el DPR es 1 y 360 lógicos son 360 píxeles: un video de
+360 px de ancho no sirve para nada.
+
+**Lo que hay que tocar:** `linux/runner/my_application.cc` fija la ventana en
+1280×720 a pelo (línea 70) y no hay variable de entorno. Hay que hacer que lea una
+—`VULP_VENTANA=360x770`— o dejar el tamaño fijo para grabar. **Es un cambio en la
+app publicada**, así que decidir si va en la app o en una copia aparte.
+
+**Sigue por decidir:**
+
+- ¿Ventana sin barra de título, o la recorta él en DaVinci?
+- **Los datos de la toma.** Con la app vacía los videos muestran pantallas vacías.
+  Hace falta un juego de demostración creíble y **estable entre tomas**: si cada
+  regrabación tiene números distintos, el texto que él superponga deja de calzar.
+- **El reloj.** El turno y el corte de caja dependen de la hora real: grabando de
+  madrugada sale "Segundo turno" y "Toca: Apertura". ¿Se graba en horario
+  coherente o se fija la hora?
+- **La sincronización apagada** durante la grabación, o cualquier aparato de la red
+  puede meter datos a mitad de toma.
 - ¿Qué lecciones y en qué orden? Sospecha: cobrar una venta, cobrar por SINPE,
   corte de caja, mirar el reporte del día, exportar respaldo.
+- Los guiones caducan cuando cambia la interfaz: conviene que vivan en el repo y
+  anoten contra qué versión se grabaron.
 
 ---
 
-## 2. El sistema de diseño como librería
+## 2. Una librería de diseño para las apps QUE VIENEN
 
-El estilo es **suyo, no de la soda** — la app es solo donde se usó primero.
-Sacarlo a una librería importable en Dart/Flutter, y adaptarlo a Python con
-documentación.
+**Decidido: no es retroactivo.** No se saca el diseño de esta app ni se toca
+DurdrawGUI. La idea es no empezar de cero en cada proyecto nuevo, teniendo ya dos
+hechos con buena calidad de los que aprender.
+
+Lo que el dueño señala como reutilizable: los acentos metálicos, los cuadrados,
+las formas de botón, y **todo el sistema de construcción de layouts**.
+
+### Lo que ya existe en los dos proyectos, y encaja
+
+`DurdrawGUI/core/theme.py` (PySide6, 639 líneas) y `bento_theme.dart` llegaron
+por separado **a la misma forma**: un diccionario de tokens **por rol**, con
+variante clara y oscura y un solo acento.
+
+| DurdrawGUI | VulpTiketing |
+|---|---|
+| `bg_base`, `bg_panel`, `bg_widget` | bandeja, pozo |
+| `border` | cresta |
+| `fg_base`, `fg_dim` | texto en bandeja, texto atenuado |
+| `fg_accent` ámbar `#c09050` | metal oro `#D9A54A` |
+| claro / oscuro / sistema | claro / oscuro / sistema |
+
+Esa coincidencia es la prueba de que hay algo que extraer, y también dice **qué**:
+la capa de tokens por rol, no los widgets.
 
 ### En Flutter: se puede, y el trabajo es sobre todo desacoplar
 
@@ -69,34 +111,41 @@ productos — son de la app, no del sistema.
 Coste real: mover archivos, cortar lo que mira al dominio, montar un proyecto de
 ejemplo y escribir la guía. No es rehacer nada.
 
-### En Python: se puede la mitad, y hay que elegir cuál
+### En Python: PySide6, y viaja la mitad
 
-Un sistema de diseño no se "porta" a Python como una librería de widgets. Se
-parte en dos, y las dos mitades no cuestan lo mismo:
+El toolkit ya está elegido de hecho — es el que usa. En Qt, un sistema de diseño
+se aplica por `QPalette` y `QSS`, que es justo lo que `core/theme.py` ya hace.
 
-- **Los tokens y las reglas viajan enteros.** Colores, espaciado, radios,
-  contraste, el orden de los botones, la retícula. Eso es un paquete pequeño y
-  documentación.
+- **Los tokens y las reglas viajan enteros.** Colores, espaciado, radios, el piso
+  de contraste, el orden de los botones. Generar `QPalette` y `QSS` desde los
+  tokens es mecánico.
 - **El aspecto viaja a medias.** El relieve y la cresta están *pintados* en
-  Flutter. En GTK o Qt se aproximan con CSS/QSS y bordes; en una interfaz de
-  terminal no existen. Prometer "el mismo look" en cualquier toolkit sería
-  mentira.
+  Flutter; en Qt eso son widgets con `paintEvent`. Prometer "el mismo look" sin
+  escribir esos widgets sería mentira.
 
 **A decidir antes de empezar:**
 
-- **¿Qué toolkit?** GTK4/Adwaita, Qt/PySide, Textual y web dan resultados muy
-  distintos. Elegir uno primero; los demás después, si hace falta.
+- **¿Un vocabulario común de roles**, o cada app con sus nombres y la librería
+  solo aporta la maquinaria? Hoy son los mismos conceptos con nombres distintos.
+- **¿Una fuente y dos salidas?** Si los tokens viven en un solo archivo y de ahí
+  se generan el tema Dart y el Python, no hay dos paletas que mantener a mano —
+  pero se añade un paso de generación.
+- **¿La retícula viaja?** En Flutter son 6 columnas y tres tamaños pensados para
+  teléfono/tablet/escritorio. En una app de escritorio que se redimensiona libre,
+  las proporciones y el hueco sirven; los cortes por tamaño, probablemente no.
+- **¿Las reglas se comprueban solas?** Lo que hace que el diseño de esta app se
+  sostenga no son los colores: son las pruebas de contraste y de orden de botones.
+  En Python eso sería un ayudante de test, y es la parte que más rinde.
 - **¿Nombre?** Ahora todo se llama "bento", que es el nombre del *patrón*, no del
-  sistema. Si es suyo, conviene que se llame como suyo.
-- **¿Alcance?** Solo tokens y reglas, o también componentes.
-- **¿Cómo se distribuye?** Carpeta local, git, o publicado.
+  sistema. Y el patrón **no aplica** a una app de dibujo como DurdrawGUI, así que
+  el nombre del sistema no puede ser ese.
+- **¿Alcance?** Solo tokens y reglas, o también componentes pintados.
 
 ### Lo que hay que cuidar
 
-Sacar el sistema del proyecto significa que **VulpTiketing pasa a depender de
-algo externo**, y desde la 1.0.0 cada cambio es una actualización sobre datos
-reales. Conviene que la extracción no toque la app hasta que la librería esté
-quieta, o hacerla contra una copia.
+VulpTiketing **no se toca**: la librería nace mirando lo que ya funciona, no
+extrayéndolo. Desde la 1.0.0 cada cambio en la app es una actualización sobre
+datos reales, y una refactorización estética no justifica ese riesgo.
 
 ---
 
