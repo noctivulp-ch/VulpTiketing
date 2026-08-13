@@ -53,3 +53,8 @@ Diseño cerrado (19 ADRs aceptados) y **scaffold de Flutter creado**: proyecto c
 ## Registro de versiones
 
 [versiones.md](versiones.md) — qué se instaló en los aparatos del negocio y cuándo. **Desde la 1.0.0 la app tiene datos reales**, así que todo cambio se planea como una actualización: ahí están las reglas y el estado de la clave de firma.
+
+## Ideas abiertas
+
+[ideas-abiertas.md](ideas-abiertas.md) — planteadas y sin decidir: tutoriales grabados desde la PC, el sistema de diseño como librería propia, y Bluetooth de respaldo. Cada una con lo que ya existe a favor y lo que hay que decidir antes de empezar.
+
