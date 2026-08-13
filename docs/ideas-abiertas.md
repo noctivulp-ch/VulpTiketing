@@ -43,9 +43,14 @@ Sin `GDK_SCALE`, en Linux el DPR es 1 y 360 lógicos son 360 píxeles: un video 
 360 px de ancho no sirve para nada.
 
 **Lo que hay que tocar:** `linux/runner/my_application.cc` fija la ventana en
-1280×720 a pelo (línea 70) y no hay variable de entorno. Hay que hacer que lea una
-—`VULP_VENTANA=360x770`— o dejar el tamaño fijo para grabar. **Es un cambio en la
-app publicada**, así que decidir si va en la app o en una copia aparte.
+1280×720 a pelo (línea 70) y no lee ninguna variable. Que lea `VULP_VENTANA=360x770`
+es un cambio de tres líneas.
+
+**Y no toca la app publicada**, al contrario de lo que se dijo antes: ese archivo
+es el arranque del **runner de Linux**, que no entra en el APK de Android — la
+versión publicada no lo compila siquiera. Linux no está lanzado y probablemente no
+salga; Windows queda para compilar en máquina virtual más adelante. O sea que es
+de los cambios más baratos que hay acá.
 
 **Sigue por decidir:**
 
@@ -62,6 +67,28 @@ app publicada**, así que decidir si va en la app o en una copia aparte.
   corte de caja, mirar el reporte del día, exportar respaldo.
 - Los guiones caducan cuando cambia la interfaz: conviene que vivan en el repo y
   anoten contra qué versión se grabaron.
+
+### Sobre si quedan medidas fijas en la app
+
+Duda planteada por el dueño: la app debería ser agnóstica al tamaño de pantalla,
+así que ¿por qué hay números sueltos? Revisado, salen tres clases y solo una es
+sospechosa:
+
+| Clase | Ejemplos | Veredicto |
+|---|---|---|
+| Constantes físicas | 48 dp de objetivo táctil, 12 dp de pared | Correctas. No dependen de la pantalla; cambiarlas con ella sería el error |
+| Umbrales deliberados | Cortes en 600 y 1024, `_altoAcostado = 520` | Correctas. Un umbral es un número o no es nada |
+| **Mínimos con crecimiento** | `_altoMinimoRol`, `_altoMinimoRanking`, `_altoMinimoLista` | Correctas, y son exactamente el patrón que el dueño pide |
+
+Lo que **sí** conviene mirar: los anchos fijos de algunos diálogos
+(`SizedBox(width: 320)` en el calendario, 280 y 420 en otros). Funcionan porque un
+`SizedBox` se recorta a las restricciones del padre, así que en un teléfono se
+comportan como "todo lo ancho que se pueda, hasta N" — pero **esa intención no está
+escrita en ningún lado y nada la prueba**.
+
+Y el hueco de verdad: `test/layout_responsive_test.dart` cubre las cinco pantallas
+en tres tamaños, **pero ningún diálogo**. Si una medida fija va a romper algo, va a
+ser ahí y nadie se va a enterar.
 
 ---
 
@@ -139,7 +166,25 @@ se aplica por `QPalette` y `QSS`, que es justo lo que `core/theme.py` ya hace.
 - **¿Nombre?** Ahora todo se llama "bento", que es el nombre del *patrón*, no del
   sistema. Y el patrón **no aplica** a una app de dibujo como DurdrawGUI, así que
   el nombre del sistema no puede ser ese.
-- **¿Alcance?** Solo tokens y reglas, o también componentes pintados.
+- **¿Cómo se distribuye?** Carpeta local, git, o publicado.
+
+### Los widgets base entran, y el ejemplo ya está escrito
+
+**Decidido:** la librería no se queda en tokens y un ayudante. Dejar los widgets
+base hechos es parte de no empezar de cero.
+
+Y el ejemplo de uso ya existe: `test_driver/sandbox.dart`, el banco de pruebas de
+estilo — 1 288 líneas donde cada color del sistema se edita en vivo, se ve el
+relieve con distintas intensidades sobre elementos de varios tamaños, y la
+configuración resultante se **exporta a un archivo** para que quede como
+especificación exacta en vez de interpretada de una captura.
+
+Sirve para dos cosas a la vez, que es lo que lo hace buen ejemplo:
+
+- **Validar la librería.** Si el banco se puede escribir usando solo la librería,
+  la librería está completa. Si hay que salirse de ella, falta algo.
+- **Enseñarla.** Quien la use tiene una app pequeña y funcional que toca todos los
+  tokens, en vez de una lista de nombres de constantes.
 
 ### Lo que hay que cuidar
 
