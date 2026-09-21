@@ -127,3 +127,71 @@ datos reales, y una refactorización estética no justifica ese riesgo.
 Solo anotado, sin decidir: "si llega a dar más ventajas que desventajas". El caso
 que lo motivó es que la WiFi de la soda no siempre es estable, y que alguno de los
 aparatos podría ser el punto de acceso.
+
+---
+
+## 4. Costeo de recetas: módulo dentro, no app aparte ni tiketing genérico
+
+Existe una hoja de cálculo de costos y precios en `AppCreator/Tablas/`
+(`CalculoCostoRecetas.ods`, con siete notas en `docs/CalculoCostoRecetas/`,
+incluido `06-modelo-para-app.md` con entidades y fórmulas ya listas para
+código). El dueño quiere ese concepto en una app, y hay dos caminos.
+
+### Lo que ya estaba decidido
+
+La [decisión 0004](decisiones/0004-alcance-base-vs-futuro.md) previó el
+inventario de insumos como feature próxima y pidió que Producto y Venta no lo
+complicaran. Integrar fue el plan desde el diseño.
+
+### Por qué integrar gana
+
+El dato más sensible del modelo es `UnidadesEstimadasMes`, una estimación a
+mano que hay que revisar cada mes. VulpTiketing tiene **las ventas reales por
+producto y mes**: con ellas debajo, el margen real se calcula contra lo que de
+verdad se vendió y se cobró. Una app aparte solo llega ahí con un puente de
+importación que alguien tiene que mantener y acordarse de correr.
+
+Además: catálogo único (en dos apps diverge a la primera semana), mix real
+efectivo/SINPE en vez de una comisión única, y respaldo/sync/roles/tema ya
+pagados.
+
+### Lo que cuesta
+
+- Es un update sobre datos de producción: cada tabla es una migración, y si
+  los costos se sincronizan hay que subir `esquemaSync` con todos los aparatos
+  a la vez.
+- Cuatro pantallas nuevas (insumos, recetas, costos fijos, resultado) más
+  configuración, solo para el Gerente.
+- 26 columnas por producto no caben en un teléfono: tarjetas bento, no tabla.
+  Esto lo paga cualquiera de los dos caminos.
+
+### La trampa: "hacer tiketing genérico"
+
+Añadir el módulo y generalizar la app son dos proyectos distintos. El modelo
+de costos ya es genérico. Generalizar VulpTiketing significaría desmontar lo
+que lo hace bueno —colones enteros, dos turnos con un corte, la casilla SINPE,
+efectivo como normal, iconos de la carta— y hoy no hay un segundo cliente que
+lo pida. **No se generaliza.**
+
+### Planteo
+
+1. Cálculo como paquete Dart puro (`costeo/`, sin Flutter):
+   `calcularCatalogo(config, costosFijos, insumos, productos, recetas)`.
+   Determinista, con la hoja como oráculo de las pruebas. Si algún día
+   conviene la app aparte, ese paquete se levanta entero.
+2. Tablas propias sin tocar `producto`: `insumo`, `linea_receta`,
+   `costo_fijo`, `config_costeo`, y `producto_costeo` 1:1 con lo que la hoja
+   añade (unidades por lote, minutos, margen, ajuste).
+3. Solo Gerente, un bloque del dashboard.
+4. Volumen = ventas reales del mes elegido; la estimación manual queda de
+   reserva para productos sin historial.
+5. "Aplicar precio" explícito y por producto. Nunca automático ni en bloque:
+   cambiar el volumen de uno mueve el precio de todos.
+
+### Por decidir antes de empezar
+
+- **¿Los costos se sincronizan?** Sí ⇒ `esquemaSync` 5 y todos los aparatos a
+  la vez. No ⇒ solo `.tiketback` y se editan en un aparato. Recomendado: sí.
+- Qué mes usa como volumen por defecto (el anterior completo, o un promedio).
+- Si las sub-recetas (una masa base en cinco productos) entran en la primera
+  versión o después. Requieren detectar ciclos.
