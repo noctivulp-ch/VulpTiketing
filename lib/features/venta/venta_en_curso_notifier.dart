@@ -55,11 +55,14 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
     return const VentaEnCurso();
   }
 
+  /// [variante] es el nombre de la elegida cuando el producto tiene; quien
+  /// llama ya resolvió cuál y con qué precio. Acá no se mira el catálogo.
   void agregarLineaDeCatalogo({
     required String productoId,
     required double precioAplicado,
     int cantidad = 1,
     String? nota,
+    String? variante,
   }) {
     _agregarLinea(
       LineaVenta(
@@ -69,6 +72,7 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
         precioAplicado: precioAplicado,
         cantidad: cantidad,
         nota: nota,
+        variante: variante,
         updatedAt: DateTime.now(),
       ),
     );
@@ -115,6 +119,7 @@ class VentaEnCursoNotifier extends Notifier<VentaEnCurso> {
               precioAplicado: precioAplicado ?? l.precioAplicado,
               cantidad: cantidad ?? l.cantidad,
               nota: nota ?? l.nota,
+              variante: l.variante,
               updatedAt: DateTime.now(),
             )
           else

@@ -13,6 +13,14 @@ Feature: Fast Sale Registration
     And allow the user to add an optional text note (Detalle) to the venta as a whole
     And save the venta locally with its date and time, with "estado" set to "activa"
 
+  Scenario: Selling a Producto that has variants
+    Given a "Producto" with "Variantes" is added to a "Venta"
+    Then the system must ask which variant, and must not add the line until one is chosen
+    And in Venta Rápida the "Completado" button stays disabled until a variant is chosen
+    And the line takes the variant's price as its applied price, still editable
+    And the line records the variant's NAME as sold that day, so renaming the variant later never changes past sales ([0039])
+    And a "Producto" without variants is added in one tap, exactly as before
+
   Scenario: Adding a free-form line without a catalog Producto
     Given the user is logged in (Any role)
     And the user is building a "Venta"

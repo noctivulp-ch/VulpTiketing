@@ -15,6 +15,7 @@ import '../categoria_notifier.dart';
 import '../producto_model.dart';
 import '../producto_notifier.dart';
 import '../producto_query_provider.dart';
+import '../variante_model.dart';
 import 'banco_imagenes_dialog.dart';
 import 'imagen_del_banco_vista.dart';
 
@@ -52,6 +53,9 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
   /// La referencia elegida, tal como irá a `producto.imagen`.
   String? _imagen;
 
+  /// Las variantes en edición, cada una con sus dos campos (0039).
+  final List<_VarianteEnEdicion> _variantes = [];
+
   bool get _esEdicion => widget.producto != null;
 
   @override
@@ -63,7 +67,32 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
     );
     _categoriaId = widget.producto?.categoriaId;
     _imagen = widget.producto?.imagen;
+    for (final v in widget.producto?.variantes ?? const <Variante>[]) {
+      _variantes.add(_VarianteEnEdicion.de(v));
+    }
   }
+
+  void _agregarVariante() {
+    setState(() => _variantes.add(_VarianteEnEdicion.nueva()));
+  }
+
+  void _quitarVariante(_VarianteEnEdicion v) {
+    setState(() {
+      _variantes.remove(v);
+      v.dispose();
+    });
+  }
+
+  /// Las variantes tal como van a guardarse. Se llama después de validar, así
+  /// que los precios ya parsean.
+  List<Variante> _variantesParaGuardar() => [
+    for (final v in _variantes)
+      Variante(
+        id: v.id,
+        nombre: v.nombre.text.trim(),
+        precio: double.parse(v.precio.text),
+      ),
+  ];
 
   Future<void> _elegirImagen() async {
     final elegida = await elegirDelBanco(context);
@@ -77,6 +106,9 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
   void dispose() {
     _nombreController.dispose();
     _precioController.dispose();
+    for (final v in _variantes) {
+      v.dispose();
+    }
     super.dispose();
   }
 
@@ -186,6 +218,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
           imagen: _imagen,
           categoriaId: _categoriaId,
           precioBase: precio,
+          variantes: _variantesParaGuardar(),
           updatedAt: ahora,
           // Preserva deletedAt tal cual estaba — editar un producto NO debe
           // reactivar uno descontinuado por accidente (no existe una acción
@@ -202,6 +235,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
           imagen: _imagen,
           categoriaId: _categoriaId,
           precioBase: precio,
+          variantes: _variantesParaGuardar(),
           updatedAt: ahora,
         ),
       );
@@ -317,6 +351,18 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
               onReintentar: () => ref.invalidate(categoriaNotifierProvider),
             ),
           ),
+          const SizedBox(height: BentoSpacing.unidad),
+          _EditorDeVariantes(
+            variantes: _variantes,
+            ocupado: _guardando,
+            onAgregar: _agregarVariante,
+            onQuitar: _quitarVariante,
+            // Se valida contra las demás: dos variantes con el mismo nombre
+            // se venderían como la misma, y el ranking las juntaría.
+            nombreRepetido: (v) => _variantes.any(
+              (otra) => otra != v && otra.nombre.text.trim().toLowerCase() == v.nombre.text.trim().toLowerCase(),
+            ),
+          ),
         ],
       ),
     );
@@ -414,6 +460,113 @@ class _ControlDeImagen extends StatelessWidget {
               icon: const Icon(Icons.image_outlined),
               label: Text(imagen == null ? 'Elegir imagen' : 'Cambiar imagen'),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+/// Una variante mientras se edita: sus dos campos y el id que conserva.
+///
+/// El id se mantiene al editar para que el costeo, que apunta a la variante
+/// por id, no pierda la receta cuando se corrige el nombre (0039).
+class _VarianteEnEdicion {
+  _VarianteEnEdicion._(this.id, String nombre, String precio)
+    : nombre = TextEditingController(text: nombre),
+      precio = TextEditingController(text: precio);
+
+  factory _VarianteEnEdicion.de(Variante v) =>
+      _VarianteEnEdicion._(v.id, v.nombre, montoParaEditar(v.precio));
+
+  factory _VarianteEnEdicion.nueva() => _VarianteEnEdicion._(_uuid.v4(), '', '');
+
+  final String id;
+  final TextEditingController nombre;
+  final TextEditingController precio;
+
+  void dispose() {
+    nombre.dispose();
+    precio.dispose();
+  }
+}
+
+/// La lista de variantes del formulario: una fila por variante con nombre,
+/// precio y quitar, y un botón para sumar otra.
+///
+/// Sin cabecera ni explicación cuando no hay ninguna: la mayoría de los
+/// productos no tiene, y un bloque vacío con título en cada formulario sería
+/// ruido en el caso normal. El botón solo ya dice qué es.
+class _EditorDeVariantes extends StatelessWidget {
+  const _EditorDeVariantes({
+    required this.variantes,
+    required this.ocupado,
+    required this.onAgregar,
+    required this.onQuitar,
+    required this.nombreRepetido,
+  });
+
+  final List<_VarianteEnEdicion> variantes;
+  final bool ocupado;
+  final VoidCallback onAgregar;
+  final ValueChanged<_VarianteEnEdicion> onQuitar;
+  final bool Function(_VarianteEnEdicion) nombreRepetido;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final v in variantes) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: TextFormField(
+                  controller: v.nombre,
+                  decoration: const InputDecoration(labelText: 'Variante'),
+                  validator: (texto) {
+                    if (texto == null || texto.trim().isEmpty) return 'Requerido';
+                    if (nombreRepetido(v)) return 'Repetida';
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: BentoSpacing.unidad),
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  controller: v.precio,
+                  decoration: const InputDecoration(labelText: 'Precio (₡)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (texto) {
+                    if (texto == null || texto.trim().isEmpty) return 'Requerido';
+                    if (double.tryParse(texto) == null) return 'Inválido';
+                    return null;
+                  },
+                ),
+              ),
+              // Alineado con los campos, que traen su etiqueta flotante encima.
+              Padding(
+                padding: const EdgeInsets.only(top: BentoSpacing.unidad),
+                child: IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Quitar variante',
+                  onPressed: ocupado ? null : () => onQuitar(v),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: BentoSpacing.unidad),
+        ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: ocupado ? null : onAgregar,
+            icon: const Icon(Icons.add),
+            label: Text(variantes.isEmpty ? 'Agregar variante' : 'Otra variante'),
           ),
         ),
       ],

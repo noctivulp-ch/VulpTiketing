@@ -43,7 +43,12 @@ const versionProtocoloSync = 1;
 /// versión lo deja claro en la pantalla en vez de dejar rondas fallando en
 /// silencio — pero implica que **todos los aparatos hay que actualizarlos**, no
 /// se puede dejar uno atrás.
-const esquemaSync = 4;
+///
+/// Sube a 5 con las variantes (0039): `producto.variantes` y
+/// `linea_venta.variante`. El upsert inserta la fila remota entera, así que un
+/// aparato viejo que reciba un producto con la columna nueva falla por columna
+/// desconocida. Mismo trato que la 4.
+const esquemaSync = 5;
 
 /// Servidor HTTP embebido para sync entre dispositivos (decisión 0022).
 /// Expone `GET /sync/exportar` con el contenido completo de las tablas

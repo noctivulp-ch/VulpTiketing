@@ -25,6 +25,16 @@ Feature: Inventory CRUD Operations
     Then the user can only Read and Update existing "Productos"
     And the Create and Discontinue options must be disabled or hidden
 
+  Scenario: A Producto can be sold in variants at different prices
+    Given the user is logged in as "Gerente" or "Registradora"
+    When the user edits a "Producto" and adds one or more "Variantes", each with a name and a price
+    Then the "Producto" keeps its base price, and its variants are stored inside its own record, not as separate "Productos" ([0039])
+    And no two variants of the same "Producto" may share a name
+    And the sale screens show the lowest variant price as "desde"
+    # Sizes, cuts, with or without sides, flavours: one mechanism. Before this
+    # the menu had "Pollo frito (cadera y muslo)" and "Pollo frito (pechuga y
+    # ala)" as two Productos, and the ranking split one dish in two rows.
+
   Scenario: Discontinuing a Producto is a soft-delete
     Given the user is logged in as "Gerente"
     When the user discontinues a "Producto"

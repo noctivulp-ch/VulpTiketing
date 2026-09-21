@@ -16,6 +16,7 @@ Feature: Financial Reports
     Then the user can query sales by Morning/Afternoon/Night for any specific day
     And the user can generate Weekly, Monthly, and Annual reports
     And the reports must show total amounts and sort items by most/least sold
+    And a "Producto" sold in variants ranks per variant, named "Producto · Variante" ([0039])
 
   Scenario: Registradora reporting capabilities
     Given the user is logged in as "Registradora"

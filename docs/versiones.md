@@ -32,6 +32,22 @@ existan o no"*.
 
 ## Versiones
 
+### 1.1.0 (build 2) — **en desarrollo, no instalada**
+
+Sube el esquema de datos a **v6** y el de sincronización a **5**: hay que
+actualizar todos los aparatos a la vez, y como todavía ninguno lleva ventas de
+verdad, este es el momento barato de hacerlo.
+
+| Función | Detalle |
+|---|---|
+| Variantes de producto | Tamaños, cortes, con o sin papas: nombre y precio dentro del producto ([0039](decisiones/0039-variantes-de-producto-como-json.md)). Selector al vender; ranking por variante |
+| Costeo de recetas | *pendiente en esta misma versión* — ver `ideas-abiertas.md`, idea 4 |
+
+Migraciones: `producto.variantes` (v5 → v6, `ALTER TABLE`) y
+`linea_venta.variante` en cada libro al adjuntarlo. Un `.tiketdata` de la
+1.0.0 se importa sin cambios (probado con el catálogo real de la carta,
+`test/fixtures/catalogo-1.0.0.tiketdata`).
+
 ### 1.0.0 (build 1) — 2026-08-10 · **publicada**
 
 Primera instalación en producción. Aparato: teléfono de la soda

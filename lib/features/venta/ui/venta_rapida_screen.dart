@@ -17,6 +17,7 @@ import '../../producto/producto_query_provider.dart';
 import '../../producto/ui/imagen_del_banco_vista.dart';
 import '../../producto/ui/lista_productos_agrupada.dart';
 import 'cobro_rapido_overlay.dart';
+import 'elegir_variante.dart';
 
 /// Ventana 1 — ver docs/pantallas/flujo-descripcion.md#ventana-1--venta-rápida
 /// y docs/pantallas/prototipos-ascii.md. Crea una Venta de una sola línea
@@ -266,10 +267,16 @@ class _TarjetaProducto extends StatelessWidget {
           // invertia la jerarquia: el tallado se comia justo lo que tenia que
           // destacar. `marcado` queda reservado para los numeros de 40px de
           // Reportes, donde el tamano lo sostiene solo.
-          BentoTextoTallado(
-            '₡${producto.precioBase.toStringAsFixed(0)}',
-            sobre: laca.pozo,
-            estilo: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          // Con variantes dice "desde" y el menor (0039). `FittedBox` porque
+          // "desde ₡2300" es más largo que "₡2300" y la tarjeta no crece.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: BentoTextoTallado(
+              precioParaMostrar(producto),
+              sobre: laca.pozo,
+              estilo: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),

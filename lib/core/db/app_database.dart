@@ -113,6 +113,11 @@ class AppDatabase {
         // migrar, y una base sin cortes se comporta como el dia en que todavia
         // no se ha anotado la apertura.
         if (viejo < 5) await crearCorteCaja(db);
+
+        // v5 -> v6: las variantes de un producto, como JSON en su fila
+        // (decision 0039). Nullable y sin DEFAULT como el icono: NULL es "sin
+        // variantes", que es lo que eran todos hasta ahora.
+        if (viejo < 6) await agregarVariantesDeProducto(db);
       },
     );
 
@@ -127,7 +132,15 @@ class AppDatabase {
     return db;
   }
 
-  static const version = 5;
+  static const version = 6;
+
+  /// v5 -> v6. Publica por lo mismo que las anteriores: que la prueba de
+  /// migracion la aplique sobre una base vieja de verdad.
+  static Future<void> agregarVariantesDeProducto(DatabaseExecutor db) async {
+    final columnas = await db.rawQuery('PRAGMA table_info(producto)');
+    if (columnas.any((c) => c['name'] == 'variantes')) return;
+    await db.execute('ALTER TABLE producto ADD COLUMN variantes TEXT');
+  }
 
   /// v4 -> v5. Publica por el mismo motivo que la anterior: que las pruebas
   /// suban una base vieja de verdad.
@@ -330,6 +343,7 @@ class AppDatabase {
       imagen        TEXT,
       categoria_id  TEXT REFERENCES categoria(id),
       precio_base   REAL NOT NULL,
+      variantes     TEXT,
       updated_at    TEXT NOT NULL,
       deleted_at    TEXT
     );

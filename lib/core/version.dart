@@ -14,13 +14,13 @@ library;
 const nombreApp = 'VulpTiketing';
 
 /// La versión semántica, sin el número de compilación.
-const versionApp = '1.0.0';
+const versionApp = '1.1.0';
 
 /// El número de compilación: lo que sube en cada instalación entregada.
 ///
 /// Sirve para saber qué build corre un teléfono cuando algo no cuadra. Dos
 /// aparatos con la misma versión y distinto build no tienen el mismo código.
-const compilacionApp = 1;
+const compilacionApp = 2;
 
 /// Quien la hizo, con el nombre corto que usa como desarrollador.
 const autorApp = 'NoctiVulp';

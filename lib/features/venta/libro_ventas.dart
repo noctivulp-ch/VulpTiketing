@@ -96,6 +96,7 @@ const esquemaLibro = [
       precio_aplicado  REAL NOT NULL,
       cantidad         INTEGER NOT NULL DEFAULT 1,
       nota             TEXT,
+      variante         TEXT,
       updated_at       TEXT NOT NULL,
       CHECK (
         (producto_id IS NOT NULL AND nombre_libre IS NULL) OR
@@ -109,7 +110,8 @@ const esquemaLibro = [
   'CREATE INDEX IF NOT EXISTS idx_linea_venta_producto ON linea_venta(producto_id);',
 ];
 
-/// Columnas que se agregaron a `venta` después de que hubiera libros escritos.
+/// Columnas que se agregaron a las tablas del libro después de que hubiera
+/// libros escritos, por tabla.
 ///
 /// Un libro es un archivo suelto que puede venir de otro aparato o de un backup
 /// viejo, así que su esquema se pone al día **al adjuntarlo**, no en la
@@ -119,9 +121,15 @@ const esquemaLibro = [
 /// `ADD COLUMN` con `DEFAULT` no reescribe las filas existentes en SQLite —
 /// solo toca la cabecera de la tabla—, así que aplicarlo sobre un libro con
 /// 100.000 ventas es instantáneo.
-const _columnasNuevasDeVenta = {
-  'metodo_pago': "ALTER TABLE venta ADD COLUMN metodo_pago TEXT NOT NULL DEFAULT 'efectivo'",
-  'referencia_pago': 'ALTER TABLE venta ADD COLUMN referencia_pago TEXT',
+const _columnasNuevasDelLibro = {
+  'venta': {
+    'metodo_pago': "ALTER TABLE venta ADD COLUMN metodo_pago TEXT NOT NULL DEFAULT 'efectivo'",
+    'referencia_pago': 'ALTER TABLE venta ADD COLUMN referencia_pago TEXT',
+  },
+  // Qué variante se vendió, por su NOMBRE: foto del día, como el precio
+  // (decisión 0039). NULL en toda línea anterior a las variantes, y en toda
+  // línea de un producto que no las tiene.
+  'linea_venta': {'variante': 'ALTER TABLE linea_venta ADD COLUMN variante TEXT'},
 };
 
 /// Pone al día el esquema de un libro ya escrito.
@@ -131,14 +139,18 @@ const _columnasNuevasDeVenta = {
 /// esto sería más frágil que preguntar. `PRAGMA table_info` cuesta lo mismo que
 /// un `SELECT` de una fila.
 Future<void> ponerAlDiaEsquemaDeLibro(DatabaseExecutor db, {String? alias}) async {
-  final tabla = alias == null ? 'venta' : '$alias.venta';
-  final columnas = await db.rawQuery('PRAGMA ${alias == null ? '' : '$alias.'}table_info(venta)');
-  if (columnas.isEmpty) return; // El libro todavía no tiene tablas.
+  final prefijo = alias == null ? '' : '$alias.';
+  for (final tabla in _columnasNuevasDelLibro.entries) {
+    final columnas = await db.rawQuery('PRAGMA ${prefijo}table_info(${tabla.key})');
+    if (columnas.isEmpty) continue; // El libro todavía no tiene esta tabla.
 
-  final presentes = {for (final c in columnas) c['name'] as String};
-  for (final entrada in _columnasNuevasDeVenta.entries) {
-    if (presentes.contains(entrada.key)) continue;
-    await db.execute(entrada.value.replaceFirst('venta', tabla));
+    final presentes = {for (final c in columnas) c['name'] as String};
+    for (final columna in tabla.value.entries) {
+      if (presentes.contains(columna.key)) continue;
+      // El `ALTER` está escrito sin calificar; se califica acá para que el
+      // mismo texto sirva para el libro adjunto y para uno abierto suelto.
+      await db.execute(columna.value.replaceFirst('TABLE ${tabla.key}', 'TABLE $prefijo${tabla.key}'));
+    }
   }
 }
 

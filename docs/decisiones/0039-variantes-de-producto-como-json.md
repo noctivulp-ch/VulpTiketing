@@ -1,6 +1,6 @@
 # 0039 — Variantes de un producto como JSON en `producto`, y su nombre en la línea de venta
 
-**Estado:** Propuesta
+**Estado:** Aceptada
 **Fecha:** 2026-09-21
 
 ## Contexto

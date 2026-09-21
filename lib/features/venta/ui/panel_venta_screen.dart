@@ -22,6 +22,7 @@ import '../../producto/ui/imagen_del_banco_vista.dart';
 import '../../producto/ui/lista_productos_agrupada.dart';
 import '../../producto/ui/producto_form_dialog.dart';
 import 'casilla_sinpe.dart';
+import 'elegir_variante.dart';
 import '../linea_venta_model.dart';
 import '../venta_model.dart';
 import '../venta_en_curso_notifier.dart';
@@ -385,7 +386,10 @@ class _ListaCarrito extends ConsumerWidget {
         final producto = _buscarProducto(linea.productoId, productos);
         final nombre = linea.nombreLibre ?? producto?.nombre ?? _sinProducto(linea.productoId);
         return _FilaLineaVenta(
-          nombre: nombre,
+          // Con la variante detrás: "Pollo frito · Pechuga y ala". Es lo que
+          // se cobró, y sin ella dos líneas del mismo producto a distinto
+          // precio se ven como un error.
+          nombre: linea.describir(nombre),
           imagen: producto?.imagen,
           iconoDeSuCategoria: iconos[producto?.categoriaId],
           lineaLibre: linea.nombreLibre != null,
@@ -775,16 +779,29 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
   final Set<String> _seleccionados = {};
   bool get _modoSeleccion => _seleccionados.isNotEmpty;
 
-  void _agregarUno(Producto producto) {
+  /// Con variantes pregunta cuál antes de agregar (0039); cancelar la pregunta
+  /// no agrega nada. Sin variantes, un toque como siempre.
+  Future<void> _agregarUno(Producto producto) async {
+    var precio = producto.precioBase;
+    String? variante;
+    if (producto.tieneVariantes) {
+      final elegida = await elegirVariante(context, producto);
+      if (elegida == null || !mounted) return;
+      precio = elegida.precio;
+      variante = elegida.nombre;
+    }
     ref
         .read(ventaEnCursoNotifierProvider.notifier)
-        .agregarLineaDeCatalogo(productoId: producto.id, precioAplicado: producto.precioBase);
+        .agregarLineaDeCatalogo(productoId: producto.id, precioAplicado: precio, variante: variante);
   }
 
-  void _agregarSeleccionados(List<Producto> productos) {
-    for (final id in _seleccionados) {
+  /// Uno por uno y en orden: los que tienen variantes preguntan, y dos
+  /// preguntas a la vez no se pueden contestar.
+  Future<void> _agregarSeleccionados(List<Producto> productos) async {
+    for (final id in _seleccionados.toList()) {
       final producto = productos.where((p) => p.id == id).firstOrNull;
-      if (producto != null) _agregarUno(producto);
+      if (producto != null) await _agregarUno(producto);
+      if (!mounted) return;
     }
     setState(() => _seleccionados.clear());
   }
@@ -875,7 +892,7 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
                 return ListTile(
                   leading: seleccionado ? const Icon(Icons.check_circle) : null,
                   title: Text(producto.nombre),
-                  trailing: Text('₡${producto.precioBase.toStringAsFixed(2)}'),
+                  trailing: Text(precioParaMostrar(producto, decimales: 2)),
                   selected: seleccionado,
                   onTap: () {
                     if (_modoSeleccion) {

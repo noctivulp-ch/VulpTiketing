@@ -8,7 +8,7 @@ La función principal de la app **no es un punto de venta con manejo de caja** �
 
 ## Flujo
 
-1. Existe un **inventario de Productos** vendidos en el local: nombre, imagen (opcional), precio base.
+1. Existe un **inventario de Productos** vendidos en el local: nombre, imagen (opcional), precio base, y opcionalmente **variantes** —tamaños, cortes, con o sin acompañamiento— cada una con su nombre y su precio ([decisión 0039](../decisiones/0039-variantes-de-producto-como-json.md)). Al vender un producto con variantes se pregunta cuál antes de agregar la línea; en Venta Rápida el botón de cobrar queda apagado hasta elegirla. La línea guarda el nombre de la variante y su precio como foto del día, y las tarjetas muestran el menor precio con "desde".
    - Gerente: CRUD completo + descontinuar + **purgar** (borrado físico real, solo si nunca se vendió y todos los dispositivos están sincronizados — ver [decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md)).
    - Registradora: solo lectura y edición de campos existentes (no crea, descontinúa ni purga productos) — ver [Operations.feature](../../features/Operations.feature).
 2. Al registrar una venta, el usuario **agrega productos a cobrar** (una o varias líneas), cada línea con:

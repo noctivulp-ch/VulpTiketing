@@ -34,10 +34,20 @@ CREATE TABLE producto (
   imagen        TEXT,                   -- ruta/URI local a la imagen, opcional
   categoria_id  TEXT REFERENCES categoria(id),  -- nullable: un producto puede no tener categoría
   precio_base   REAL NOT NULL,          -- colones (₡) — REAL en vez de centavos, ver decisión 0012
+  variantes     TEXT,                   -- JSON: [{id, nombre, precio}, …]; NULL = sin variantes (0039)
   updated_at    TEXT NOT NULL,
   deleted_at    TEXT                    -- NULL = activo. Set = descontinuado (0005)
 );
 ```
+
+**`producto.variantes`** son las formas de vender el mismo producto a otro
+precio —tamaños, cortes, con o sin acompañamiento— como JSON dentro de la
+fila, no como tabla: una variante se crea, edita y borra en el formulario del
+producto y muere con él, así que no es una entidad ni tiene Notifier propio.
+`precio_base` no cambia de significado. Cada variante lleva un `id` estable
+para que el costeo pueda apuntarle aunque se renombre. `NULL` y `[]` son lo
+mismo y se guarda siempre `NULL`. Ver
+[decisión 0039](../decisiones/0039-variantes-de-producto-como-json.md).
 
 **Ciclo de vida completo:** crear, leer, actualizar, **descontinuar** (soft-delete, arriba), y **purgar** — borrado físico real, solo Gerente, solo si ya está descontinuado, tiene cero `linea_venta` que lo referencien, y todos los dispositivos conocidos están sincronizados. Ver [decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md).
 
@@ -94,6 +104,7 @@ CREATE TABLE linea_venta (
   precio_aplicado  REAL NOT NULL,       -- "foto" del precio al momento de vender, nunca vacío
   cantidad         INTEGER NOT NULL DEFAULT 1,
   nota             TEXT,                -- descriptivo opcional, típicamente para justificar precio_aplicado distinto al base; NULL si no se escribió
+  variante         TEXT,                -- NOMBRE de la variante vendida, foto del día; NULL si el producto no tenía (0039)
   updated_at       TEXT NOT NULL,
   CHECK (
     (producto_id IS NOT NULL AND nombre_libre IS NULL) OR
@@ -106,6 +117,12 @@ CREATE TABLE linea_venta (
 **Sobre `nombre_libre`:** permite agregar una línea de venta sin que exista un Producto de catálogo — casos custom de un solo uso (ej. un descuento puntual para un cliente específico) que nunca se van a repetir, sin ensuciar el inventario. Ver [decisión 0016](../decisiones/0016-linea-libre-en-venta.md). Una línea libre nunca bloquea una purga de Producto (0015) porque, por definición, no referencia ninguno.
 
 **Sobre `precio_aplicado`:** nunca queda vacío. Al agregar un producto a una venta, el campo se llena automáticamente con el `precio_base` del producto *en ese momento* (una copia, no una referencia viva; el placeholder de "precio base" en el input es puro comportamiento de UI, no requiere nada adicional en la base), y el usuario puede sobreescribirlo antes de guardar. Es intencional que sea una copia y no un lookup a `producto.precio_base`: si el precio base cambia después, las ventas ya registradas deben conservar el precio real que se cobró ese día — de lo contrario los reportes históricos cambiarían solos cada vez que se actualiza el catálogo.
+
+**Sobre `variante`:** el nombre de la variante vendida, y no su `id`, por la
+misma razón que `precio_aplicado` es una copia: si "Grande" pasa a llamarse
+"Mediano" el año que viene, el libro de hoy sigue diciendo lo que se vendió
+hoy. Los reportes agrupan por `(producto_id, variante)`. Ver
+[decisión 0039](../decisiones/0039-variantes-de-producto-como-json.md).
 
 **Sobre `nota`:** descriptivo opcional por línea, pensado principalmente para justificar un `precio_aplicado` distinto al `precio_base` (ej. "promoción", "cliente frecuente", "producto en mal estado"), aunque nada impide usarlo para cualquier otra anotación puntual de esa línea. Es distinta de `venta.detalle` (nota general de toda la venta). Va como columna `TEXT` simple en la propia fila — no como JSON — porque cada línea ya es su propia fila; un JSON en `venta` keyed por nombre de producto colisionaría si el mismo producto aparece dos veces en la misma venta con notas distintas (ver [decisión 0013](../decisiones/0013-nota-por-linea-no-json-en-venta.md)).
 

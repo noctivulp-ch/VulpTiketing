@@ -10,8 +10,10 @@ import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/monto_editable.dart';
 import '../../producto/producto_model.dart';
+import '../../producto/variante_model.dart';
 import '../venta_en_curso_notifier.dart';
 import 'casilla_sinpe.dart';
+import 'elegir_variante.dart';
 
 /// Overlay de cobro de un solo producto (0018 cantidad default 1, precio
 /// editable con el base como punto de partida, cambio con debounce 400 ms
@@ -38,10 +40,28 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
   double? _cambio;
   Timer? _debounce;
 
+  /// La variante marcada, si el producto tiene. Sin ella no se puede cobrar.
+  Variante? _variante;
+
+  bool get _faltaVariante => widget.producto.tieneVariantes && _variante == null;
+
   @override
   void initState() {
     super.initState();
-    _precioController = TextEditingController(text: montoParaEditar(widget.producto.precioBase));
+    // Con variantes el precio queda VACÍO hasta elegir una: el precio base no
+    // es el de ninguna de ellas, y mostrarlo invitaría a cobrarlo.
+    _precioController = TextEditingController(
+      text: widget.producto.tieneVariantes ? '' : montoParaEditar(widget.producto.precioBase),
+    );
+  }
+
+  void _elegirVariante(Variante v) {
+    setState(() {
+      _variante = v;
+      _precioController.text = precioEditableDe(v);
+    });
+    // El cambio depende del precio, y el precio acaba de cambiar.
+    _onRecibidoChanged(_recibidoController.text);
   }
 
   @override
@@ -64,7 +84,9 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
   }
 
   Future<void> _completar() async {
-    final precio = double.tryParse(_precioController.text) ?? widget.producto.precioBase;
+    if (_faltaVariante) return;
+    final precio =
+        double.tryParse(_precioController.text) ?? _variante?.precio ?? widget.producto.precioBase;
     // Antes de agregar la línea: `marcarSinpe` reemplaza el estado, y hacerlo
     // después de agregar dejaría el método puesto sobre un carrito ya cerrado.
     ref.read(ventaEnCursoNotifierProvider.notifier).marcarSinpe(activo: _sinpe);
@@ -74,6 +96,7 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
           productoId: widget.producto.id,
           precioAplicado: precio,
           cantidad: _cantidad,
+          variante: _variante?.nombre,
         );
     await ref.read(ventaEnCursoNotifierProvider.notifier).guardar();
     if (mounted) {
@@ -221,6 +244,19 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
       onCambio: (activo) => setState(() => _sinpe = activo),
     );
 
+    // Solo cuando hay variantes, y a todo el ancho justo debajo de qué se
+    // cobra: es la primera decisión del cobro, antes que cantidad y precio.
+    final selectorVariante = widget.producto.tieneVariantes
+        ? BentoPozo(
+            padding: const EdgeInsets.all(BentoSpacing.paddingCelda),
+            child: SelectorDeVariante(
+              variantes: widget.producto.variantes,
+              elegida: _variante,
+              onElegir: _elegirVariante,
+            ),
+          )
+        : null;
+
     // El cuadro de cobro, en el orden que pidió el dueño:
     //
     //     Recibí │ Precio
@@ -238,6 +274,7 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
     final celdas = acostado
         ? <BentoCelda>[
             BentoCelda.fija(2, hijo: hero),
+            if (selectorVariante != null) BentoCelda.fija(4, hijo: selectorVariante),
             BentoCelda.fija(2, hijo: recibido),
             BentoCelda.fija(2, hijo: precio),
             BentoCelda.fija(2, hijo: cantidad),
@@ -246,6 +283,7 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
           ]
         : <BentoCelda>[
             BentoCelda.fija(6, hijo: hero),
+            if (selectorVariante != null) BentoCelda.fija(6, hijo: selectorVariante),
             // Fila propia: dos objetivos táctiles de 48 dp más el número no
             // entran en media fila de 360 dp, y es además el control que más se
             // toca de todo el cobro.
@@ -260,7 +298,11 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
       onPressed: () => Navigator.of(context).pop(),
       child: const Text('Cancelar'),
     );
-    final completado = FilledButton(onPressed: _completar, child: const Text('Completado'));
+    // Apagado hasta elegir variante: cobrar sin saber cuál es cobrar mal.
+    final completado = FilledButton(
+      onPressed: _faltaVariante ? null : _completar,
+      child: const Text('Completado'),
+    );
 
     // Los botones quedan SIEMPRE fuera del scroll. Lo que el usuario rechazó no
     // era el scroll en sí, sino tener que desplazarse para llegar a

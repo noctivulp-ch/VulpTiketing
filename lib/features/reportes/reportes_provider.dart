@@ -168,7 +168,11 @@ const _sqlRangoActivo = "v.estado = 'activa' AND v.fecha_hora >= ? AND v.fecha_h
 /// `main.producto` calificado a propósito: las ventas viven en el libro
 /// adjunto (0025) y el catálogo en la base principal, así que sin calificar la
 /// consulta dependería de en qué base mire SQLite primero.
-const _sqlDescripcionLinea = 'COALESCE(p.nombre, lv.nombre_libre) AS descripcion';
+/// La variante va detrás del nombre con un punto medio, igual que
+/// `LineaVenta.describir`: "Pollo frito · Pechuga y ala". Se arma en SQL para
+/// no traer una columna más y pegarla en Dart en cada fila.
+const _sqlDescripcionLinea =
+    "COALESCE(p.nombre, lv.nombre_libre) || COALESCE(' · ' || lv.variante, '') AS descripcion";
 const _sqlJoinProducto = 'LEFT JOIN main.producto p ON p.id = lv.producto_id';
 
 Turno _turnoDeNombre(String nombre) => nombre == 'primero' ? Turno.primero : Turno.segundo;
@@ -225,15 +229,21 @@ final reportesProvider = FutureProvider.family<ReporteResultado, ReportesParamet
   //    propósito: el ranking existe para decisiones de catálogo, y una línea
   //    libre por definición no es un producto de catálogo (decisión 0016).
   //    Sí cuentan para el total de dinero, solo no para "qué producto vender".
+  //
+  //    Por producto Y variante (0039): "Pollo frito · Pechuga y ala" y
+  //    "Pollo frito · Cadera y muslo" son dos renglones, que es justo lo que
+  //    se quiere saber al decidir qué cocinar. La clave del grupo lleva la
+  //    variante para que las listas de más y menos vendidos no se excluyan
+  //    entre sí por producto entero.
   final rankingRows = await db.rawQuery('''
-    SELECT lv.producto_id AS id,
-           COALESCE(p.nombre, 'Producto eliminado') AS nombre,
+    SELECT lv.producto_id || COALESCE('#' || lv.variante, '') AS id,
+           COALESCE(p.nombre, 'Producto eliminado') || COALESCE(' · ' || lv.variante, '') AS nombre,
            SUM(lv.cantidad) AS cantidad
     FROM linea_venta lv
     JOIN venta v ON v.id = lv.venta_id
     LEFT JOIN producto p ON p.id = lv.producto_id
     WHERE $_sqlRangoActivo AND lv.producto_id IS NOT NULL
-    GROUP BY lv.producto_id
+    GROUP BY lv.producto_id, lv.variante
     ORDER BY cantidad DESC
   ''', args);
 
