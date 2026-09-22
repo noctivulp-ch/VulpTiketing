@@ -80,6 +80,10 @@ dependencies:
   shelf: ^1.4.2
   cryptography_flutter: ^2.3.4
   pdf: ^3.12.0
+
+  # El modelo de costos, puro y sin Flutter (decision 0040).
+  costeo:
+    path: packages/costeo
   image_picker: ^1.2.3
 
 dev_dependencies:

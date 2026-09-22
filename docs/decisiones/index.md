@@ -43,3 +43,4 @@ Volver a [../index](../index.md)
 | [0037](0037-corte-de-caja-y-jornada-en-dos-turnos.md) | Corte de caja, y la jornada en dos turnos | Aceptada |
 | [0038](0038-atajos-a-ajustes-y-abrir-archivos-propios.md) | Atajos a los ajustes de Android, abrir los archivos propios, y Acerca de | Aceptada |
 | [0039](0039-variantes-de-producto-como-json.md) | Variantes de un producto como JSON en `producto`, y su nombre en la línea de venta | Aceptada |
+| [0040](0040-costeo-de-recetas-como-modulo.md) | Costeo de recetas como módulo informativo, con "aplicar precio" opcional | Aceptada |
