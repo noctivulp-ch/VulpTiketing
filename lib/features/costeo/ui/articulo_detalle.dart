@@ -7,6 +7,7 @@ import '../../../core/ui/bento_aviso.dart';
 import '../../../core/ui/bento_dialogo.dart';
 import '../aplicar_precio.dart';
 import '../costeo_notifiers.dart';
+import '../config_costeo_model.dart';
 import '../costeo_provider.dart';
 import '../insumo_model.dart';
 import 'formato_costeo.dart';
@@ -66,7 +67,7 @@ class _ArticuloDetalle extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Cuentas(a: a, catalogo: catalogo),
+          _Cuentas(a: a, catalogo: catalogo, conFoodCost: costeo.registro.tipoNegocio == TipoNegocio.produccion),
           const SizedBox(height: BentoSpacing.gapCelda),
           _Receta(clave: clave, catalogo: catalogo, calculado: a),
           const SizedBox(height: BentoSpacing.gapCelda),
@@ -97,9 +98,10 @@ class _ArticuloDetalle extends ConsumerWidget {
 }
 
 class _Cuentas extends StatelessWidget {
-  const _Cuentas({required this.a, required this.catalogo});
+  const _Cuentas({required this.a, required this.catalogo, required this.conFoodCost});
   final c.ArticuloCosteado a;
   final ArticuloDelCatalogo catalogo;
+  final bool conFoodCost;
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +132,7 @@ class _Cuentas extends StatelessWidget {
         if (a.articulo.tasaImpuesto > 0)
           fila('IVA dentro del precio (${porcentaje(a.articulo.tasaImpuesto)})', colones(context, a.impuestoPrecioUnidad, decimales: 2)),
         fila('Margen real al precio de hoy', porcentaje(a.margenReal)),
-        if (a.foodCost != null)
+        if (a.foodCost != null && conFoodCost)
           fila('Food cost (insumos ÷ precio)', '${porcentaje(a.foodCost)}${a.foodCost! > 0.38 ? ' — alto' : ''}'),
         fila(
           a.articulo.volumenEsReal ? 'Vendidas en $diasDeVolumen días' : 'Volumen estimado',

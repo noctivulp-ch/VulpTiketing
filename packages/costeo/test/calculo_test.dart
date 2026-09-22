@@ -269,6 +269,18 @@ void main() {
     });
   });
 
+  test('con recetas opcionales (servicios) un artículo sin receta no avisa', () {
+    final r = calcularCatalogo(
+      config: const ConfigCosteo(recetasOpcionales: true),
+      costosFijos: const [],
+      insumos: const [],
+      articulos: const [Articulo(id: 'lic', nombre: 'Licencia', precioActual: 5000, unidadesMes: 20, volumenEsReal: true)],
+      recetas: const [],
+    );
+    expect(r.articulos.single.alertas, isNot(contains(Alerta.sinReceta)));
+    expect(r.articulos.single.costoInsumosUnidad, 0);
+  });
+
   group('impuestos', pruebasDeImpuestos);
   group('food cost, equilibrio en dinero y escenarios', pruebasDeIndicadores);
 

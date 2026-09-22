@@ -24,6 +24,7 @@ class ConfigCosteo {
     this.redondeoPrecio = 50,
     this.metodoReparto = MetodoReparto.unidad,
     this.impuestoSobreCompras = 0,
+    this.recetasOpcionales = false,
   });
 
   final int diasAbiertosMes;
@@ -53,6 +54,12 @@ class ConfigCosteo {
   /// régimen general, donde el impuesto va sobre el precio de cada artículo
   /// ([Articulo.tasaImpuesto]).
   final double impuestoSobreCompras;
+
+  /// Negocio de servicios o digital: un artículo sin receta es lo normal (una
+  /// licencia, una hora de consultoría), no un olvido. Con esto la alerta
+  /// "sin receta" no se emite. El costo grande de ese negocio —el desarrollo,
+  /// el equipo— se lleva como costo fijo amortizado.
+  final bool recetasOpcionales;
 
   /// Lo que queda del precio después de margen y comisión (sin impuesto sobre
   /// el precio, que es por artículo). Tiene que ser positivo.

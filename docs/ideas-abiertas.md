@@ -206,7 +206,7 @@ lo pida. **No se generaliza.**
 
 ---
 
-## 5. Versátil sin desprestigiar la base (2026-09-21)
+## 5. Versátil sin desprestigiar la base (2026-09-21) — puntos 1–6 hechos el mismo día
 
 El dueño quiere que la app sirva también para su negocio —apps open source
 vendidas por Patreon— y para un trabajo de desarrollo empresarial de la U
@@ -232,7 +232,7 @@ Orden acordado (que exista → mejorar → optimizar → pulir):
 4. **Food cost %**, equilibrio en colones, escenarios.
 5. **Elegir ventanas de venta** en Configuración: las dos, solo Venta Rápida,
    solo Panel.
-6. Perfil de negocio de servicios (sin receta sin alerta, amortización).
+6. Perfil de negocio de servicios (sin receta sin alerta, amortización). — **hecho** (v9)
 7. Importar ventas desde CSV (Patreon) — después, si vale la pena.
 8. **Medios de pago activables** (pedido del dueño, 2026-09-21): tarjeta y
    transferencia como opciones de cobro además de efectivo y SINPE,

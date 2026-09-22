@@ -90,6 +90,7 @@ c.ConfigCosteo configEfectiva(ConfigCosteoRegistro registro, double fraccionSinp
   redondeoPrecio: registro.config.redondeoPrecio,
   metodoReparto: registro.config.metodoReparto,
   impuestoSobreCompras: registro.impuestoSobreCompras,
+  recetasOpcionales: registro.tipoNegocio == TipoNegocio.servicios,
 );
 
 /// Un artículo del catálogo con lo que lo identifica en pantalla.

@@ -59,3 +59,8 @@ Feature: Recipe costing
     Then each item and the business show the food cost (inputs ÷ price), flagged as high above 38 %
     And the break-even is shown in units, per day, and in money (units × average price)
     And three scenarios show the month's profit if volume falls 20 %, stays, or rises 20 %, with fixed costs unchanged
+
+  Scenario: A services or digital business
+    When the Gerente sets the business type to "Servicios / digital" in the costing settings
+    Then an item without recipe raises no notice, and the food cost is not shown
+    And the fixed-cost form offers to amortize a total already paid (development hours × rate, equipment) over months

@@ -113,7 +113,19 @@ class _CostoFijoFormDialogState extends ConsumerState<_CostoFijoFormDialog> {
   late final _concepto = TextEditingController(text: widget.costo?.concepto ?? '');
   late final _monto = TextEditingController(text: widget.costo == null ? '' : numero(widget.costo!.montoMensual));
   late final _notas = TextEditingController(text: widget.costo?.notas ?? '');
+  // Amortizar: un total ya pagado (el desarrollo de una app, un horno)
+  // repartido en meses. No se guarda: es una calculadora que rellena el monto.
+  final _total = TextEditingController();
+  final _meses = TextEditingController(text: '12');
+  bool _amortizar = false;
   bool _ocupado = false;
+
+  void _calcularAmortizacion() {
+    final total = parsearNumero(_total.text);
+    final meses = int.tryParse(_meses.text.trim());
+    if (total == null || meses == null || meses <= 0) return;
+    setState(() => _monto.text = numero(total / meses));
+  }
 
   bool get _esEdicion => widget.costo != null;
 
@@ -122,6 +134,8 @@ class _CostoFijoFormDialogState extends ConsumerState<_CostoFijoFormDialog> {
     _concepto.dispose();
     _monto.dispose();
     _notas.dispose();
+    _total.dispose();
+    _meses.dispose();
     super.dispose();
   }
 
@@ -174,6 +188,40 @@ class _CostoFijoFormDialogState extends ConsumerState<_CostoFijoFormDialog> {
                 return (n == null || n < 0) ? 'Número inválido' : null;
               },
             ),
+            // Un total ya pagado repartido en meses: es como un negocio de
+            // servicios lleva el desarrollo, y como cualquiera lleva un horno.
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _amortizar,
+              onChanged: (v) => setState(() => _amortizar = v),
+              title: const Text('Calcular desde un total (amortizar)'),
+              subtitle: const Text('Horas × tarifa del desarrollo, o el precio de un equipo, entre los meses'),
+            ),
+            if (_amortizar)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: _total,
+                      decoration: InputDecoration(labelText: 'Total ${Moneda.de(context).entreParentesis}', isDense: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => _calcularAmortizacion(),
+                    ),
+                  ),
+                  const SizedBox(width: BentoSpacing.unidad),
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _meses,
+                      decoration: const InputDecoration(labelText: 'Meses', isDense: true),
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => _calcularAmortizacion(),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: BentoSpacing.unidad),
             TextFormField(controller: _notas, decoration: const InputDecoration(labelText: 'Notas'), maxLines: 2),
           ],

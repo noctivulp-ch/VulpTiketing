@@ -99,7 +99,9 @@ void main() {
     await tester.tap(find.text('Ajustes'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.widgetWithText(TextFormField, 'Margen objetivo (%)'), findsOneWidget);
-    // La lista es perezosa: lo de abajo no existe hasta desplazar.
+    expect(find.text('Servicios / digital'), findsOneWidget, reason: 'de qué vive el negocio, arriba del todo');
+    // La lista es perezosa: lo de abajo no existe hasta desplazar (y lo de
+    // arriba deja de existir después).
     await tester.drag(find.byType(ListView).last, const Offset(0, -1500));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Simplificado'), findsOneWidget);

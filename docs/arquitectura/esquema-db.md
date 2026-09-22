@@ -161,7 +161,7 @@ Cinco tablas, sincronizables, sin `REFERENCES` al catálogo. DDL exacto en
 |---|---|---|
 | `insumo` | id | nombre, `unidad_base` (gramo/mililitro/unidad), `contenido_por_compra`, `precio_compra`, `merma` (nullable → la global), proveedor, notas; `updated_at`, `deleted_at` |
 | `costo_fijo` | id | concepto, `monto_mensual`, notas; `updated_at`, `deleted_at` |
-| `config_costeo` | id = `'unica'` | días abiertos, margen objetivo, merma por defecto, tarifa de mano de obra, redondeo, `metodo_reparto`; y desde v8 (0042) `regimen`, `factor_iva_compras`, `factor_renta_compras`, `tasa_iva_por_defecto`, `comision_efectivo`, `comision_sinpe` (`comision_medios_pago` queda sin uso) |
+| `config_costeo` | id = `'unica'` | días abiertos, margen objetivo, merma por defecto, tarifa de mano de obra, redondeo, `metodo_reparto`; y desde v8 (0042) `regimen`, `factor_iva_compras`, `factor_renta_compras`, `tasa_iva_por_defecto`, `comision_efectivo`, `comision_sinpe` (`comision_medios_pago` queda sin uso); v9: `tipo_negocio` (produccion/servicios) |
 | `articulo_costeo` | id; UNIQUE (`producto_id`, `variante_id`) con `variante_id = ''` sin variantes | unidades por lote, otros costos directos, minutos del lote, unidades estimadas al mes, margen propio (nullable), ajuste con signo |
 | `linea_receta` | id; UNIQUE (`articulo_id`, `insumo_id`) | `cantidad_por_lote` en la unidad base del insumo |
 

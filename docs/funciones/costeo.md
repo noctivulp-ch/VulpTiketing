@@ -11,8 +11,8 @@ artículo concreto.
 |---|---|
 | **Artículos** | El resultado. Arriba, el negocio a los precios de hoy y el volumen de los últimos 30 días: utilidad, ingreso, costos fijos, margen neto, unidades, punto de equilibrio (al mes, por día **y en dinero**), **food cost** del negocio, colchón, y **tres escenarios** (si la venta cae 20 %, como va, si sube 20 %: los fijos no escalan y eso es lo que muestran). Debajo, un pozo por artículo: precio actual, costo total, precio sugerido, margen real (en rojo si no llega al objetivo o se vende a pérdida), food cost y avisos |
 | **Insumos** | Materias primas y **sus compras** ([0041](../decisiones/0041-libro-de-compras-de-insumos.md)). El insumo se registra una vez (nombre, en qué se usa, merma, proveedor, precio de arranque); cada vez que se abastece se **anota una compra** (cuántas, de cuánto, pagado). La lista muestra el costo efectivo por unidad base con merma y de dónde salió (promedio de 90 días / última compra / arranque). Abajo, lo comprado en el mes y en el trimestre — la base del régimen simplificado |
-| **Fijos** | Alquiler, servicios, sueldos… monto mensual por concepto, y el total |
-| **Ajustes** | El negocio: margen objetivo (sobre el PRECIO), merma por defecto, tarifa de mano de obra, redondeo, días abiertos, reparto por unidad o por tiempo. **Impuestos y comisiones** ([0042](../decisiones/0042-impuestos-flexibles-y-regimen.md)): régimen simplificado (factores sobre compras, con el trimestre en curso ya calculado) o general (IVA por defecto; cada producto puede llevar el suyo), y comisión por medio de pago (efectivo / SINPE), ponderada por el mix real de cobro |
+| **Fijos** | Alquiler, servicios, sueldos… monto mensual por concepto, y el total. El formulario trae una **calculadora de amortización**: un total ya pagado (horas × tarifa del desarrollo, el precio de un horno) entre meses |
+| **Ajustes** | **De qué vive el negocio**: producción (cada unidad consume insumos; una receta vacía es un olvido) o servicios/digital (sin receta es lo normal, no se avisa, y el food cost no se muestra; el desarrollo o el equipo se lleva como fijo amortizado). El negocio: margen objetivo (sobre el PRECIO), merma por defecto, tarifa de mano de obra, redondeo, días abiertos, reparto por unidad o por tiempo. **Impuestos y comisiones** ([0042](../decisiones/0042-impuestos-flexibles-y-regimen.md)): régimen simplificado (factores sobre compras, con el trimestre en curso ya calculado) o general (IVA por defecto; cada producto puede llevar el suyo), y comisión por medio de pago (efectivo / SINPE), ponderada por el mix real de cobro |
 
 ## El detalle de un artículo
 
@@ -54,6 +54,15 @@ estimación a mano, y el artículo lo dice ("Volumen estimado").
 
 Cada variante es un artículo aparte: el café grande tiene su receta y su
 precio. Un producto sin variantes es un artículo.
+
+## Un negocio de servicios (el caso del dueño)
+
+Con "Servicios / digital" en Ajustes: cada app o nivel es un producto (o
+variante), sin receta; el desarrollo va en Fijos amortizado (la calculadora
+lo reparte); la comisión de la plataforma es la de SINPE con todo cobrado por
+ahí; el régimen general con exportación al 0 % o el simplificado según el
+caso. El punto de equilibrio sale en *patrocinadores por mes* y en dinero,
+con los tres escenarios. Es lo que pide un trabajo de desarrollo empresarial.
 
 ## Lo que el módulo NO hace
 

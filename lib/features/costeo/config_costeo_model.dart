@@ -17,6 +17,24 @@ enum Regimen {
   };
 }
 
+/// De qué vive el negocio. Cambia qué se pide y qué se avisa, no las
+/// fórmulas (punto 6 de la idea 5).
+enum TipoNegocio {
+  /// Comida, cosas hechas: cada unidad consume insumos y minutos. Una
+  /// receta vacía es un olvido.
+  produccion,
+
+  /// Servicios, software, licencias: casi sin costo por unidad; el costo
+  /// grande —desarrollo, equipo— se lleva como fijo amortizado. Una receta
+  /// vacía es lo normal y el food cost no dice nada.
+  servicios;
+
+  String get etiqueta => switch (this) {
+    TipoNegocio.produccion => 'Producción',
+    TipoNegocio.servicios => 'Servicios / digital',
+  };
+}
+
 /// Los parámetros del negocio, una sola fila (0040). Es tabla y no
 /// preferencias porque viaja por el sync: el margen objetivo es del negocio,
 /// no del aparato.
@@ -35,6 +53,7 @@ class ConfigCosteoRegistro {
     this.tasaIvaPorDefecto = 0.13,
     this.comisionEfectivo = 0,
     this.comisionSinpe = 0,
+    this.tipoNegocio = TipoNegocio.produccion,
   });
 
   static const idUnica = 'unica';
@@ -55,6 +74,7 @@ class ConfigCosteoRegistro {
   /// mix real de ventas.
   final double comisionEfectivo;
   final double comisionSinpe;
+  final TipoNegocio tipoNegocio;
 
   /// Lo que se imputa por unidad sobre el costo de insumos en simplificado.
   double get impuestoSobreCompras => regimen == Regimen.simplificado ? factorIvaCompras + factorRentaCompras : 0;
@@ -67,6 +87,7 @@ class ConfigCosteoRegistro {
     double? tasaIvaPorDefecto,
     double? comisionEfectivo,
     double? comisionSinpe,
+    TipoNegocio? tipoNegocio,
     DateTime? updatedAt,
   }) => ConfigCosteoRegistro(
     config: config ?? this.config,
@@ -76,6 +97,7 @@ class ConfigCosteoRegistro {
     tasaIvaPorDefecto: tasaIvaPorDefecto ?? this.tasaIvaPorDefecto,
     comisionEfectivo: comisionEfectivo ?? this.comisionEfectivo,
     comisionSinpe: comisionSinpe ?? this.comisionSinpe,
+    tipoNegocio: tipoNegocio ?? this.tipoNegocio,
     updatedAt: updatedAt ?? this.updatedAt,
   );
 
@@ -99,6 +121,7 @@ class ConfigCosteoRegistro {
     tasaIvaPorDefecto: (m['tasa_iva_por_defecto'] as num?)?.toDouble() ?? 0.13,
     comisionEfectivo: (m['comision_efectivo'] as num?)?.toDouble() ?? 0,
     comisionSinpe: (m['comision_sinpe'] as num?)?.toDouble() ?? 0,
+    tipoNegocio: TipoNegocio.values.firstWhere((t) => t.name == m['tipo_negocio'], orElse: () => TipoNegocio.produccion),
   );
 
   Map<String, Object?> toMap() => {
@@ -116,6 +139,7 @@ class ConfigCosteoRegistro {
     'tasa_iva_por_defecto': tasaIvaPorDefecto,
     'comision_efectivo': comisionEfectivo,
     'comision_sinpe': comisionSinpe,
+    'tipo_negocio': tipoNegocio.name,
     'updated_at': updatedAt.toIso8601String(),
   };
 }

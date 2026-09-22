@@ -6,6 +6,7 @@ import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_tallado.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_falla.dart';
+import '../config_costeo_model.dart';
 import '../costeo_provider.dart';
 import 'articulo_detalle.dart';
 import 'formato_costeo.dart';
@@ -37,6 +38,7 @@ class ArticulosCosteados extends ConsumerWidget {
               _FilaArticulo(
                 calculado: a,
                 catalogo: datos.articulos[a.articulo.id]!,
+                conFoodCost: datos.registro.tipoNegocio == TipoNegocio.produccion,
                 onTap: () => mostrarDetalleArticulo(context, a.articulo.id),
               ),
               const SizedBox(height: BentoSpacing.unidad),
@@ -115,7 +117,9 @@ class _Negocio extends StatelessWidget {
           Row(
             children: [
               cifra('Equilibrio en dinero', r.ingresoEquilibrio == null ? '—' : colones(context, r.ingresoEquilibrio!)),
-              cifra('Food cost', r.foodCostPromedio == null ? '—' : porcentaje(r.foodCostPromedio)),
+              // El food cost es del oficio de la comida; en servicios no dice nada.
+              if (costeo.registro.tipoNegocio == TipoNegocio.produccion)
+                cifra('Food cost', r.foodCostPromedio == null ? '—' : porcentaje(r.foodCostPromedio)),
             ],
           ),
           if (r.impuestoSobrePrecioMes > 0) ...[
@@ -193,9 +197,10 @@ class _Escenarios extends StatelessWidget {
 }
 
 class _FilaArticulo extends StatelessWidget {
-  const _FilaArticulo({required this.calculado, required this.catalogo, required this.onTap});
+  const _FilaArticulo({required this.calculado, required this.catalogo, required this.conFoodCost, required this.onTap});
   final c.ArticuloCosteado calculado;
   final ArticuloDelCatalogo catalogo;
+  final bool conFoodCost;
   final VoidCallback onTap;
 
   @override
@@ -229,7 +234,7 @@ class _FilaArticulo extends StatelessWidget {
               Text(
                 a.margenReal == null
                     ? 'sin precio'
-                    : 'margen ${porcentaje(a.margenReal)}${a.foodCost == null ? '' : ' · fc ${porcentaje(a.foodCost)}'}',
+                    : 'margen ${porcentaje(a.margenReal)}${a.foodCost == null || !conFoodCost ? '' : ' · fc ${porcentaje(a.foodCost)}'}',
                 style: textos.bodySmall?.copyWith(
                   color: margenBajo ? error : null,
                   fontWeight: margenBajo ? FontWeight.w600 : null,

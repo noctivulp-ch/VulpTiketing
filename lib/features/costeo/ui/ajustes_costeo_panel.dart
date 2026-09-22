@@ -40,6 +40,7 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
   final _comisionSinpe = TextEditingController();
   c.MetodoReparto _reparto = c.MetodoReparto.unidad;
   Regimen _regimen = Regimen.simplificado;
+  TipoNegocio _tipo = TipoNegocio.produccion;
   bool _cargado = false;
 
   void _cargar(ConfigCosteoRegistro r) {
@@ -52,6 +53,7 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
     _redondeo.text = numero(r.config.redondeoPrecio);
     _reparto = r.config.metodoReparto;
     _regimen = r.regimen;
+    _tipo = r.tipoNegocio;
     _factorIva.text = porcentajeParaEditar(r.factorIvaCompras);
     _factorRenta.text = porcentajeParaEditar(r.factorRentaCompras);
     _tasaIva.text = porcentajeParaEditar(r.tasaIvaPorDefecto);
@@ -80,6 +82,7 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
     final registro = actual.copyWith(
       config: config,
       regimen: _regimen,
+      tipoNegocio: _tipo,
       factorIvaCompras: parsearPorcentaje(_factorIva.text)!,
       factorRentaCompras: parsearPorcentaje(_factorRenta.text)!,
       tasaIvaPorDefecto: parsearPorcentaje(_tasaIva.text)!,
@@ -137,7 +140,32 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
                       '60 % es que de cada 100 vendidos, 60 son utilidad.',
                       style: textos.bodySmall,
                     ),
-                    const SizedBox(height: BentoSpacing.gapCelda),
+                    const SizedBox(height: BentoSpacing.unidad),
+                    Text('De qué vive', style: textos.labelLarge),
+                    RadioGroup<TipoNegocio>(
+                      groupValue: _tipo,
+                      onChanged: (t) => setState(() => _tipo = t!),
+                      child: const Column(
+                        children: [
+                          RadioListTile(
+                            value: TipoNegocio.produccion,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('Producción'),
+                            subtitle: Text('Comida, cosas hechas: cada unidad consume insumos y minutos'),
+                          ),
+                          RadioListTile(
+                            value: TipoNegocio.servicios,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('Servicios / digital'),
+                            subtitle: Text(
+                              'Licencias, horas, apps: sin receta es lo normal. El desarrollo o el equipo '
+                              'se lleva como costo fijo amortizado (en Fijos hay una calculadora)',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: BentoSpacing.unidad),
                     _campo(_margen, 'Margen objetivo (%)', _porcentaje),
                     _campo(_merma, 'Merma por defecto (%)', _porcentaje, ayuda: 'Cuando el insumo no declara la suya'),
                     _campo(_tarifa, 'Tarifa de mano de obra por hora ${Moneda.de(context).entreParentesis}', _positivo,

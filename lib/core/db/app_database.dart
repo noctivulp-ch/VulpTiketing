@@ -125,6 +125,9 @@ class AppDatabase {
 
         // v7 -> v8: impuestos y comisiones por medio (decision 0042).
         if (viejo < 8) await agregarImpuestos(db);
+
+        // v8 -> v9: tipo de negocio (produccion / servicios), punto 6 de la idea 5.
+        if (viejo < 9) await agregarTipoDeNegocio(db);
       },
     );
 
@@ -139,7 +142,15 @@ class AppDatabase {
     return db;
   }
 
-  static const version = 8;
+  static const version = 9;
+
+  /// v8 -> v9. `config_costeo.tipo_negocio`: 'produccion' (de fabrica) o
+  /// 'servicios', donde una receta vacia es lo normal y no un olvido.
+  static Future<void> agregarTipoDeNegocio(DatabaseExecutor db) async {
+    final columnas = await db.rawQuery('PRAGMA table_info(config_costeo)');
+    if (columnas.any((c) => c['name'] == 'tipo_negocio')) return;
+    await db.execute("ALTER TABLE config_costeo ADD COLUMN tipo_negocio TEXT NOT NULL DEFAULT 'produccion'");
+  }
 
   /// v7 -> v8: impuestos y comisiones por medio (decision 0042). `producto`
   /// gana `tasa_iva` (NULL = la tasa por defecto de Ajustes) y
@@ -265,6 +276,7 @@ class AppDatabase {
       tasa_iva_por_defecto    REAL NOT NULL DEFAULT 0.13,
       comision_efectivo       REAL NOT NULL DEFAULT 0,
       comision_sinpe          REAL NOT NULL DEFAULT 0,
+      tipo_negocio            TEXT NOT NULL DEFAULT 'produccion',
       updated_at              TEXT NOT NULL
     );
     ''',

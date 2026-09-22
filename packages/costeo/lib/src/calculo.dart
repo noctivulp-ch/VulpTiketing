@@ -68,7 +68,7 @@ ResultadoCosteo calcularCatalogo({
         ),
       );
     }
-    if (lineas.isEmpty) alertas.add(Alerta.sinReceta);
+    if (lineas.isEmpty && !config.recetasOpcionales) alertas.add(Alerta.sinReceta);
 
     final unidadesPorLote = math.max(1, a.unidadesPorLote);
     final costoInsumosLote = lineas.fold(0.0, (s, l) => s + l.costoLinea);

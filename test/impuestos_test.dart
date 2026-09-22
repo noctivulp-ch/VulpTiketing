@@ -116,4 +116,23 @@ void main() {
     expect(costeo.fraccionSinpe, closeTo(0.25, 1e-9));
     expect(costeo.config.comisionMediosPago, closeTo(0.02 * 0.25, 1e-9));
   });
+
+  test('v8 → v9: tipo de negocio, y en servicios un artículo sin receta no avisa', () async {
+    final v8 = await databaseFactory.openDatabase(p.join(dir.path, 'v8.db'), options: OpenDatabaseOptions(singleInstance: false));
+    await v8.execute("CREATE TABLE config_costeo (id TEXT PRIMARY KEY, dias_abiertos_mes INTEGER NOT NULL DEFAULT 26, margen_objetivo REAL NOT NULL DEFAULT 0.6, comision_medios_pago REAL NOT NULL DEFAULT 0.03, merma_por_defecto REAL NOT NULL DEFAULT 0.05, tarifa_mano_obra_hora REAL NOT NULL DEFAULT 0, redondeo_precio REAL NOT NULL DEFAULT 50, metodo_reparto TEXT NOT NULL DEFAULT 'unidad', regimen TEXT NOT NULL DEFAULT 'simplificado', factor_iva_compras REAL NOT NULL DEFAULT 0.03, factor_renta_compras REAL NOT NULL DEFAULT 0.025, tasa_iva_por_defecto REAL NOT NULL DEFAULT 0.13, comision_efectivo REAL NOT NULL DEFAULT 0, comision_sinpe REAL NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)");
+    await v8.insert('config_costeo', {'id': 'unica', 'updated_at': DateTime(2026).toIso8601String()});
+    await AppDatabase.agregarTipoDeNegocio(v8);
+    await AppDatabase.agregarTipoDeNegocio(v8);
+    expect(ConfigCosteoRegistro.fromMap((await v8.query('config_costeo')).single).tipoNegocio, TipoNegocio.produccion);
+    await v8.close();
+
+    // Producción: el casado sin receta avisa. Servicios: no.
+    expect((await container.read(costeoProvider.future)).calculadoDe('casado#')!.alertas, contains(c.Alerta.sinReceta));
+    await container.read(configCosteoProvider.notifier).guardar(
+      ConfigCosteoRegistro(config: const c.ConfigCosteo(), tipoNegocio: TipoNegocio.servicios, updatedAt: DateTime.now()),
+    );
+    final costeo = await container.read(costeoProvider.future);
+    expect(costeo.config.recetasOpcionales, isTrue);
+    expect(costeo.calculadoDe('casado#')!.alertas, isNot(contains(c.Alerta.sinReceta)));
+  });
 }
