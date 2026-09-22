@@ -48,6 +48,7 @@ ResultadoCosteo calcularCatalogo({
   var utilidadMes = 0.0;
   var comisionesMes = 0.0;
   var impuestoSobrePrecioMes = 0.0;
+  var costoInsumosMes = 0.0;
 
   for (final a in articulos) {
     final alertas = <Alerta>[];
@@ -126,6 +127,7 @@ ResultadoCosteo calcularCatalogo({
     utilidadMes += (utilidadUnidad ?? 0) * a.unidadesMes;
     comisionesMes += a.precioActual * config.comisionMediosPago * a.unidadesMes;
     impuestoSobrePrecioMes += a.precioActual * a.fraccionImpuestoDelPrecio * a.unidadesMes;
+    costoInsumosMes += costoInsumosUnidad * a.unidadesMes;
 
     calculados.add(
       ArticuloCosteado(
@@ -172,6 +174,7 @@ ResultadoCosteo calcularCatalogo({
     utilidadMes: utilidadMes,
     comisionesMes: comisionesMes,
     impuestoSobrePrecioMes: impuestoSobrePrecioMes,
+    costoInsumosMes: costoInsumosMes,
     contribucionUnidad: contribucion,
     unidadesEquilibrio: equilibrio,
     colchon: colchon,

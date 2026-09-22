@@ -130,6 +130,8 @@ class _Cuentas extends StatelessWidget {
         if (a.articulo.tasaImpuesto > 0)
           fila('IVA dentro del precio (${porcentaje(a.articulo.tasaImpuesto)})', colones(context, a.impuestoPrecioUnidad, decimales: 2)),
         fila('Margen real al precio de hoy', porcentaje(a.margenReal)),
+        if (a.foodCost != null)
+          fila('Food cost (insumos ÷ precio)', '${porcentaje(a.foodCost)}${a.foodCost! > 0.38 ? ' — alto' : ''}'),
         fila(
           a.articulo.volumenEsReal ? 'Vendidas en $diasDeVolumen días' : 'Volumen estimado',
           '${a.articulo.unidadesMes} u',

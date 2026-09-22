@@ -91,6 +91,11 @@ class ArticuloCosteado {
 
   /// Impuesto que va dentro del precio actual (régimen general), por unidad.
   double get impuestoPrecioUnidad => articulo.precioActual * articulo.fraccionImpuestoDelPrecio;
+
+  /// **Food cost**: costo de insumos ÷ precio actual. Es la cifra del oficio
+  /// (sano entre 28 y 35 % en comida; arriba de 38 % hay desperdicio o
+  /// precios de proveedor sin control). Nulo sin precio.
+  double? get foodCost => articulo.precioActual <= 0 ? null : costoInsumosUnidad / articulo.precioActual;
   double get ingresoMes => articulo.precioActual * articulo.unidadesMes;
   bool get tieneErrores => alertas.any((a) => a.esError);
 
@@ -110,6 +115,7 @@ class ResultadoCosteo {
     required this.utilidadMes,
     required this.comisionesMes,
     required this.impuestoSobrePrecioMes,
+    required this.costoInsumosMes,
     required this.contribucionUnidad,
     required this.unidadesEquilibrio,
     required this.colchon,
@@ -131,6 +137,9 @@ class ResultadoCosteo {
   /// lo que se declara de IVA. Cero en simplificado.
   final double impuestoSobrePrecioMes;
 
+  /// Solo insumos, para el food cost del negocio.
+  final double costoInsumosMes;
+
   /// Lo que cada unidad deja para pagar costos fijos, a precios actuales.
   final double? contribucionUnidad;
 
@@ -144,7 +153,42 @@ class ResultadoCosteo {
 
   double get margenNetoPromedio => ingresoMes <= 0 ? 0 : utilidadMes / ingresoMes;
 
+  /// Food cost del negocio: insumos consumidos ÷ ingreso, ponderado por
+  /// volumen. Nulo sin ingreso.
+  double? get foodCostPromedio => ingresoMes <= 0 ? null : costoInsumosMes / ingresoMes;
+
+  /// Precio promedio de una unidad vendida, a precios actuales.
+  double? get precioPromedio => totalUnidadesMes <= 0 ? null : ingresoMes / totalUnidadesMes;
+
+  /// El punto de equilibrio en DINERO: lo que hay que vender al mes para no
+  /// perder. Es lo que pide un plan de negocio junto a las unidades.
+  double? get ingresoEquilibrio =>
+      unidadesEquilibrio == null || precioPromedio == null ? null : unidadesEquilibrio! * precioPromedio!;
+
+  /// Qué pasa si el volumen cambia por [factor] (0,8 = cae un 20 %). Los
+  /// costos fijos NO escalan: ese es justamente el riesgo que muestra.
+  Escenario escenario(double factor) {
+    final ingreso = ingresoMes * factor;
+    final variable = (costoVariableMes + comisionesMes + impuestoSobrePrecioMes) * factor;
+    return Escenario(
+      factor: factor,
+      unidades: (totalUnidadesMes * factor).round(),
+      ingreso: ingreso,
+      utilidad: ingreso - variable - costosFijosMes,
+    );
+  }
+
   /// La meta diaria, que es la cifra útil para el día a día.
   double? unidadesEquilibrioDia(int diasAbiertosMes) =>
       unidadesEquilibrio == null || diasAbiertosMes <= 0 ? null : unidadesEquilibrio! / diasAbiertosMes;
+}
+
+
+/// Un "qué pasaría si" sobre el volumen del mes.
+class Escenario {
+  const Escenario({required this.factor, required this.unidades, required this.ingreso, required this.utilidad});
+  final double factor;
+  final int unidades;
+  final double ingreso;
+  final double utilidad;
 }

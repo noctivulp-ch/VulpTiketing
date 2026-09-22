@@ -53,3 +53,9 @@ Feature: Recipe costing
     When it is "general"
     Then each product's VAT rate (or the default one) is inside its price as rate/(1+rate), and enters the suggested price and the real margin
     And the effective payment commission is the cash and SINPE commissions weighted by the last 30 days' real payment mix
+
+  Scenario: The trade's numbers and the business plan's numbers
+    Given costed items with real volume
+    Then each item and the business show the food cost (inputs ÷ price), flagged as high above 38 %
+    And the break-even is shown in units, per day, and in money (units × average price)
+    And three scenarios show the month's profit if volume falls 20 %, stays, or rises 20 %, with fixed costs unchanged

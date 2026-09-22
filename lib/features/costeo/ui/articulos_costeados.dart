@@ -108,6 +108,16 @@ class _Negocio extends StatelessWidget {
               cifra('Por día', equilibrioDia == null ? '—' : '${equilibrioDia.ceil()} u'),
             ],
           ),
+          const SizedBox(height: BentoSpacing.unidad),
+          // Las dos cifras que piden un plan de negocio y el oficio: cuánto hay
+          // que VENDER en dinero para no perder, y qué parte de cada venta se
+          // va en ingredientes.
+          Row(
+            children: [
+              cifra('Equilibrio en dinero', r.ingresoEquilibrio == null ? '—' : colones(context, r.ingresoEquilibrio!)),
+              cifra('Food cost', r.foodCostPromedio == null ? '—' : porcentaje(r.foodCostPromedio)),
+            ],
+          ),
           if (r.impuestoSobrePrecioMes > 0) ...[
             const SizedBox(height: BentoSpacing.unidad / 2),
             Text('IVA dentro de lo vendido: ${colones(context, r.impuestoSobrePrecioMes)}', style: textos.bodySmall),
@@ -121,12 +131,63 @@ class _Negocio extends StatelessWidget {
               style: textos.bodySmall,
             ),
           ],
+          const SizedBox(height: BentoSpacing.unidad),
+          // Escenarios sobre el volumen. Los costos fijos no escalan: con un
+          // 20 % menos de venta la utilidad puede caer mucho más que un 20 %,
+          // y eso es lo que hay que ver antes de que pase.
+          _Escenarios(resultado: r),
           for (final a in r.alertasGlobales) ...[
             const SizedBox(height: BentoSpacing.unidad / 2),
             Text('⚠ ${a.mensaje}', style: textos.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error)),
           ],
         ],
       ),
+    );
+  }
+}
+
+class _Escenarios extends StatelessWidget {
+  const _Escenarios({required this.resultado});
+  final c.ResultadoCosteo resultado;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    final error = Theme.of(context).colorScheme.error;
+    if (resultado.totalUnidadesMes <= 0) return const SizedBox.shrink();
+    final escenarios = [
+      ('Si cae 20 %', resultado.escenario(0.8)),
+      ('Como va', resultado.escenario(1.0)),
+      ('Si sube 20 %', resultado.escenario(1.2)),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Escenarios del mes', style: textos.labelLarge),
+        const SizedBox(height: BentoSpacing.unidad / 2),
+        Row(
+          children: [
+            for (final (nombre, e) in escenarios)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(nombre, style: textos.bodySmall),
+                    Text('${e.unidades} u · ${colones(context, e.ingreso)}', style: textos.bodySmall),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        colones(context, e.utilidad),
+                        style: textos.titleSmall?.copyWith(color: e.utilidad < 0 ? error : null, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -166,7 +227,9 @@ class _FilaArticulo extends StatelessWidget {
                 ),
               ),
               Text(
-                a.margenReal == null ? 'sin precio' : 'margen ${porcentaje(a.margenReal)}',
+                a.margenReal == null
+                    ? 'sin precio'
+                    : 'margen ${porcentaje(a.margenReal)}${a.foodCost == null ? '' : ' · fc ${porcentaje(a.foodCost)}'}',
                 style: textos.bodySmall?.copyWith(
                   color: margenBajo ? error : null,
                   fontWeight: margenBajo ? FontWeight.w600 : null,

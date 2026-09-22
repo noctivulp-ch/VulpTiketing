@@ -270,6 +270,7 @@ void main() {
   });
 
   group('impuestos', pruebasDeImpuestos);
+  group('food cost, equilibrio en dinero y escenarios', pruebasDeIndicadores);
 
   test('es determinista: dos llamadas iguales dan lo mismo', () {
     ResultadoCosteo correr() => calcularCatalogo(
@@ -325,5 +326,62 @@ void pruebasDeImpuestos() {
     expect(r.impuestoSobrePrecioMes, 0);
     // Y entra en la contribución como costo variable.
     expect(r.contribucionUnidad, closeTo(2000 - 844, 1e-9));
+  });
+}
+
+
+// ── Food cost, equilibrio en dinero y escenarios (punto 4 de versatilidad) ──
+void pruebasDeIndicadores() {
+  const config = ConfigCosteo(margenObjetivo: 0.5, comisionMediosPago: 0, mermaPorDefecto: 0, redondeoPrecio: 1);
+  const insumo = Insumo(id: 'i', nombre: 'I', unidadBase: UnidadBase.unidad, contenidoPorCompra: 1, precioCompra: 600);
+  // Se cobra 2.000; insumos 600; 100 al mes; fijos 100.000.
+  ResultadoCosteo base() => calcularCatalogo(
+    config: config,
+    costosFijos: const [CostoFijo(id: 'f', concepto: 'F', montoMensual: 100000)],
+    insumos: const [insumo],
+    articulos: const [Articulo(id: 'x', nombre: 'X', precioActual: 2000, unidadesMes: 100, volumenEsReal: true)],
+    recetas: const [LineaReceta(articuloId: 'x', insumoId: 'i', cantidadPorLote: 1)],
+  );
+
+  test('food cost = insumos / precio, por artículo y ponderado para el negocio', () {
+    final r = base();
+    expect(r.articulos.single.foodCost, closeTo(0.30, 1e-9));
+    expect(r.foodCostPromedio, closeTo(0.30, 1e-9));
+    expect(r.costoInsumosMes, 60000);
+  });
+
+  test('el equilibrio en dinero es unidades × precio promedio', () {
+    // Contribución = 2000 − 600 − 1000 (overhead) … no: la contribución no lleva overhead.
+    // contribución = 2000 − 600 = 1400 → equilibrio = 100.000 / 1.400 = 71,43 u → ₡142.857.
+    final r = base();
+    expect(r.contribucionUnidad, closeTo(1400, 1e-9));
+    expect(r.unidadesEquilibrio, closeTo(100000 / 1400, 1e-9));
+    expect(r.ingresoEquilibrio, closeTo(100000 / 1400 * 2000, 1e-6));
+  });
+
+  test('los escenarios escalan lo variable y dejan los fijos quietos', () {
+    final r = base();
+    final realista = r.escenario(1.0);
+    final pesimista = r.escenario(0.8);
+    final optimista = r.escenario(1.2);
+    expect(realista.utilidad, closeTo(200000 - 60000 - 100000, 1e-9));
+    expect(pesimista.unidades, 80);
+    expect(pesimista.utilidad, closeTo(160000 - 48000 - 100000, 1e-9));
+    expect(optimista.utilidad, closeTo(240000 - 72000 - 100000, 1e-9));
+    // Lo que muestra: con un 20 % menos de venta, la utilidad cae un 70 %.
+    expect(pesimista.utilidad / realista.utilidad, closeTo(0.3, 1e-9));
+  });
+
+  test('sin precio no hay food cost; sin ingreso no hay promedio', () {
+    final r = calcularCatalogo(
+      config: config,
+      costosFijos: const [],
+      insumos: const [],
+      articulos: const [Articulo(id: 'x', nombre: 'X', precioActual: 0)],
+      recetas: const [],
+    );
+    expect(r.articulos.single.foodCost, isNull);
+    expect(r.foodCostPromedio, isNull);
+    expect(r.ingresoEquilibrio, isNull);
   });
 }
