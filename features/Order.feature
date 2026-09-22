@@ -15,8 +15,8 @@ Feature: Fast Sale Registration
 
   Scenario: Selling a Producto that has variants
     Given a "Producto" with "Variantes" is added to a "Venta"
-    Then the system must ask which variant, and must not add the line until one is chosen
-    And in Venta Rápida the "Completado" button stays disabled until a variant is chosen
+    Then the system must ask which variant, highlighting the default one
+    And in Venta Rápida the default variant comes preselected, so it sells in one tap
     And the line takes the variant's price as its applied price, still editable
     And the line records the variant's NAME as sold that day, so renaming the variant later never changes past sales ([0039])
     And a "Producto" without variants is added in one tap, exactly as before

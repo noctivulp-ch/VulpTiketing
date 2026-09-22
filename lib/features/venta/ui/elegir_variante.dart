@@ -28,18 +28,32 @@ Future<Variante?> elegirVariante(BuildContext context, Producto producto) {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // La por defecto va llena y las demás tonales: se ve cuál es la
+          // habitual sin leer, y sigue siendo un toque elegir cualquiera.
           for (final (i, v) in producto.variantes.indexed) ...[
             if (i > 0) const SizedBox(height: BentoSpacing.unidad),
-            FilledButton.tonal(
-              onPressed: () => Navigator.pop(dialogContext, v),
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-              child: Row(
-                children: [
-                  Expanded(child: Text(v.nombre, overflow: TextOverflow.ellipsis)),
-                  Text(_precioDe(v)),
-                ],
+            if (v.id == producto.variantePorDefecto?.id)
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, v),
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(v.nombre, overflow: TextOverflow.ellipsis)),
+                    Text(_precioDe(v)),
+                  ],
+                ),
+              )
+            else
+              FilledButton.tonal(
+                onPressed: () => Navigator.pop(dialogContext, v),
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(v.nombre, overflow: TextOverflow.ellipsis)),
+                    Text(_precioDe(v)),
+                  ],
+                ),
               ),
-            ),
           ],
         ],
       ),
@@ -57,9 +71,10 @@ Future<Variante?> elegirVariante(BuildContext context, Producto producto) {
 /// una queda marcada. Es el que usa el cobro rápido, que ya es un cuadro con
 /// precio y cantidad y no necesita otro diálogo encima.
 ///
-/// Sin nada elegido al abrir, a propósito. Preseleccionar la primera cobraría
-/// el café pequeño a quien pidió el grande cada vez que se va rápido — y en un
-/// mostrador siempre se va rápido.
+/// Abre con la variante **por defecto** marcada: es la que se cobra de un
+/// toque, y cambiar de tamaño es la excepción. Antes abría sin nada elegido
+/// para no cobrar el pequeño a quien pidió el grande; al existir una por
+/// defecto —elegida por el Gerente en el producto— esa es la decisión.
 class SelectorDeVariante extends StatelessWidget {
   const SelectorDeVariante({
     super.key,
@@ -91,12 +106,11 @@ class SelectorDeVariante extends StatelessWidget {
 
 /// Lo que dice el precio de un producto en una lista o tarjeta de venta.
 ///
-/// Con variantes no hay UN precio, así que se muestra el menor con "desde":
-/// es lo que se le contesta a quien pregunta cuánto vale.
-String precioParaMostrar(Producto producto, {int decimales = 0}) {
-  final texto = '₡${producto.precioMinimo.toStringAsFixed(decimales)}';
-  return producto.tieneVariantes ? 'desde $texto' : texto;
-}
+/// Con variantes es el de la **por defecto** —que es `precio_base`—, sin
+/// "desde": es lo que se cobra si no se dice otra cosa, y lo que se contesta
+/// a quien pregunta cuánto vale. Los otros precios se ven al elegir.
+String precioParaMostrar(Producto producto, {int decimales = 0}) =>
+    '₡${producto.precioBase.toStringAsFixed(decimales)}';
 
 /// El texto con el que se rellena el campo de precio al elegir una variante.
 String precioEditableDe(Variante v) => montoParaEditar(v.precio);

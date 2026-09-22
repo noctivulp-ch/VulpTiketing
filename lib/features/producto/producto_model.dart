@@ -21,8 +21,9 @@ class Producto {
   final String? imagen;
   final String? categoriaId;
 
-  /// El precio del producto sin variantes, o el de referencia cuando las hay.
-  /// No cambia de significado por tener variantes (0039).
+  /// El precio del producto sin variantes; con variantes, el de la que está
+  /// **por defecto** — el formulario los guarda en sincronía. Así todo lo que
+  /// lee `precio_base` sigue valiendo (0039).
   final double precioBase;
 
   /// Formas de venderlo a otro precio. Vacía en casi todos; ver [Variante].
@@ -33,8 +34,12 @@ class Producto {
   bool get activo => deletedAt == null;
   bool get tieneVariantes => variantes.isNotEmpty;
 
-  /// El menor de los precios que se pueden cobrar: lo que se muestra en la
-  /// tarjeta cuando hay variantes ("desde ₡800").
+  /// La variante que se vende si no se elige otra: la marcada, o la primera.
+  /// Nula sin variantes.
+  Variante? get variantePorDefecto =>
+      tieneVariantes ? variantes.firstWhere((v) => v.porDefecto, orElse: () => variantes.first) : null;
+
+  /// El menor de los precios que se pueden cobrar.
   double get precioMinimo => tieneVariantes
       ? variantes.map((v) => v.precio).reduce((a, b) => a < b ? a : b)
       : precioBase;

@@ -40,19 +40,18 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
   double? _cambio;
   Timer? _debounce;
 
-  /// La variante marcada, si el producto tiene. Sin ella no se puede cobrar.
-  Variante? _variante;
+  /// La variante marcada, si el producto tiene. Arranca en la por defecto,
+  /// así que un producto con variantes se cobra de un toque como cualquiera;
+  /// elegir otra es la excepción.
+  late Variante? _variante = widget.producto.variantePorDefecto;
 
   bool get _faltaVariante => widget.producto.tieneVariantes && _variante == null;
 
   @override
   void initState() {
     super.initState();
-    // Con variantes el precio queda VACÍO hasta elegir una: el precio base no
-    // es el de ninguna de ellas, y mostrarlo invitaría a cobrarlo.
-    _precioController = TextEditingController(
-      text: widget.producto.tieneVariantes ? '' : montoParaEditar(widget.producto.precioBase),
-    );
+    // El precio de la por defecto es el precio base: el campo arranca con él.
+    _precioController = TextEditingController(text: montoParaEditar(widget.producto.precioBase));
   }
 
   void _elegirVariante(Variante v) {

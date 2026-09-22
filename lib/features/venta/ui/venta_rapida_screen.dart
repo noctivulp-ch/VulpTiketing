@@ -267,8 +267,8 @@ class _TarjetaProducto extends StatelessWidget {
           // invertia la jerarquia: el tallado se comia justo lo que tenia que
           // destacar. `marcado` queda reservado para los numeros de 40px de
           // Reportes, donde el tamano lo sostiene solo.
-          // Con variantes dice "desde" y el menor (0039). `FittedBox` porque
-          // "desde ₡2300" es más largo que "₡2300" y la tarjeta no crece.
+          // Con variantes es el precio de la por defecto (0039). `FittedBox`
+          // por si un precio largo no entra en la tarjeta.
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,

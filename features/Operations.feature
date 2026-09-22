@@ -28,9 +28,10 @@ Feature: Inventory CRUD Operations
   Scenario: A Producto can be sold in variants at different prices
     Given the user is logged in as "Gerente" or "Registradora"
     When the user edits a "Producto" and adds one or more "Variantes", each with a name and a price
-    Then the "Producto" keeps its base price, and its variants are stored inside its own record, not as separate "Productos" ([0039])
+    Then its variants are stored inside its own record, not as separate "Productos" ([0039])
+    And exactly one variant is the default; the "Producto" base price is that variant's price, and the base-price field becomes the default selector
     And no two variants of the same "Producto" may share a name
-    And the sale screens show the lowest variant price as "desde"
+    And the sale screens show the default variant's price
     # Sizes, cuts, with or without sides, flavours: one mechanism. Before this
     # the menu had "Pollo frito (cadera y muslo)" and "Pollo frito (pechuga y
     # ala)" as two Productos, and the ranking split one dish in two rows.

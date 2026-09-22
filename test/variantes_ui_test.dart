@@ -14,16 +14,17 @@ import 'package:vulp_tiketing/features/venta/venta_en_curso_notifier.dart';
 
 /// Las variantes en las pantallas de venta (0039).
 ///
-/// Lo que no puede pasar: cobrar un producto con variantes SIN haber elegido
-/// una. Es el error silencioso del diseño —el café grande cobrado como
-/// pequeño— y la única defensa es que el botón no exista hasta que se elija.
+/// Cada producto con variantes tiene UNA por defecto (la marcada en el
+/// formulario, o la primera): es la que se cobra de un toque, y su precio es
+/// el precio base. Lo que no puede pasar es que se cobre otra cosa que la
+/// marcada sin que nadie la haya tocado.
 void main() {
   final cafe = Producto(
     id: 'cafe',
     nombre: 'Café de máquina',
     precioBase: 800,
     variantes: const [
-      Variante(id: 'p', nombre: 'Pequeño', precio: 800),
+      Variante(id: 'p', nombre: 'Pequeño', precio: 800, porDefecto: true),
       Variante(id: 'g', nombre: 'Grande', precio: 1200),
     ],
     updatedAt: DateTime(2026),
@@ -65,15 +66,19 @@ void main() {
   }
 
   group('cobro rápido', () {
-    testWidgets('con variantes, Completado está apagado hasta elegir una', (tester) async {
-      await montarOverlay(tester, cafe);
+    testWidgets('con variantes, la por defecto viene marcada y se cobra de un toque', (tester) async {
+      final container = await montarOverlay(tester, cafe);
 
       final completado = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Completado'));
-      expect(completado.onPressed, isNull, reason: 'sin variante no hay qué cobrar');
-      // Y el precio va vacío: el base no es el de ninguna de las dos.
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Precio')).controller!.text, '');
+      expect(completado.onPressed, isNotNull, reason: 'la por defecto ya está elegida');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Precio')).controller!.text, '800');
       expect(find.text('Pequeño · ₡800'), findsOneWidget);
       expect(find.text('Grande · ₡1200'), findsOneWidget);
+      expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Pequeño · ₡800')).selected, isTrue);
+
+      await tester.tap(find.text('Completado'));
+      await tester.pump();
+      expect(container.read(ventaEnCursoNotifierProvider).lineas.single.variante, 'Pequeño');
     });
 
     testWidgets('elegir la variante pone su precio y la línea la lleva', (tester) async {
@@ -107,11 +112,34 @@ void main() {
   });
 
   group('el precio que se muestra', () {
-    test('con variantes dice "desde" y el menor; sin ellas, el base', () {
-      expect(precioParaMostrar(cafe), 'desde ₡800');
+    test('con variantes es el de la por defecto (el precio base); sin ellas, el base', () {
+      expect(precioParaMostrar(cafe), '₡800');
       final casado = Producto(id: 'c', nombre: 'Casado', precioBase: 3000, updatedAt: DateTime(2026));
       expect(precioParaMostrar(casado), '₡3000');
       expect(precioParaMostrar(casado, decimales: 2), '₡3000.00');
+    });
+  });
+
+  group('la variante por defecto', () {
+    test('es la marcada, o la primera si ninguna lo dice', () {
+      expect(cafe.variantePorDefecto!.id, 'p');
+      final sinMarca = Producto(
+        id: 'x',
+        nombre: 'X',
+        precioBase: 1,
+        variantes: const [Variante(id: 'a', nombre: 'A', precio: 1), Variante(id: 'b', nombre: 'B', precio: 2)],
+        updatedAt: DateTime(2026),
+      );
+      expect(sinMarca.variantePorDefecto!.id, 'a');
+      final casado = Producto(id: 'c', nombre: 'Casado', precioBase: 3000, updatedAt: DateTime(2026));
+      expect(casado.variantePorDefecto, isNull);
+    });
+
+    test('viaja en el JSON solo cuando es verdadera', () {
+      final json = variantesAColumna(cafe.variantes)!;
+      expect(json, contains('"porDefecto":true'));
+      expect('porDefecto'.allMatches(json), hasLength(1));
+      expect(variantesDeColumna(json).map((v) => v.porDefecto), [true, false]);
     });
   });
 

@@ -7,7 +7,7 @@ import 'dart:convert';
 /// edita en el formulario del producto (decisión 0039). Por eso no tiene DAO
 /// ni Notifier propio, y por eso `updated_at` es el del producto.
 class Variante {
-  const Variante({required this.id, required this.nombre, required this.precio});
+  const Variante({required this.id, required this.nombre, required this.precio, this.porDefecto = false});
 
   /// Estable aunque se renombre. Existe por el costeo, que apunta a la
   /// variante para darle su propia receta; la venta guarda el NOMBRE, no
@@ -16,23 +16,42 @@ class Variante {
   final String nombre;
   final double precio;
 
+  /// La que se vende si no se elige otra: viene preseleccionada al cobrar y
+  /// su precio es el `precio_base` del producto. Una sola por producto; si
+  /// ninguna lo dice, es la primera ([Producto.variantePorDefecto]).
+  final bool porDefecto;
+
   factory Variante.fromJson(Map<String, Object?> json) => Variante(
     id: json['id'] as String,
     nombre: json['nombre'] as String,
     precio: (json['precio'] as num).toDouble(),
+    porDefecto: json['porDefecto'] == true,
   );
 
-  Map<String, Object?> toJson() => {'id': id, 'nombre': nombre, 'precio': precio};
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'nombre': nombre,
+    'precio': precio,
+    if (porDefecto) 'porDefecto': true,
+  };
 
-  Variante copyWith({String? nombre, double? precio}) =>
-      Variante(id: id, nombre: nombre ?? this.nombre, precio: precio ?? this.precio);
+  Variante copyWith({String? nombre, double? precio, bool? porDefecto}) => Variante(
+    id: id,
+    nombre: nombre ?? this.nombre,
+    precio: precio ?? this.precio,
+    porDefecto: porDefecto ?? this.porDefecto,
+  );
 
   @override
   bool operator ==(Object other) =>
-      other is Variante && other.id == id && other.nombre == nombre && other.precio == precio;
+      other is Variante &&
+      other.id == id &&
+      other.nombre == nombre &&
+      other.precio == precio &&
+      other.porDefecto == porDefecto;
 
   @override
-  int get hashCode => Object.hash(id, nombre, precio);
+  int get hashCode => Object.hash(id, nombre, precio, porDefecto);
 
   @override
   String toString() => 'Variante($nombre: $precio)';

@@ -34,7 +34,7 @@ CREATE TABLE producto (
   imagen        TEXT,                   -- ruta/URI local a la imagen, opcional
   categoria_id  TEXT REFERENCES categoria(id),  -- nullable: un producto puede no tener categoría
   precio_base   REAL NOT NULL,          -- colones (₡) — REAL en vez de centavos, ver decisión 0012
-  variantes     TEXT,                   -- JSON: [{id, nombre, precio}, …]; NULL = sin variantes (0039)
+  variantes     TEXT,                   -- JSON: [{id, nombre, precio, porDefecto?}, …]; NULL = sin variantes (0039)
   updated_at    TEXT NOT NULL,
   deleted_at    TEXT                    -- NULL = activo. Set = descontinuado (0005)
 );
@@ -44,7 +44,7 @@ CREATE TABLE producto (
 precio —tamaños, cortes, con o sin acompañamiento— como JSON dentro de la
 fila, no como tabla: una variante se crea, edita y borra en el formulario del
 producto y muere con él, así que no es una entidad ni tiene Notifier propio.
-`precio_base` no cambia de significado. Cada variante lleva un `id` estable
+Con variantes, `precio_base` es el precio de la **por defecto**. Cada variante lleva un `id` estable
 para que el costeo pueda apuntarle aunque se renombre. `NULL` y `[]` son lo
 mismo y se guarda siempre `NULL`. Ver
 [decisión 0039](../decisiones/0039-variantes-de-producto-como-json.md).

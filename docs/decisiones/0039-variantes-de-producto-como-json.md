@@ -38,8 +38,13 @@ producto.variantes TEXT
 linea_venta.variante TEXT   -- NULL cuando el producto no tiene variantes
 ```
 
-`precio_base` no cambia de significado: es el precio del producto sin
-variantes, o el de referencia cuando las hay.
+`precio_base` es el precio del producto sin variantes. **Con variantes, es el
+precio de la variante por defecto** (`"porDefecto": true` en el JSON; si
+ninguna lo dice, la primera), y el formulario los guarda en sincronía. Lo
+pidió el dueño al probar: con variantes, un precio base suelto "queda de
+facto sin uso". Así todo lo que lee `precio_base` —tarjetas, listas,
+exportación— sigue valiendo, y el campo del formulario se convierte en el
+señalador de cuál es la por defecto en vez de un número.
 
 ## Por qué JSON y no una tabla
 
@@ -107,7 +112,12 @@ dice "Pollo frito · Pechuga y ala".
 - `Producto` gana `List<Variante>? variantes`; el formulario, una lista
   editable de nombre y precio.
 - Al tocar un producto con variantes en la venta se abre un selector con una
-  opción grande por variante; sin variantes, un toque como hoy.
+  opción grande por variante, la por defecto destacada; sin variantes, un
+  toque como hoy. En Venta Rápida la por defecto viene **preseleccionada** y
+  se cobra de un toque: cambiar de tamaño es la excepción. (Primero se
+  obligaba a elegir siempre; al existir una por defecto elegida por el
+  Gerente, esa es la decisión.)
+- La tarjeta muestra el precio de la por defecto, sin "desde".
 - `linea_venta.variante`, y el ranking de reportes agrupa por producto y
   variante.
 - Migración de `producto` y de los libros de ventas; `esquemaSync` sube junto
