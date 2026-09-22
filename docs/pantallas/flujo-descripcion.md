@@ -99,6 +99,25 @@ Listado de productos con las acciones: **agregar**, **editar**, **descontinuar**
 
 **Purgar** ([decisión 0015](../decisiones/0015-purgar-producto-borrado-fisico-condicional.md)) resuelve el punto que planteó el usuario sobre acumulación de productos duplicados/creados por error que nunca se van a usar: solo está disponible para Gerente, y solo habilitado cuando el producto ya está descontinuado, tiene cero ventas asociadas, y se confirma que todos los dispositivos conocidos están sincronizados (la UI debe deshabilitar el botón mientras esa condición no se cumpla, con un mensaje indicando por qué). Para casos custom de un solo uso (ej. un descuento puntual para un cliente específico) que nunca deberían haber sido un Producto de catálogo en primer lugar, ver la **línea libre** en la Ventana 2 — evita el problema desde la raíz en vez de crear y purgar después.
 
+### Categorías, desde el mismo sitio (2026-09-21)
+
+El editor de categorías (crear, renombrar, icono, sacar de la carta) vive en
+esta ventana y no en Configuración: son parte de la carta y ordenarlas es la
+misma tarea que ordenar los productos. Un **botón flotante**, solo para el
+Gerente, rota entre la lista de productos y el editor; su icono dice **a dónde
+se va** (etiqueta = ir a categorías, cuadrícula = volver a productos) y al
+pulsarlo el icono actual sale por la izquierda mientras el nuevo entra por la
+derecha. En modo categorías la barra inferior deja de mostrar el buscador y
+"Nuevo": el editor trae su propio "Crear".
+
+### El panel de agregar en teléfono (2026-09-21)
+
+En Ventana 2, con pantalla compacta, el panel de agregar productos abierto
+**cubre todo el sitio del carrito** —antes se quedaba en un tercio y eran tres
+productos a la vista—. La barra de cobro con el total sigue abajo, quieta; la
+costura baja a pegarse a ella para cerrar con el pulgar. En escritorio sobra
+ancho y siguen conviviendo, mitad y mitad.
+
 ## Ventana 4 — Reportes
 
 Reporte unificado (una sola pantalla, no una por rango), con dos propiedades confirmadas — ver bocetos en [prototipos-ascii.md](prototipos-ascii.md):

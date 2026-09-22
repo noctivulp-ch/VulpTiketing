@@ -119,38 +119,38 @@ class _PanelVentaScreenState extends ConsumerState<PanelVentaScreen> {
           child: Scaffold(
             body: Column(
               children: [
-                // Quién ocupa el borde superior cambia según el panel esté
-                // abierto o cerrado, así que el espacio reservado se decide acá y
-                // no dentro de la costura: con el panel abierto la costura queda
-                // en MEDIO, y ahí un margen superior sería un hueco absurdo.
-                // Un TERCIO, no la mitad: el panel es de donde se saca lo que se
-                // agrega, pero lo que importa mirar es el carrito. Con 3:2 el
-                // panel se quedaba con el 60 % y el carrito se veía encajonado.
+                // Abierto, el panel ocupa TODO el sitio del carrito: en un
+                // teléfono un tercio de pantalla eran tres productos a la vista
+                // y había que desplazar para todo — lo dijo el dueño probando:
+                // "se queda muy pequeño". El carrito no se ve mientras se elige,
+                // y no hace falta: la barra de cobro con el total sigue abajo,
+                // quieta, y cerrar el panel devuelve la lista. En escritorio
+                // sobra ancho y siguen conviviendo la mitad cada uno (abajo).
                 //
-                // Y con el color de pozo, igual que acostado: es lo que se
+                // Con el color de pozo, igual que acostado: es lo que se
                 // despliega ENCIMA de la superficie de trabajo, así que tiene que
-                // leerse por delante. Apilado se había quedado sin esa distinción
-                // y los dos parecían el mismo plano.
+                // leerse por delante.
                 if (_panelAbierto)
                   Expanded(
-                    flex: 1,
-                    child: BentoPozo(padding: EdgeInsets.zero, child: _PanelAgregarProducto()),
+                    child: Padding(
+                      // Bajo la muesca de la cámara: el panel llega hasta arriba.
+                      padding: EdgeInsets.only(top: bentoInsetSuperior(context)),
+                      child: BentoPozo(padding: EdgeInsets.zero, child: _PanelAgregarProducto()),
+                    ),
                   )
-                else
+                else ...[
                   // El botón de la costura es fijo: si quedara pegado al borde lo
                   // taparían la muesca de la cámara o una notificación que baje, y
                   // es el control que abre el panel.
                   SizedBox(height: bentoInsetSuperior(context)),
-                costura,
-                Expanded(
-                  flex: _panelAbierto ? 2 : 1,
-                  child: Column(
-                    children: [
-                      const Expanded(child: _ListaCarrito()),
-                      barra,
-                    ],
-                  ),
-                ),
+                  costura,
+                  const Expanded(child: _ListaCarrito()),
+                ],
+                // Abierto, la costura baja a pegarse a la barra de cobro: es lo
+                // que cierra el panel y ahí queda bajo el pulgar. La barra no se
+                // mueve en ningún caso — es la zona con la que se cobra.
+                if (_panelAbierto) costura,
+                barra,
               ],
             ),
           ),

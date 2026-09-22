@@ -16,7 +16,6 @@ import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/bento_etiqueta_ajustada.dart';
 import '../../../core/ui/bento_falla.dart';
 import '../preferencias_notifier.dart';
-import '../../producto/ui/categorias_panel.dart';
 import 'cambiar_contrasena_panel.dart';
 import 'panel_acerca_de.dart';
 import 'panel_ajustes_sistema.dart';
@@ -34,7 +33,6 @@ enum _Opcion {
   modoTema,
   optimizacion,
   permisosSistema,
-  categorias,
   tokenMcp,
   acercaDe,
 }
@@ -131,16 +129,8 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
             seleccionado: _seleccion == _Opcion.modoTema,
             onTap: () => setState(() => _seleccion = _Opcion.modoTema),
           ),
-          // Junto a Catálogo, que es lo otro que toca la forma del inventario.
-          // Solo Gerente, igual que Catálogo: renombrar o sacar una categoría
-          // reordena la carta que ve todo el mundo.
-          if (esGerente)
-            _TileConfiguracion(
-              icono: Icons.label_outline,
-              etiqueta: 'Categorías',
-              seleccionado: _seleccion == _Opcion.categorias,
-              onTap: () => setState(() => _seleccion = _Opcion.categorias),
-            ),
+          // Las categorías se editan desde Catálogo (el botón que rota): son
+          // parte de la carta, no un ajuste.
           _TileConfiguracion(
             icono: Icons.speed_outlined,
             etiqueta: 'Optimización',
@@ -264,8 +254,6 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
         return const _PanelAcento();
       case _Opcion.modoTema:
         return const _PanelModoTema();
-      case _Opcion.categorias:
-        return const PanelCategorias();
       case _Opcion.optimizacion:
         return const _PanelOptimizacion();
       case _Opcion.permisosSistema:

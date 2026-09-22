@@ -251,6 +251,36 @@ void main() {
     final yPanel = tester.getTopLeft(find.text('Acento').last).dy;
     expect(yPanel, greaterThan(yTile), reason: 'en teléfono el detalle va debajo');
   });
+
+  // ── El panel de agregar productos, en teléfono ────────────────────────────
+  // Lo pidió el dueño probando en el celular: "se queda muy pequeño, ocupo que
+  // se amplíe hasta cubrir el espacio donde se ponen los productos listados
+  // para la venta, solo en cel; en PC basta con la mitad".
+
+  testWidgets('en teléfono el panel abierto cubre el sitio del carrito y la barra de cobro no se mueve', (tester) async {
+    await montar(tester, const PanelVentaScreen(), const Size(360, 800), Rol.gerente);
+    final barraAntes = tester.getRect(find.text('Finalizar').first);
+
+    await tester.tap(find.byKey(const ValueKey('costura_toggle')));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final panel = tester.getRect(find.byTooltip('Línea libre'));
+    // El botón de línea libre vive en la barra del panel, que está pegada a
+    // la costura; el panel llega desde arriba hasta ahí: más de la mitad de
+    // la pantalla, no un tercio.
+    expect(panel.bottom, greaterThan(800 * 0.6), reason: 'el panel no llegó a cubrir el carrito');
+    expect(find.text('Agregá productos con el botón de arriba'), findsNothing,
+        reason: 'con el panel abierto el carrito no se ve');
+    expect(tester.getRect(find.text('Finalizar').first), barraAntes, reason: 'la barra de cobro es la zona quieta');
+  });
+
+  testWidgets('en escritorio el panel abierto convive con el carrito', (tester) async {
+    await montar(tester, const PanelVentaScreen(), const Size(1440, 900), Rol.gerente);
+    await tester.tap(find.byKey(const ValueKey('costura_toggle')));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Agregá productos con el botón de la derecha'), findsOneWidget,
+        reason: 'en ancho el carrito sigue a la vista');
+  });
 }
 
 /// Fija el rol sin pasar por almacenamiento seguro, que no existe en un test.

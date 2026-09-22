@@ -14,6 +14,7 @@ import '../../sync/sync_notifier.dart';
 import '../producto_model.dart';
 import '../producto_notifier.dart';
 import '../producto_query_provider.dart';
+import 'categorias_panel.dart';
 import 'imagen_del_banco_vista.dart';
 import 'lista_productos_agrupada.dart';
 import 'producto_form_dialog.dart';
@@ -23,11 +24,23 @@ import 'producto_form_dialog.dart';
 ///
 /// Permisos por rol (Operations.feature): Gerente ve Crear/Editar/
 /// Descontinuar/Purgar; Registradora solo Editar.
-class ProductoCrudScreen extends ConsumerWidget {
+///
+/// **Las categorías viven acá, no en Configuración**: son parte de la carta,
+/// y ordenarlas es la misma tarea que ordenar los productos. Un botón flotante
+/// rota entre la lista de productos y el editor de categorías; el icono del
+/// botón dice a dónde se va, no dónde se está.
+class ProductoCrudScreen extends ConsumerStatefulWidget {
   const ProductoCrudScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProductoCrudScreen> createState() => _ProductoCrudScreenState();
+}
+
+class _ProductoCrudScreenState extends ConsumerState<ProductoCrudScreen> {
+  bool _mostrandoCategorias = false;
+
+  @override
+  Widget build(BuildContext context) {
     // El catálogo del Gerente SÍ muestra los descontinuados: es la única
     // pantalla desde la que se puede recontinuarlos.
     final productosAsync = ref.watch(productoCatalogoAgrupadoProvider);
@@ -37,14 +50,10 @@ class ProductoCrudScreen extends ConsumerWidget {
     final esGerente = ref.watch(sesionNotifierProvider) == Rol.gerente;
     final iconos = ref.watch(iconosDeCategoriaProvider);
 
-    return Scaffold(
-      body: Column(
-        children: [
-          // Cascada invertida (mismo patron que el panel lateral de Ventana
-          // 2): el buscador vive en la barra inferior, la lista crece hacia
-          // arriba desde ahi con `reverse: true`.
-          Expanded(
-            child: productosAsync.when(
+    // Cascada invertida (mismo patron que el panel lateral de Ventana 2): el
+    // buscador vive en la barra inferior, la lista crece hacia arriba desde
+    // ahi con `reverse: true`.
+    final listaDeProductos = productosAsync.when(
               data: (grupos) => grupos.every((g) => g.productos.isEmpty)
                   ? const Center(child: Text('Sin productos'))
                   : LayoutBuilder(
@@ -125,24 +134,48 @@ class ProductoCrudScreen extends ConsumerWidget {
                         );
                       },
                     ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, st) => BentoFalla(
-                mensaje: 'No se pudo cargar el catálogo.',
-                error: e,
-                onReintentar: () => ref.invalidate(productoNotifierProvider),
-              ),
-            ),
-          ),
-          // Barra inferior unificada: buscador + agregar en el mismo panel
-          // (antes el buscador vivia en el AppBar y "agregar" era un FAB
-          // flotando aparte, sin relacion visual con el buscador).
-          ColoredBox(
-            color: lacaDe(context).pozo,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(BentoSpacing.unidad),
-                child: Row(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, st) => BentoFalla(
+        mensaje: 'No se pudo cargar el catálogo.',
+        error: e,
+        onReintentar: () => ref.invalidate(productoNotifierProvider),
+      ),
+    );
+
+    // El editor de categorías ocupa el mismo sitio que la lista. Es un panel
+    // con su propio "Crear", así que abajo no hace falta buscador ni "Nuevo".
+    final editorDeCategorias = ListView(
+      padding: EdgeInsets.fromLTRB(
+        BentoSpacing.gapCelda,
+        bentoInsetSuperior(context) + BentoSpacing.gapCelda,
+        BentoSpacing.gapCelda,
+        BentoSpacing.gapCelda,
+      ),
+      children: const [PanelCategorias()],
+    );
+
+    // Barra inferior unificada: buscador + agregar en el mismo panel (antes el
+    // buscador vivia en el AppBar y "agregar" era un FAB flotando aparte, sin
+    // relacion visual con el buscador). Va como barra del Scaffold y no dentro
+    // del cuerpo para que el botón flotante se apoye encima de ella.
+    final barra = ColoredBox(
+      color: lacaDe(context).pozo,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(BentoSpacing.unidad),
+          child: _mostrandoCategorias
+              ? SizedBox(
+                  height: bentoObjetivoTactilMin,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text('Categorías de la carta', style: Theme.of(context).textTheme.titleSmall),
+                      ),
+                    ],
+                  ),
+                )
+              : Row(
                   children: [
                     Expanded(
                       child: TextField(
@@ -164,11 +197,21 @@ class ProductoCrudScreen extends ConsumerWidget {
                     ],
                   ],
                 ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
+    );
+
+    return Scaffold(
+      body: _mostrandoCategorias ? editorDeCategorias : listaDeProductos,
+      bottomNavigationBar: barra,
+      // Solo Gerente, como el editor que abre: renombrar o sacar una categoría
+      // reordena la carta que ve todo el mundo.
+      floatingActionButton: esGerente
+          ? _BotonQueRota(
+              mostrandoCategorias: _mostrandoCategorias,
+              onPressed: () => setState(() => _mostrandoCategorias = !_mostrandoCategorias),
+            )
+          : null,
     );
   }
 
@@ -432,6 +475,61 @@ class _FilaProducto extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+
+/// El botón que rota entre productos y categorías.
+///
+/// El icono dice **a dónde se va**: en la lista de productos muestra la
+/// etiqueta de categorías, y en el editor muestra la cuadrícula del catálogo.
+/// Al pulsarlo el icono actual sale por la izquierda mientras el nuevo entra
+/// por la derecha — lo pidió así el dueño, y es lo que hace legible el cambio:
+/// se ve que se cambió de sitio, no que el botón parpadeó.
+class _BotonQueRota extends StatelessWidget {
+  const _BotonQueRota({required this.mostrandoCategorias, required this.onPressed});
+
+  final bool mostrandoCategorias;
+  final VoidCallback onPressed;
+
+  static const _duracion = Duration(milliseconds: 220);
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton(
+      onPressed: onPressed,
+      tooltip: mostrandoCategorias ? 'Volver a los productos' : 'Editar categorías',
+      // El recorte es lo que hace que el icono "salga" y "entre" en vez de
+      // asomar fuera del círculo a mitad de camino.
+      child: ClipRect(
+        child: AnimatedSwitcher(
+          duration: _duracion,
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          // El que entra viene de la derecha; el que sale se va a la izquierda.
+          // `AnimatedSwitcher` corre la animación del saliente hacia atrás
+          // (de 1 a 0), así que su tween va de "fuera a la izquierda" a
+          // "en su sitio": al retroceder, se va.
+          transitionBuilder: (child, animacion) {
+            final entra = child.key == ValueKey(mostrandoCategorias);
+            final desplazamiento = Tween<Offset>(
+              begin: entra ? const Offset(1.2, 0) : const Offset(-1.2, 0),
+              end: Offset.zero,
+            ).animate(animacion);
+            return SlideTransition(position: desplazamiento, child: child);
+          },
+          // Los dos superpuestos en el mismo sitio mientras cruzan.
+          layoutBuilder: (actual, anteriores) => Stack(
+            alignment: Alignment.center,
+            children: [...anteriores, ?actual],
+          ),
+          child: Icon(
+            mostrandoCategorias ? Icons.grid_view_rounded : Icons.label_outline,
+            key: ValueKey(mostrandoCategorias),
+          ),
+        ),
       ),
     );
   }

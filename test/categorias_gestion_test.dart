@@ -12,7 +12,10 @@ import 'package:vulp_tiketing/core/theme/bento_theme.dart';
 import 'package:vulp_tiketing/features/producto/categoria_model.dart';
 import 'package:vulp_tiketing/features/producto/categoria_notifier.dart';
 import 'package:vulp_tiketing/features/producto/producto_query_provider.dart';
+import 'package:vulp_tiketing/features/auth/sesion_notifier.dart';
 import 'package:vulp_tiketing/features/producto/ui/categorias_panel.dart';
+import 'package:vulp_tiketing/features/producto/ui/producto_crud_screen.dart';
+import 'package:vulp_tiketing/features/sync/sync_notifier.dart';
 
 /// Las categorías se pueden crear, renombrar y sacar de la carta **desde la
 /// app**.
@@ -295,4 +298,72 @@ void main() {
       expect(find.byTooltip('Casado (el automático)'), findsOneWidget);
     });
   });
+
+  // ── Desde Catálogo, con el botón que rota ───────────────────────────────────
+  // El editor vivía en Configuración; el dueño lo quiso donde está la carta:
+  // "el lugar lógico sería con un botón flotante en el apartado de catálogo".
+
+  Future<void> montarCatalogo(WidgetTester tester, Rol rol) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final c = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWith((ref) async => db),
+        sesionNotifierProvider.overrideWith(() => _SesionFija(rol)),
+        dispositivoSinParesProvider.overrideWith((ref) async => true),
+      ],
+    );
+    addTearDown(c.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: c,
+        child: MaterialApp(theme: buildBentoTheme(AcentoTinte.oro), home: const ProductoCrudScreen()),
+      ),
+    );
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await tester.pump(const Duration(seconds: 1));
+    }
+  }
+
+  testWidgets('el Gerente rota entre productos y categorías con el botón flotante', (tester) async {
+    await montarCatalogo(tester, Rol.gerente);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byIcon(Icons.label_outline), findsOneWidget, reason: 'el icono dice a dónde se va');
+    expect(find.byType(PanelCategorias), findsNothing);
+    expect(find.widgetWithText(TextField, 'Buscar producto o categoría…'), findsOneWidget);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    // A mitad de la animación conviven los dos iconos: el que sale y el que entra.
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byIcon(Icons.label_outline), findsOneWidget);
+    expect(find.byIcon(Icons.grid_view_rounded), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(PanelCategorias), findsOneWidget);
+    expect(find.byIcon(Icons.grid_view_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.label_outline), findsNothing);
+    expect(find.widgetWithText(TextField, 'Buscar producto o categoría…'), findsNothing,
+        reason: 'el editor trae su propio Crear; el buscador no aplica');
+    expect(find.text('Arroces'), findsOneWidget);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(PanelCategorias), findsNothing);
+  });
+
+  testWidgets('la Registradora no tiene el botón: las categorías son del Gerente', (tester) async {
+    await montarCatalogo(tester, Rol.registradora);
+    expect(find.byType(FloatingActionButton), findsNothing);
+  });
+}
+
+class _SesionFija extends SesionNotifier {
+  _SesionFija(this.rol);
+
+  final Rol rol;
+
+  @override
+  Rol? build() => rol;
 }
