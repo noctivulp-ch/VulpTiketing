@@ -14,6 +14,7 @@ import '../../core/theme/bento_icon.dart';
 import '../../core/theme/bento_velo.dart';
 import '../../core/theme/bento_theme.dart';
 import '../auth/sesion_notifier.dart';
+import '../configuracion/preferencias_notifier.dart';
 import '../configuracion/ui/configuracion_screen.dart';
 import '../costeo/ui/costeo_screen.dart';
 import '../producto/ui/producto_crud_screen.dart';
@@ -103,15 +104,27 @@ class _DashboardShellState extends ConsumerState<DashboardShell> with WidgetsBin
     ConfiguracionScreen(),
   ];
 
-  // La sexta ventana, Costeo (0040), es solo del Gerente: la Registradora
-  // sigue viendo cinco y sus gestos y atajos no cambian. Va al final para
-  // que las cinco de siempre conserven su posición — memoria muscular.
-  List<String> get _iconos =>
-      _esGerente ? [..._iconosBase, 'costeo'] : _iconosBase;
-  List<Widget> get _pantallas =>
-      _esGerente ? [..._pantallasBase, const CosteoScreen()] : _pantallasBase;
-
+  // Las ventanas que se montan, en su orden de siempre:
+  // - las dos de venta según Configuración (un negocio puede no necesitar el
+  //   carrito, u otro no necesitar el cobro de un toque);
+  // - la sexta, Costeo (0040), solo con sesión de Gerente.
+  // Lo que se quita se quita de en medio y lo demás conserva su orden
+  // relativo: la memoria muscular se apoya en el orden, no en la posición.
   bool get _esGerente => ref.watch(sesionNotifierProvider) == Rol.gerente;
+
+  VentanasDeVenta get _ventanasDeVenta =>
+      ref.watch(preferenciasNotifierProvider).valueOrNull?.ventanasDeVenta ?? VentanasDeVenta.ambas;
+
+  List<(String, Widget)> get _ventanas => [
+    for (var i = 0; i < _iconosBase.length; i++)
+      if (!(_iconosBase[i] == 'venta_rapida' && !_ventanasDeVenta.conRapida) &&
+          !(_iconosBase[i] == 'panel_venta' && !_ventanasDeVenta.conPanel))
+        (_iconosBase[i], _pantallasBase[i]),
+    if (_esGerente) ('costeo', const CosteoScreen()),
+  ];
+
+  List<String> get _iconos => [for (final (icono, _) in _ventanas) icono];
+  List<Widget> get _pantallas => [for (final (_, pantalla) in _ventanas) pantalla];
 
   Widget _stack() {
     // Si la sesión deja de ser Gerente estando en Costeo, la ventana ya no

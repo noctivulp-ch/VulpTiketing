@@ -60,3 +60,8 @@ Feature: Inventory CRUD Operations
     When the user sets another symbol and decimals in Configuración → Moneda
     Then every amount on screen, in inputs and in exported PDFs uses that symbol and those decimals ([0043])
     And no stored amount is converted or rewritten
+
+  Scenario: A device can carry only one of the two sale windows
+    When the user chooses "Solo Rápida" or "Solo Panel" in Configuración → Ventanas de venta
+    Then the other sale window leaves the navigation bar on that device, and the remaining windows keep their relative order
+    And "none" is not an option: a sales app always has a sale window

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:vulp_tiketing/app.dart';
 import 'package:vulp_tiketing/features/auth/sesion_notifier.dart';
@@ -54,6 +55,20 @@ void main() {
     await montar(tester, sesionGuardada: Rol.registradora);
     expect(find.byKey(const ValueKey('nav_configuracion')), findsOneWidget);
     expect(find.byKey(const ValueKey('nav_costeo')), findsNothing);
+  });
+
+  testWidgets('con "solo Panel" desaparece Venta Rápida y el resto conserva su orden', (tester) async {
+    // Punto 5 de la idea 5: un negocio que arma pedidos no necesita el cobro
+    // de un toque. Lo que se quita se quita de en medio; la barra no se
+    // reordena.
+    SharedPreferences.setMockInitialValues({'flutter.ventanas_de_venta': 'soloPanel'});
+    await montar(tester, sesionGuardada: Rol.registradora);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byKey(const ValueKey('nav_venta_rapida')), findsNothing);
+    expect(find.byKey(const ValueKey('nav_panel_venta')), findsOneWidget);
+    final panel = tester.getCenter(find.byKey(const ValueKey('nav_panel_venta')));
+    final producto = tester.getCenter(find.byKey(const ValueKey('nav_producto')));
+    expect(panel.dx < producto.dx || panel.dy < producto.dy, isTrue, reason: 'Panel sigue antes que Catálogo');
   });
 
   testWidgets('el Gerente sí tiene la ventana de Costeo', (tester) async {

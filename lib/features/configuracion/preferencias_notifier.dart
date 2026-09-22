@@ -11,11 +11,24 @@ enum OrdenProducto { alfabetico, precio, categoria }
 /// `sistema` sigue el brillo del SO — default, ver `lib/app.dart`.
 enum ModoTema { claro, oscuro, sistema }
 
+/// Qué ventanas de venta lleva el aparato (punto 5 de la idea 5). Un negocio
+/// que vende de a un producto no necesita el carrito; uno que arma pedidos
+/// no necesita el cobro de un toque. Las dos de fábrica.
+enum VentanasDeVenta {
+  ambas,
+  soloRapida,
+  soloPanel;
+
+  bool get conRapida => this != soloPanel;
+  bool get conPanel => this != soloRapida;
+}
+
 const _keyOrden = 'orden_producto';
 const _keyAcento = 'acento_tinte';
 const _keyModoTema = 'modo_tema';
 const _keyEfectosApagados = 'efectos_apagados';
 const _keyFotosApagadas = 'fotos_apagadas';
+const _keyVentanasDeVenta = 'ventanas_de_venta';
 const _keyMonedaSimbolo = 'moneda_simbolo';
 const _keyMonedaDecimales = 'moneda_decimales';
 
@@ -27,6 +40,7 @@ class Preferencias {
     this.efectosApagados = const {},
     this.fotosApagadasEn = const {},
     this.moneda = Moneda.colon,
+    this.ventanasDeVenta = VentanasDeVenta.ambas,
   });
 
   final OrdenProducto ordenProducto;
@@ -47,6 +61,10 @@ class Preferencias {
   /// viaja por el sync. Los dos aparatos de un negocio se ponen igual una vez.
   final Moneda moneda;
 
+  /// Cuáles de las dos ventanas de venta se montan. Del aparato: la caja
+  /// puede llevar solo la rápida y el mostrador de pedidos solo el panel.
+  final VentanasDeVenta ventanasDeVenta;
+
   Preferencias copyWith({
     OrdenProducto? ordenProducto,
     AcentoTinte? acento,
@@ -54,6 +72,7 @@ class Preferencias {
     Set<EfectoPesado>? efectosApagados,
     Set<VentanaConFotos>? fotosApagadasEn,
     Moneda? moneda,
+    VentanasDeVenta? ventanasDeVenta,
   }) {
     return Preferencias(
       ordenProducto: ordenProducto ?? this.ordenProducto,
@@ -62,6 +81,7 @@ class Preferencias {
       efectosApagados: efectosApagados ?? this.efectosApagados,
       fotosApagadasEn: fotosApagadasEn ?? this.fotosApagadasEn,
       moneda: moneda ?? this.moneda,
+      ventanasDeVenta: ventanasDeVenta ?? this.ventanasDeVenta,
     );
   }
 }
@@ -103,7 +123,17 @@ class PreferenciasNotifier extends AsyncNotifier<Preferencias> {
       efectosApagados: apagados,
       fotosApagadasEn: sinFotos,
       moneda: moneda,
+      ventanasDeVenta: VentanasDeVenta.values.firstWhere(
+        (v) => v.name == prefs.getString(_keyVentanasDeVenta),
+        orElse: () => VentanasDeVenta.ambas,
+      ),
     );
+  }
+
+  Future<void> cambiarVentanasDeVenta(VentanasDeVenta ventanas) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyVentanasDeVenta, ventanas.name);
+    state = AsyncData((state.valueOrNull ?? const Preferencias()).copyWith(ventanasDeVenta: ventanas));
   }
 
   Future<void> cambiarMoneda(Moneda moneda) async {

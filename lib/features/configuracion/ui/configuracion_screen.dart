@@ -34,6 +34,7 @@ enum _Opcion {
   acento,
   modoTema,
   moneda,
+  ventanasDeVenta,
   optimizacion,
   permisosSistema,
   tokenMcp,
@@ -134,6 +135,12 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
           ),
           // Las categorías se editan desde Catálogo (el botón que rota): son
           // parte de la carta, no un ajuste.
+          _TileConfiguracion(
+            icono: Icons.point_of_sale_outlined,
+            etiqueta: 'Ventanas de venta',
+            seleccionado: _seleccion == _Opcion.ventanasDeVenta,
+            onTap: () => setState(() => _seleccion = _Opcion.ventanasDeVenta),
+          ),
           _TileConfiguracion(
             icono: Icons.payments_outlined,
             etiqueta: 'Moneda',
@@ -265,6 +272,8 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
         return const _PanelModoTema();
       case _Opcion.moneda:
         return const _PanelMoneda();
+      case _Opcion.ventanasDeVenta:
+        return const _PanelVentanasDeVenta();
       case _Opcion.optimizacion:
         return const _PanelOptimizacion();
       case _Opcion.permisosSistema:
@@ -689,6 +698,48 @@ class _PanelMonedaState extends ConsumerState<_PanelMoneda> {
               ],
             );
           },
+          loading: () => const SizedBox.shrink(),
+          error: (e, st) => Text('Error: $e'),
+        ),
+      ],
+    );
+  }
+}
+
+
+/// Cuáles de las dos ventanas de venta lleva este aparato. Del aparato y no
+/// del negocio: la caja puede llevar solo Venta Rápida y el mostrador de
+/// pedidos solo el Panel. Nunca ninguna: una app de ventas sin ventana de
+/// venta no es una opción.
+class _PanelVentanasDeVenta extends ConsumerWidget {
+  const _PanelVentanasDeVenta();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preferenciasAsync = ref.watch(preferenciasNotifierProvider);
+    final textos = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Ventanas de venta', style: textos.titleMedium),
+        const SizedBox(height: BentoSpacing.unidad / 2),
+        Text(
+          'Venta Rápida cobra un producto de un toque; el Panel arma un carrito. Un negocio que '
+          'no usa una de las dos puede quitarla de la barra en este aparato.',
+          style: textos.bodySmall,
+        ),
+        const SizedBox(height: BentoSpacing.gapCelda),
+        preferenciasAsync.when(
+          data: (prefs) => SegmentedButton<VentanasDeVenta>(
+            segments: const [
+              ButtonSegment(value: VentanasDeVenta.ambas, label: Text('Las dos')),
+              ButtonSegment(value: VentanasDeVenta.soloRapida, label: Text('Solo Rápida')),
+              ButtonSegment(value: VentanasDeVenta.soloPanel, label: Text('Solo Panel')),
+            ],
+            selected: {prefs.ventanasDeVenta},
+            onSelectionChanged: (s) => ref.read(preferenciasNotifierProvider.notifier).cambiarVentanasDeVenta(s.first),
+          ),
           loading: () => const SizedBox.shrink(),
           error: (e, st) => Text('Error: $e'),
         ),
