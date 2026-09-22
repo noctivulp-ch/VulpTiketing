@@ -103,6 +103,37 @@ void main() {
     expect(espia.ultimo!.precioBase, 3000);
   });
 
+  testWidgets('las flechas cambian el orden, y el orden guardado es el que ve la caja', (tester) async {
+    // Nada ordena por nombre ni por precio: el segundo botón de la caja es
+    // siempre el mismo porque lo decidió el Gerente acá.
+    final espia = await montar(tester, conVariantes());
+    // `byTooltip` da el envoltorio del tooltip, que vive DENTRO del botón.
+    IconButton boton(String tooltip, {required bool ultimo}) => tester.widget<IconButton>(
+      find.ancestor(
+        of: ultimo ? find.byTooltip(tooltip).last : find.byTooltip(tooltip).first,
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(boton('Subir', ultimo: false).onPressed, isNull, reason: 'la primera no sube');
+    expect(boton('Bajar', ultimo: true).onPressed, isNull, reason: 'la última no baja');
+
+    await tester.tap(find.byTooltip('Subir').last); // Grande sube
+    await tester.pump();
+    final nombres = tester
+        .widgetList<TextFormField>(find.widgetWithText(TextFormField, 'Variante'))
+        .map((f) => f.controller!.text)
+        .toList();
+    expect(nombres, ['Grande', 'Pequeño']);
+
+    await tester.ensureVisible(find.text('Guardar'));
+    await tester.tap(find.text('Guardar'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(espia.ultimo!.variantes.map((v) => v.nombre), ['Grande', 'Pequeño']);
+    // Mover no cambia cuál es la por defecto: sigue siendo Pequeño.
+    expect(espia.ultimo!.variantePorDefecto!.nombre, 'Pequeño');
+    expect(espia.ultimo!.precioBase, 800);
+  });
+
   testWidgets('quitar la última variante devuelve el campo numérico con su precio', (tester) async {
     await montar(tester, conVariantes());
 

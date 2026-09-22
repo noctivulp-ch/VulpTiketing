@@ -31,6 +31,7 @@ Feature: Inventory CRUD Operations
     Then its variants are stored inside its own record, not as separate "Productos" ([0039])
     And exactly one variant is the default; the "Producto" base price is that variant's price, and the base-price field becomes the default selector
     And no two variants of the same "Producto" may share a name
+    And the Gerente sets their order with up/down arrows; every sale screen shows them in exactly that order, never sorted by name or price
     And the sale screens show the default variant's price
     # Sizes, cuts, with or without sides, flavours: one mechanism. Before this
     # the menu had "Pollo frito (cadera y muslo)" and "Pollo frito (pechuga y

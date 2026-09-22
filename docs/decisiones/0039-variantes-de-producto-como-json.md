@@ -118,6 +118,11 @@ dice "Pollo frito · Pechuga y ala".
   obligaba a elegir siempre; al existir una por defecto elegida por el
   Gerente, esa es la decisión.)
 - La tarjeta muestra el precio de la por defecto, sin "desde".
+- **El orden de las variantes es el del arreglo**, y lo fija el Gerente en el
+  formulario con las flechas ▲▼. Ninguna pantalla ordena por nombre ni por
+  precio: chips y selector repiten el orden tal cual. La app depende de la
+  monotonía para generar memoria muscular — "el segundo botón" tiene que ser
+  siempre el mismo.
 - `linea_venta.variante`, y el ranking de reportes agrupa por producto y
   variante.
 - Migración de `producto` y de los libros de ventas; `esquemaSync` sube junto

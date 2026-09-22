@@ -91,6 +91,20 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
     });
   }
 
+  /// Sube o baja una variante un puesto. El orden del formulario ES el orden
+  /// de la caja —chips y selector lo repiten tal cual— y no se ordena por
+  /// nombre ni por precio en ningún sitio: la memoria muscular necesita que
+  /// "el segundo botón" sea siempre el mismo, y eso lo decide el Gerente.
+  void _moverVariante(_VarianteEnEdicion v, int paso) {
+    final i = _variantes.indexOf(v);
+    final destino = i + paso;
+    if (destino < 0 || destino >= _variantes.length) return;
+    setState(() {
+      _variantes.removeAt(i);
+      _variantes.insert(destino, v);
+    });
+  }
+
   void _quitarVariante(_VarianteEnEdicion v) {
     setState(() {
       _variantes.remove(v);
@@ -397,6 +411,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
             ocupado: _guardando,
             onAgregar: _agregarVariante,
             onQuitar: _quitarVariante,
+            onMover: _moverVariante,
             // Se valida contra las demás: dos variantes con el mismo nombre
             // se venderían como la misma, y el ranking las juntaría.
             nombreRepetido: (v) => _variantes.any(
@@ -547,6 +562,7 @@ class _EditorDeVariantes extends StatelessWidget {
     required this.ocupado,
     required this.onAgregar,
     required this.onQuitar,
+    required this.onMover,
     required this.nombreRepetido,
   });
 
@@ -559,6 +575,9 @@ class _EditorDeVariantes extends StatelessWidget {
   final bool ocupado;
   final VoidCallback onAgregar;
   final ValueChanged<_VarianteEnEdicion> onQuitar;
+
+  /// Un puesto hacia arriba (−1) o hacia abajo (+1).
+  final void Function(_VarianteEnEdicion, int) onMover;
   final bool Function(_VarianteEnEdicion) nombreRepetido;
 
   @override
@@ -617,13 +636,33 @@ class _EditorDeVariantes extends StatelessWidget {
                     },
                   ),
                 ),
-                // Alineado con los campos, que traen su etiqueta flotante encima.
+                // Subir, bajar y quitar, compactos: tres acciones en una fila
+                // que ya lleva dos campos. Las flechas se apagan en los
+                // extremos, así el orden se lee también en qué se puede tocar.
                 Padding(
-                  padding: const EdgeInsets.only(top: BentoSpacing.unidad),
-                  child: IconButton(
-                    icon: const Icon(Icons.close),
-                    tooltip: 'Quitar variante',
-                    onPressed: ocupado ? null : () => onQuitar(v),
+                  padding: const EdgeInsets.only(top: BentoSpacing.unidad / 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_upward, size: 18),
+                        tooltip: 'Subir',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: ocupado || variantes.first == v ? null : () => onMover(v, -1),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_downward, size: 18),
+                        tooltip: 'Bajar',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: ocupado || variantes.last == v ? null : () => onMover(v, 1),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        tooltip: 'Quitar variante',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: ocupado ? null : () => onQuitar(v),
+                      ),
+                    ],
                   ),
                 ),
               ],
