@@ -195,7 +195,7 @@ void main() {
     expect(find.textContaining('Arroz · 200 g'), findsOneWidget);
     // 240 de insumos sobre 3.000 cobrados: food cost 8 %.
     expect(find.textContaining('Food cost (insumos'), findsOneWidget);
-    expect(find.text('8 %'), findsOneWidget);
+    expect(find.text('8.0 %'), findsOneWidget, reason: 'bajo el 10 % va con un decimal');
     final aplicar = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Aplicar ₡650'));
     expect(aplicar.onPressed, isNotNull, reason: 'se cobra 3.000 y el modelo dice 650: hay qué aplicar');
 
