@@ -251,6 +251,51 @@ void main() {
       reason: 'no puede haberse aplicado ni una fila',
     );
   });
+
+  test('un peer con otra moneda se rechaza sin aplicar nada, y dice cuál', () async {
+    // Colones y dólares mezclados no fallan: mienten. La moneda viaja en el
+    // sobre y tiene que ser la misma (0043). Lo señaló el dueño: "si las
+    // monedas son distintas eso trae problemas de sync".
+    final enDolares = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => enDolares.close(force: true));
+    enDolares.listen((req) {
+      req.response
+        ..headers.contentType = ContentType.json
+        ..write(
+          '{"version":1,"esquema":$esquemaSync,"moneda":{"simbolo":"\$","decimales":2},"tablas":{"categoria":[],'
+          '"producto":[${_jsonProducto()}],"venta":[],"linea_venta":[]}}',
+        )
+        ..close();
+    });
+    final peer = PeerVisible(deviceId: 'usd', rol: 'gerente', direccion: '127.0.0.1', puerto: enDolares.port);
+
+    await expectLater(
+      clienteSync().sincronizarCon(peer),
+      throwsA(isA<SyncIncompatible>().having((e) => e.motivo, 'motivo', contains('Configuración → Moneda'))),
+    );
+    expect(await dbCliente.query('producto'), isEmpty, reason: 'ni una fila');
+  });
+
+  test('un peer sin moneda en el sobre (versión anterior) no se rechaza por eso', () async {
+    // Ya lo pararía el esquema si fuera viejo de verdad; y un sobre de la
+    // misma versión sin moneda no existe. Tolerarlo evita romper las pruebas
+    // que arman el sobre a mano.
+    final sinMoneda = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => sinMoneda.close(force: true));
+    sinMoneda.listen((req) {
+      req.response
+        ..headers.contentType = ContentType.json
+        ..write(
+          '{"version":1,"esquema":$esquemaSync,"tablas":{'
+          '${[for (final t in tablasSincronizables) '"$t":[${t == 'producto' ? _jsonProducto() : ''}]'].join(',')}'
+          '}}',
+        )
+        ..close();
+    });
+    final peer = PeerVisible(deviceId: 'viejo-sobre', rol: 'gerente', direccion: '127.0.0.1', puerto: sinMoneda.port);
+    await clienteSync().sincronizarCon(peer);
+    expect(await dbCliente.query('producto'), hasLength(1));
+  });
 }
 
 String _jsonProducto() =>

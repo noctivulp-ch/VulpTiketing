@@ -240,3 +240,8 @@ Orden acordado (que exista → mejorar → optimizar → pulir):
    su comisión (0042 ya pondera por el mix real). Toca `venta.metodo_pago`
    (hoy dos valores), la casilla de cobro (0032: una casilla porque eran dos
    medios; con cuatro es un selector), reportes por medio y el corte de caja.
+9. **Identidad / perfiles de sync** (dueño, 2026-09-21): nombrar cada aparato
+   con su negocio y que solo sincronicen los del mismo nombre. Hoy el sync ya
+   rechaza por esquema y por moneda (0043); la identidad sería la tercera
+   comprobación, y el preinicio de varios negocios (perfiles) en una misma
+   app.

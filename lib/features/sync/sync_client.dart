@@ -7,6 +7,7 @@ import '../venta/libro_ventas.dart';
 import 'device_discovery_service.dart';
 import 'row_upserter.dart';
 import 'sync_server.dart' show esquemaSync, tablasSincronizables, versionProtocoloSync;
+import '../../core/moneda.dart';
 
 /// Se recibió un payload que esta app no debe aplicar.
 class SyncIncompatible implements Exception {
@@ -23,7 +24,10 @@ class SyncIncompatible implements Exception {
 /// dispositivos hagan esto — uno con el otro, no requiere que el servidor
 /// también reciba datos.
 class SyncClient {
-  SyncClient(this._db, {this.libros});
+  SyncClient(this._db, {this.libros, this.moneda = Moneda.colon});
+
+  /// La de este aparato; un par con otra se rechaza sin aplicar una fila.
+  final Moneda moneda;
 
   final Database _db;
 
@@ -80,6 +84,17 @@ class SyncClient {
     final esquema = sobre['esquema'];
     if (esquema != esquemaSync) {
       throw SyncIncompatible('esquema $esquema de ${peer.deviceId}, esta app usa $esquemaSync');
+    }
+    // Misma moneda o nada (0043): los montos viajan como números sin unidad,
+    // y sumar colones con dólares no falla, miente. Un par sin moneda en el
+    // sobre es una versión anterior: ya lo habría parado el esquema.
+    final monedaRemota = sobre['moneda'] as Map<String, dynamic>?;
+    if (monedaRemota != null &&
+        (monedaRemota['simbolo'] != moneda.simbolo || monedaRemota['decimales'] != moneda.decimales)) {
+      throw SyncIncompatible(
+        'moneda ${monedaRemota['simbolo']} (${monedaRemota['decimales']} decimales) en ${peer.deviceId}; '
+        'este aparato usa ${moneda.simbolo} (${moneda.decimales}). Configuración → Moneda tiene que ser igual en los dos',
+      );
     }
     return sobre['tablas'] as Map<String, dynamic>;
   }

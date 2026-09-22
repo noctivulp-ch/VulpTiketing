@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:sqflite/sqflite.dart';
+import '../../core/moneda.dart';
 
 /// Tablas sincronizables — incluye Venta/LineaVenta (a diferencia de
 /// `.tiketdata`, que solo comparte catálogo). Se manda todo el contenido de
@@ -78,7 +79,12 @@ const esquemaSync = 5;
 /// confianza del mismo negocio, el objetivo es evitar terceros, no
 /// defender contra un adversario dentro de la misma LAN.
 class SyncServer {
-  SyncServer(this._db);
+  /// [moneda] viaja en el sobre para que un aparato con otra la rechace
+  /// (0043): dos monedas mezcladas no dan un error, dan una contabilidad
+  /// que no es de nadie.
+  SyncServer(this._db, {this.moneda = Moneda.colon});
+
+  final Moneda moneda;
 
   final Database _db;
   HttpServer? _servidor;
@@ -125,7 +131,12 @@ class SyncServer {
     });
 
     return Response.ok(
-      jsonEncode({'version': versionProtocoloSync, 'esquema': esquemaSync, 'tablas': tablas}),
+      jsonEncode({
+        'version': versionProtocoloSync,
+        'esquema': esquemaSync,
+        'moneda': {'simbolo': moneda.simbolo, 'decimales': moneda.decimales},
+        'tablas': tablas,
+      }),
       headers: {'content-type': 'application/json'},
     );
   }

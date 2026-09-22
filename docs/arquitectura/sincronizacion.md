@@ -32,7 +32,7 @@ Los borrados se propagan como cualquier otro cambio de fila: son soft-delete (`d
 
 Una vez que dos dispositivos del mismo rol se descubren, intercambian filas vía un servidor HTTP embebido (`shelf`) con puerto asignado dinámicamente por el sistema operativo y anunciado por mDNS — ver [decisión 0022](../decisiones/0022-protocolo-transporte-sync-shelf-puerto-dinamico.md). Cada dispositivo expone `GET /sync/exportar` (todas las filas de las 5 tablas sincronizables —`categoria`, `producto`, `venta`, `linea_venta` y `corte_caja`—, incluyendo tombstones) y hace *pull* del mismo endpoint en cada peer descubierto, aplicando el resultado con `RowUpserter` (LWW vía `RowSyncEngine`).
 
-El payload va envuelto en `{version, esquema, tablas}`. `esquema` va por **5**
+El payload va envuelto en `{version, esquema, moneda, tablas}`. La `moneda` (símbolo y decimales, 0043) se rechaza si difiere, como el esquema. `esquema` va por **5**
 desde las variantes (0039): 1.0.0 usaba 4. `version` es la forma del mensaje y `esquema` la versión del modelo de datos: un peer con otro `esquema` se **rechaza sin aplicar una sola fila**, porque mezclar filas de dos modelos no produce un error visible sino una contabilidad que no es la de ninguno de los dos aparatos.
 
 ### Qué viaja y qué no

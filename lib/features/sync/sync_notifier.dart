@@ -11,6 +11,7 @@ import '../producto/categoria_notifier.dart';
 import '../producto/producto_notifier.dart';
 import '../caja/caja_notifier.dart';
 import '../reportes/reportes_provider.dart';
+import '../configuracion/preferencias_notifier.dart';
 import '../venta/libro_ventas.dart';
 import '../venta/venta_notifier.dart';
 import 'device_discovery_service.dart';
@@ -210,7 +211,8 @@ class SyncNotifier extends Notifier<EstadoSync> {
     final miDeviceId = await _deviceIdentity.obtenerOCrear();
     _miDeviceId = miDeviceId;
 
-    final server = SyncServer(db);
+    final moneda = (await ref.read(preferenciasNotifierProvider.future)).moneda;
+    final server = SyncServer(db, moneda: moneda);
     final puerto = await server.iniciar();
     _server = server;
     state = const EstadoSync(fase: FaseSync.syncing);
@@ -222,7 +224,7 @@ class SyncNotifier extends Notifier<EstadoSync> {
 
     await _discovery.anunciar(deviceId: miDeviceId, rol: rol.name, puerto: puerto);
 
-    _cliente = SyncClient(db, libros: await ref.read(libroVentasServiceProvider.future));
+    _cliente = SyncClient(db, libros: await ref.read(libroVentasServiceProvider.future), moneda: moneda);
 
     // La ronda periódica: repasa los pares YA conocidos aunque no haya cambiado
     // nada en la red.
