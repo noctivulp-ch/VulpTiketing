@@ -12,7 +12,7 @@ artículo concreto.
 | **Artículos** | El resultado. Arriba, el negocio a los precios de hoy y el volumen de los últimos 30 días: utilidad, ingreso, costos fijos, margen neto, unidades, punto de equilibrio (al mes y por día), colchón. Debajo, un pozo por artículo: precio actual, costo total, precio sugerido, margen real (en rojo si no llega al objetivo o se vende a pérdida) y avisos |
 | **Insumos** | Materias primas y **sus compras** ([0041](../decisiones/0041-libro-de-compras-de-insumos.md)). El insumo se registra una vez (nombre, en qué se usa, merma, proveedor, precio de arranque); cada vez que se abastece se **anota una compra** (cuántas, de cuánto, pagado). La lista muestra el costo efectivo por unidad base con merma y de dónde salió (promedio de 90 días / última compra / arranque). Abajo, lo comprado en el mes y en el trimestre — la base del régimen simplificado |
 | **Fijos** | Alquiler, servicios, sueldos… monto mensual por concepto, y el total |
-| **Ajustes** | Margen objetivo (sobre el PRECIO), comisión de medios de pago, merma por defecto, tarifa de mano de obra por hora, redondeo del precio, días abiertos, y reparto de fijos por unidad o por tiempo |
+| **Ajustes** | El negocio: margen objetivo (sobre el PRECIO), merma por defecto, tarifa de mano de obra, redondeo, días abiertos, reparto por unidad o por tiempo. **Impuestos y comisiones** ([0042](../decisiones/0042-impuestos-flexibles-y-regimen.md)): régimen simplificado (factores sobre compras, con el trimestre en curso ya calculado) o general (IVA por defecto; cada producto puede llevar el suyo), y comisión por medio de pago (efectivo / SINPE), ponderada por el mix real de cobro |
 
 ## El detalle de un artículo
 

@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/features/costeo/compra_insumo_model.dart';
+import 'package:vulp_tiketing/features/costeo/config_costeo_model.dart';
 import 'package:vulp_tiketing/features/costeo/compra_insumo_notifier.dart';
 import 'package:vulp_tiketing/features/costeo/costeo_notifiers.dart';
 import 'package:vulp_tiketing/features/costeo/costeo_provider.dart';
@@ -154,7 +155,7 @@ void main() {
     final articulos = container.read(articuloCosteoProvider.notifier);
     final registro = await articulos.asegurar('pan', '');
     await articulos.ponerLinea(registro.id, 'harina', 100); // 100 g
-    await container.read(configCosteoProvider.notifier).guardar(const c.ConfigCosteo(mermaPorDefecto: 0));
+    await container.read(configCosteoProvider.notifier).guardar(ConfigCosteoRegistro(config: const c.ConfigCosteo(mermaPorDefecto: 0), updatedAt: DateTime.now()));
 
     // Sin compras: 100 g × 0,90 (arranque) = 90.
     expect((await container.read(costeoProvider.future)).calculadoDe('pan#')!.costoInsumosUnidad, closeTo(90, 1e-9));

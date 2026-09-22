@@ -13,6 +13,7 @@ class Producto {
     this.imagen,
     this.categoriaId,
     this.variantes = const [],
+    this.tasaIva,
     this.deletedAt,
   });
 
@@ -28,6 +29,11 @@ class Producto {
 
   /// Formas de venderlo a otro precio. Vacía en casi todos; ver [Variante].
   final List<Variante> variantes;
+
+  /// IVA de este producto en régimen general (0,13, 0,04, 0,02, 0,01, 0).
+  /// Nula = la tasa por defecto de Ajustes del costeo (decisión 0042). En
+  /// régimen simplificado no se usa: ahí el impuesto va sobre las compras.
+  final double? tasaIva;
   final DateTime updatedAt;
   final DateTime? deletedAt;
 
@@ -52,6 +58,7 @@ class Producto {
       categoriaId: map['categoria_id'] as String?,
       precioBase: (map['precio_base'] as num).toDouble(),
       variantes: variantesDeColumna(map['variantes']),
+      tasaIva: (map['tasa_iva'] as num?)?.toDouble(),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       deletedAt: map['deleted_at'] == null ? null : DateTime.parse(map['deleted_at'] as String),
     );
@@ -65,6 +72,7 @@ class Producto {
       'categoria_id': categoriaId,
       'precio_base': precioBase,
       'variantes': variantesAColumna(variantes),
+      'tasa_iva': tasaIva,
       'updated_at': updatedAt.toIso8601String(),
       'deleted_at': deletedAt?.toIso8601String(),
     };

@@ -34,7 +34,7 @@ existan o no"*.
 
 ### 1.1.0 (build 2) — **en desarrollo, no instalada**
 
-Sube el esquema de datos a **v7** y el de sincronización a **5**: hay que
+Sube el esquema de datos a **v8** y el de sincronización a **5**: hay que
 actualizar todos los aparatos a la vez, y como todavía ninguno lleva ventas de
 verdad, este es el momento barato de hacerlo.
 
@@ -45,7 +45,7 @@ verdad, este es el momento barato de hacerlo.
 | Categorías desde Catálogo | Botón flotante que rota entre productos y categorías; sale de Configuración |
 | Panel de agregar en teléfono | Abierto cubre todo el sitio del carrito; la barra de cobro no se mueve |
 | Texto neutro e iconos | Sin "soda" en pantalla; 23 iconos de categoría más (pizza, ropa, ferretería, farmacia…) con sus pistas |
-| Costeo de recetas | Ventana 6, solo Gerente ([0040](decisiones/0040-costeo-de-recetas-como-modulo.md)): insumos, costos fijos, parámetros, receta por artículo (variantes incluidas), precio sugerido y margen real con volumen de ventas reales. Informa; "Aplicar" es explícito y por artículo. Esquema **v7** (cinco tablas sincronizables). **Compras de insumos** en el libro, con costo promedio ponderado de 90 días y totales por mes y trimestre ([0041](decisiones/0041-libro-de-compras-de-insumos.md)) |
+| Costeo de recetas | Ventana 6, solo Gerente ([0040](decisiones/0040-costeo-de-recetas-como-modulo.md)): insumos, costos fijos, parámetros, receta por artículo (variantes incluidas), precio sugerido y margen real con volumen de ventas reales. Informa; "Aplicar" es explícito y por artículo. Esquema **v7** (cinco tablas sincronizables). **Compras de insumos** en el libro, con costo promedio ponderado de 90 días y totales por mes y trimestre ([0041](decisiones/0041-libro-de-compras-de-insumos.md)). **Impuestos**: régimen simplificado (factores sobre compras) o general (IVA por producto), comisión por medio de pago ponderada por el mix real ([0042](decisiones/0042-impuestos-flexibles-y-regimen.md)); esquema v8 |
 
 Migraciones: `producto.variantes` (v5 → v6, `ALTER TABLE`), las cinco tablas del costeo (v6 → v7, vacías) y
 `linea_venta.variante` en cada libro al adjuntarlo. Un `.tiketdata` de la

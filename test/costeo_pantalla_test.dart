@@ -98,8 +98,13 @@ void main() {
 
     await tester.tap(find.text('Ajustes'));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Guardar parámetros'), findsOneWidget);
     expect(find.widgetWithText(TextFormField, 'Margen objetivo (%)'), findsOneWidget);
+    // La lista es perezosa: lo de abajo no existe hasta desplazar.
+    await tester.drag(find.byType(ListView).last, const Offset(0, -1500));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Simplificado'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Factor IVA (%)'), findsOneWidget);
+    expect(find.text('Guardar parámetros'), findsOneWidget);
   });
 
   testWidgets('crear un insumo desde su formulario lo deja en la lista con su costo efectivo', (tester) async {

@@ -44,6 +44,7 @@ class ArticuloCosteado {
     required this.manoObraUnidad,
     required this.costoVariableUnidad,
     required this.overheadUnidad,
+    required this.impuestoComprasUnidad,
     required this.costoTotalUnidad,
     required this.margenObjetivo,
     required this.precioSugerido,
@@ -61,6 +62,10 @@ class ArticuloCosteado {
   final double manoObraUnidad;
   final double costoVariableUnidad;
   final double overheadUnidad;
+
+  /// Régimen simplificado: la parte del impuesto sobre compras que le toca a
+  /// esta unidad (sobre su costo de insumos). Cero en régimen general.
+  final double impuestoComprasUnidad;
   final double costoTotalUnidad;
   final double margenObjetivo;
 
@@ -83,6 +88,9 @@ class ArticuloCosteado {
   final List<Alerta> alertas;
 
   double get utilidadMes => (utilidadUnidad ?? 0) * articulo.unidadesMes;
+
+  /// Impuesto que va dentro del precio actual (régimen general), por unidad.
+  double get impuestoPrecioUnidad => articulo.precioActual * articulo.fraccionImpuestoDelPrecio;
   double get ingresoMes => articulo.precioActual * articulo.unidadesMes;
   bool get tieneErrores => alertas.any((a) => a.esError);
 
@@ -101,6 +109,7 @@ class ResultadoCosteo {
     required this.costoVariableMes,
     required this.utilidadMes,
     required this.comisionesMes,
+    required this.impuestoSobrePrecioMes,
     required this.contribucionUnidad,
     required this.unidadesEquilibrio,
     required this.colchon,
@@ -117,6 +126,10 @@ class ResultadoCosteo {
   final double costoVariableMes;
   final double utilidadMes;
   final double comisionesMes;
+
+  /// Impuesto dentro de los precios cobrados en el mes (régimen general):
+  /// lo que se declara de IVA. Cero en simplificado.
+  final double impuestoSobrePrecioMes;
 
   /// Lo que cada unidad deja para pagar costos fijos, a precios actuales.
   final double? contribucionUnidad;

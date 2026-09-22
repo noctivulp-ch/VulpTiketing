@@ -75,24 +75,27 @@ class CostoFijoNotifier extends AsyncNotifier<List<CostoFijoRegistro>> {
 final costoFijoNotifierProvider =
     AsyncNotifierProvider<CostoFijoNotifier, List<CostoFijoRegistro>>(CostoFijoNotifier.new);
 
-/// La única fila de parámetros. Sin fila guardada vale la de fábrica.
-class ConfigCosteoNotifier extends AsyncNotifier<c.ConfigCosteo> {
+/// La única fila de parámetros, con régimen y comisiones (0042). Sin fila
+/// guardada vale la de fábrica.
+class ConfigCosteoNotifier extends AsyncNotifier<ConfigCosteoRegistro> {
   Future<CosteoDao> get _dao async => CosteoDao(await ref.read(databaseProvider.future));
 
   @override
-  Future<c.ConfigCosteo> build() async {
+  Future<ConfigCosteoRegistro> build() async {
     final guardada = await CosteoDao(await ref.watch(databaseProvider.future)).leerConfig();
-    return guardada?.config ?? const c.ConfigCosteo();
+    return guardada ?? ConfigCosteoRegistro(config: const c.ConfigCosteo(), updatedAt: DateTime(2000));
   }
 
-  Future<void> guardar(c.ConfigCosteo config) async {
+  Future<void> guardar(ConfigCosteoRegistro registro) async {
     final dao = await _dao;
-    await dao.guardarConfig(ConfigCosteoRegistro(config: config, updatedAt: DateTime.now()));
-    state = AsyncData(config);
+    final ahora = registro.copyWith(updatedAt: DateTime.now());
+    await dao.guardarConfig(ahora);
+    state = AsyncData(ahora);
   }
 }
 
-final configCosteoProvider = AsyncNotifierProvider<ConfigCosteoNotifier, c.ConfigCosteo>(ConfigCosteoNotifier.new);
+final configCosteoProvider =
+    AsyncNotifierProvider<ConfigCosteoNotifier, ConfigCosteoRegistro>(ConfigCosteoNotifier.new);
 
 /// Los datos de costeo de cada artículo (producto o variante), y sus recetas.
 ///

@@ -23,6 +23,7 @@ class ConfigCosteo {
     this.tarifaManoObraHora = 0,
     this.redondeoPrecio = 50,
     this.metodoReparto = MetodoReparto.unidad,
+    this.impuestoSobreCompras = 0,
   });
 
   final int diasAbiertosMes;
@@ -46,8 +47,15 @@ class ConfigCosteo {
   final double redondeoPrecio;
   final MetodoReparto metodoReparto;
 
-  /// Lo que queda del precio después de margen y comisión. Tiene que ser
-  /// positivo o no existe precio que cumpla la meta.
+  /// Régimen simplificado de Costa Rica: el impuesto se paga como fracción de
+  /// las COMPRAS del trimestre (factor de IVA + factor de renta). Por unidad
+  /// se imputa sobre el costo de insumos, que es lo que se compra. Cero en
+  /// régimen general, donde el impuesto va sobre el precio de cada artículo
+  /// ([Articulo.tasaImpuesto]).
+  final double impuestoSobreCompras;
+
+  /// Lo que queda del precio después de margen y comisión (sin impuesto sobre
+  /// el precio, que es por artículo). Tiene que ser positivo.
   double get divisor => 1 - margenObjetivo - comisionMediosPago;
 }
 
@@ -105,6 +113,7 @@ class Articulo {
     this.margenObjetivo,
     this.ajustePrecio = 0,
     this.volumenEsReal = false,
+    this.tasaImpuesto = 0,
   });
 
   final String id;
@@ -134,6 +143,14 @@ class Articulo {
 
   /// Si [unidadesMes] salió de las ventas, y no de una estimación a mano.
   final bool volumenEsReal;
+
+  /// IVA que lleva el precio de este artículo (0,13, 0,01, 0…), régimen
+  /// general. El precio al público lo INCLUYE, así que la fracción del
+  /// precio que se va en impuesto es `tasa / (1 + tasa)`: con 13 %, el 11,5 %
+  /// de lo cobrado.
+  final double tasaImpuesto;
+
+  double get fraccionImpuestoDelPrecio => tasaImpuesto <= 0 ? 0 : tasaImpuesto / (1 + tasaImpuesto);
 
   double get minutosPorUnidad => unidadesPorLote <= 0 ? 0 : minutosLote / unidadesPorLote;
 }

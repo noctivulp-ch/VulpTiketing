@@ -108,6 +108,10 @@ class _Negocio extends StatelessWidget {
               cifra('Por día', equilibrioDia == null ? '—' : '${equilibrioDia.ceil()} u'),
             ],
           ),
+          if (r.impuestoSobrePrecioMes > 0) ...[
+            const SizedBox(height: BentoSpacing.unidad / 2),
+            Text('IVA dentro de lo vendido: ${colones(r.impuestoSobrePrecioMes)}', style: textos.bodySmall),
+          ],
           if (r.colchon != null) ...[
             const SizedBox(height: BentoSpacing.unidad / 2),
             Text(

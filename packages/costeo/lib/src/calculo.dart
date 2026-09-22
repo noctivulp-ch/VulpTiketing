@@ -47,6 +47,7 @@ ResultadoCosteo calcularCatalogo({
   var costoVariableMes = 0.0;
   var utilidadMes = 0.0;
   var comisionesMes = 0.0;
+  var impuestoSobrePrecioMes = 0.0;
 
   for (final a in articulos) {
     final alertas = <Alerta>[];
@@ -74,7 +75,11 @@ ResultadoCosteo calcularCatalogo({
     final manoObraUnidad = (a.minutosLote / 60) * config.tarifaManoObraHora / unidadesPorLote;
     final costoVariableUnidad = costoInsumosUnidad + a.otrosCostosDirectos + manoObraUnidad;
     final overheadUnidad = overheadDe(a);
-    final costoTotalUnidad = costoVariableUnidad + overheadUnidad;
+    // Simplificado: el impuesto se paga sobre lo comprado, así que por unidad
+    // es una fracción del costo de insumos. Va como costo, no como fracción
+    // del precio: no depende de a cuánto se venda.
+    final impuestoComprasUnidad = costoInsumosUnidad * config.impuestoSobreCompras;
+    final costoTotalUnidad = costoVariableUnidad + overheadUnidad + impuestoComprasUnidad;
 
     if (a.unidadesMes <= 0) {
       alertas.add(Alerta.sinVolumen);
@@ -84,7 +89,9 @@ ResultadoCosteo calcularCatalogo({
     if (config.metodoReparto == MetodoReparto.tiempo && a.minutosLote <= 0) alertas.add(Alerta.sinTiempo);
 
     final margen = a.margenObjetivo ?? config.margenObjetivo;
-    final divisor = 1 - margen - config.comisionMediosPago;
+    // General: el IVA va DENTRO del precio, así que es una fracción más del
+    // precio que no es utilidad, como la comisión.
+    final divisor = 1 - margen - config.comisionMediosPago - a.fraccionImpuestoDelPrecio;
     double precioSugerido;
     if (divisor <= 0) {
       alertas.add(Alerta.metaImposible);
@@ -100,7 +107,10 @@ ResultadoCosteo calcularCatalogo({
     double? margenReal;
     double? utilidadUnidad;
     if (a.precioActual > 0) {
-      utilidadUnidad = a.precioActual - costoTotalUnidad - a.precioActual * config.comisionMediosPago;
+      utilidadUnidad = a.precioActual -
+          costoTotalUnidad -
+          a.precioActual * config.comisionMediosPago -
+          a.precioActual * a.fraccionImpuestoDelPrecio;
       margenReal = utilidadUnidad / a.precioActual;
       if (margenReal < 0) {
         alertas.add(Alerta.seVendeAPerdida);
@@ -110,9 +120,12 @@ ResultadoCosteo calcularCatalogo({
     }
 
     ingresoMes += a.precioActual * a.unidadesMes;
-    costoVariableMes += costoVariableUnidad * a.unidadesMes;
+    // El impuesto sobre compras es variable (sigue al volumen), así que entra
+    // en el costo variable del mes y por tanto en la contribución.
+    costoVariableMes += (costoVariableUnidad + impuestoComprasUnidad) * a.unidadesMes;
     utilidadMes += (utilidadUnidad ?? 0) * a.unidadesMes;
     comisionesMes += a.precioActual * config.comisionMediosPago * a.unidadesMes;
+    impuestoSobrePrecioMes += a.precioActual * a.fraccionImpuestoDelPrecio * a.unidadesMes;
 
     calculados.add(
       ArticuloCosteado(
@@ -123,6 +136,7 @@ ResultadoCosteo calcularCatalogo({
         manoObraUnidad: manoObraUnidad,
         costoVariableUnidad: costoVariableUnidad,
         overheadUnidad: overheadUnidad,
+        impuestoComprasUnidad: impuestoComprasUnidad,
         costoTotalUnidad: costoTotalUnidad,
         margenObjetivo: margen,
         precioSugerido: precioSugerido,
@@ -141,7 +155,7 @@ ResultadoCosteo calcularCatalogo({
   double? equilibrio;
   double? colchon;
   if (totalUnidades > 0) {
-    contribucion = (ingresoMes - costoVariableMes - comisionesMes) / totalUnidades;
+    contribucion = (ingresoMes - costoVariableMes - comisionesMes - impuestoSobrePrecioMes) / totalUnidades;
     if (contribucion > 0) {
       equilibrio = costosFijosMes / contribucion;
       colchon = equilibrio > 0 ? totalUnidades / equilibrio - 1 : null;
@@ -157,6 +171,7 @@ ResultadoCosteo calcularCatalogo({
     costoVariableMes: costoVariableMes,
     utilidadMes: utilidadMes,
     comisionesMes: comisionesMes,
+    impuestoSobrePrecioMes: impuestoSobrePrecioMes,
     contribucionUnidad: contribucion,
     unidadesEquilibrio: equilibrio,
     colchon: colchon,

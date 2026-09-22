@@ -56,6 +56,10 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
   /// Las variantes en edición, cada una con sus dos campos (0039).
   final List<_VarianteEnEdicion> _variantes = [];
 
+  /// IVA propio del producto (0042); nulo = el por defecto de Ajustes del
+  /// costeo. Solo pesa en régimen general.
+  late double? _tasaIva = widget.producto?.tasaIva;
+
   /// Id de la variante por defecto. Con variantes, el campo de precio deja
   /// de ser un número y pasa a ser esta elección: el precio base del producto
   /// es el de la elegida.
@@ -266,6 +270,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
           categoriaId: _categoriaId,
           precioBase: precio,
           variantes: _variantesParaGuardar(),
+          tasaIva: _tasaIva,
           updatedAt: ahora,
           // Preserva deletedAt tal cual estaba — editar un producto NO debe
           // reactivar uno descontinuado por accidente (no existe una acción
@@ -283,6 +288,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
           categoriaId: _categoriaId,
           precioBase: precio,
           variantes: _variantesParaGuardar(),
+          tasaIva: _tasaIva,
           updatedAt: ahora,
         ),
       );
@@ -402,6 +408,24 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
               error: e,
               onReintentar: () => ref.invalidate(categoriaNotifierProvider),
             ),
+          ),
+          const SizedBox(height: BentoSpacing.unidad),
+          // El IVA del producto (0042). Solo pesa en régimen general; en el
+          // simplificado el costeo lo ignora, así que dejarlo en "por
+          // defecto" es siempre correcto.
+          DropdownButtonFormField<double?>(
+            initialValue: _tasaIva,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'IVA', helperText: 'Solo cuenta en régimen general'),
+            items: const [
+              DropdownMenuItem(value: null, child: Text('Por defecto (Ajustes del costeo)')),
+              DropdownMenuItem(value: 0.13, child: Text('13 % — general')),
+              DropdownMenuItem(value: 0.04, child: Text('4 %')),
+              DropdownMenuItem(value: 0.02, child: Text('2 %')),
+              DropdownMenuItem(value: 0.01, child: Text('1 % — canasta básica')),
+              DropdownMenuItem(value: 0.0, child: Text('Exento')),
+            ],
+            onChanged: (v) => setState(() => _tasaIva = v),
           ),
           const SizedBox(height: BentoSpacing.unidad),
           _EditorDeVariantes(

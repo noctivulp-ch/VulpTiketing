@@ -120,11 +120,14 @@ class _Cuentas extends StatelessWidget {
         fila('Mano de obra', colones(a.manoObraUnidad, decimales: 2)),
         if (a.articulo.otrosCostosDirectos > 0) fila('Otros directos', colones(a.articulo.otrosCostosDirectos, decimales: 2)),
         fila('Costos fijos que absorbe', colones(a.overheadUnidad, decimales: 2)),
+        if (a.impuestoComprasUnidad > 0) fila('Impuesto simplificado (sobre compras)', colones(a.impuestoComprasUnidad, decimales: 2)),
         fila('Costo total', colones(a.costoTotalUnidad, decimales: 2), fuerte: true),
         const Divider(),
         fila('Precio sugerido (margen ${porcentaje(a.margenObjetivo)})', colones(a.precioSugerido, decimales: 2)),
         fila('Redondeado${a.articulo.ajustePrecio == 0 ? '' : ' y ajustado'}', colones(a.precioFinal), fuerte: true),
         fila('Se cobra hoy', colones(catalogo.precioActual), fuerte: true),
+        if (a.articulo.tasaImpuesto > 0)
+          fila('IVA dentro del precio (${porcentaje(a.articulo.tasaImpuesto)})', colones(a.impuestoPrecioUnidad, decimales: 2)),
         fila('Margen real al precio de hoy', porcentaje(a.margenReal)),
         fila(
           a.articulo.volumenEsReal ? 'Vendidas en $diasDeVolumen días' : 'Volumen estimado',

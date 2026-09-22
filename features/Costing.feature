@@ -44,3 +44,12 @@ Feature: Recipe costing
     And the input cost is the weighted average of its purchases in the last 90 days, else the last purchase, else the starting price — and the screen says which
     And voiding a purchase removes it from the average without deleting it from the ledger
     And the Insumos section shows what was bought this month and this quarter, which is the simplified regime's tax base
+
+  Scenario: Taxes follow the regime, and commissions follow the payment mix
+    Given the business regime is set in the costing settings
+    When it is "simplificado"
+    Then the tax per unit is the input cost × (VAT factor + income factor), and no VAT is applied on sale prices ([0042])
+    And the settings show the current quarter's purchases × factors, which is what gets declared
+    When it is "general"
+    Then each product's VAT rate (or the default one) is inside its price as rate/(1+rate), and enters the suggested price and the real margin
+    And the effective payment commission is the cash and SINPE commissions weighted by the last 30 days' real payment mix

@@ -26,7 +26,7 @@ class InsumosPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final insumos = ref.watch(insumoNotifierProvider);
-    final config = ref.watch(configCosteoProvider).valueOrNull ?? const c.ConfigCosteo();
+    final config = ref.watch(configCosteoProvider).valueOrNull?.config ?? const c.ConfigCosteo();
     final costos = ref.watch(costoDeInsumosProvider).valueOrNull ?? const {};
     final textos = Theme.of(context).textTheme;
     final hoy = DateTime.now();

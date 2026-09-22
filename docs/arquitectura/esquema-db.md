@@ -35,6 +35,7 @@ CREATE TABLE producto (
   categoria_id  TEXT REFERENCES categoria(id),  -- nullable: un producto puede no tener categoría
   precio_base   REAL NOT NULL,          -- colones (₡) — REAL en vez de centavos, ver decisión 0012
   variantes     TEXT,                   -- JSON: [{id, nombre, precio, porDefecto?}, …]; NULL = sin variantes (0039)
+  tasa_iva      REAL,                   -- 0.13, 0.04, 0.02, 0.01, 0; NULL = la por defecto de Ajustes (0042, solo régimen general)
   updated_at    TEXT NOT NULL,
   deleted_at    TEXT                    -- NULL = activo. Set = descontinuado (0005)
 );
@@ -160,7 +161,7 @@ Cinco tablas, sincronizables, sin `REFERENCES` al catálogo. DDL exacto en
 |---|---|---|
 | `insumo` | id | nombre, `unidad_base` (gramo/mililitro/unidad), `contenido_por_compra`, `precio_compra`, `merma` (nullable → la global), proveedor, notas; `updated_at`, `deleted_at` |
 | `costo_fijo` | id | concepto, `monto_mensual`, notas; `updated_at`, `deleted_at` |
-| `config_costeo` | id = `'unica'` | días abiertos, margen objetivo, comisión, merma por defecto, tarifa de mano de obra, redondeo, `metodo_reparto` (unidad/tiempo) |
+| `config_costeo` | id = `'unica'` | días abiertos, margen objetivo, merma por defecto, tarifa de mano de obra, redondeo, `metodo_reparto`; y desde v8 (0042) `regimen`, `factor_iva_compras`, `factor_renta_compras`, `tasa_iva_por_defecto`, `comision_efectivo`, `comision_sinpe` (`comision_medios_pago` queda sin uso) |
 | `articulo_costeo` | id; UNIQUE (`producto_id`, `variante_id`) con `variante_id = ''` sin variantes | unidades por lote, otros costos directos, minutos del lote, unidades estimadas al mes, margen propio (nullable), ajuste con signo |
 | `linea_receta` | id; UNIQUE (`articulo_id`, `insumo_id`) | `cantidad_por_lote` en la unidad base del insumo |
 

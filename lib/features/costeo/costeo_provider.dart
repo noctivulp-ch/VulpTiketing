@@ -8,6 +8,7 @@ import '../producto/variante_model.dart';
 import '../venta/lectura_de_libros.dart';
 import '../venta/libro_ventas.dart';
 import 'articulo_costeo_model.dart';
+import 'config_costeo_model.dart';
 import 'costeo_notifiers.dart';
 import 'costo_de_insumos_provider.dart';
 
@@ -51,6 +52,46 @@ final volumenRealProvider = FutureProvider<Map<String, int>>((ref) async {
   return volumen;
 });
 
+/// Qué parte del dinero de los últimos [diasDeVolumen] días entró por SINPE
+/// (0..1). Es lo que pondera las comisiones por medio de pago (0042): la
+/// comisión efectiva del negocio es la que de verdad se paga, no una cifra
+/// escrita a mano.
+final mixDePagoProvider = FutureProvider<double>((ref) async {
+  final db = await ref.watch(databaseProvider.future);
+  final lector = LectorDeLibros(db, () => ref.read(libroVentasServiceProvider.future));
+  final hasta = DateTime.now().add(const Duration(days: 1));
+  final desde = DateTime(hasta.year, hasta.month, hasta.day).subtract(const Duration(days: diasDeVolumen));
+  var total = 0.0;
+  var sinpe = 0.0;
+  for (final filas in await lector.enCadaLibro(desde, hasta, (e) => db.rawQuery('''
+    SELECT v.metodo_pago AS metodo, SUM(lv.precio_aplicado * lv.cantidad) AS total
+    FROM $e.linea_venta lv JOIN $e.venta v ON v.id = lv.venta_id
+    WHERE v.estado = 'activa' AND v.fecha_hora >= ? AND v.fecha_hora < ?
+    GROUP BY v.metodo_pago
+  ''', [desde.toIso8601String(), hasta.toIso8601String()]))) {
+    for (final f in filas) {
+      final monto = (f['total'] as num?)?.toDouble() ?? 0;
+      total += monto;
+      if (f['metodo'] == 'sinpe') sinpe += monto;
+    }
+  }
+  return total <= 0 ? 0 : sinpe / total;
+});
+
+/// El `ConfigCosteo` que consume el cálculo, construido desde los parámetros
+/// guardados: la comisión ponderada por el mix real y el impuesto sobre
+/// compras si el régimen es simplificado.
+c.ConfigCosteo configEfectiva(ConfigCosteoRegistro registro, double fraccionSinpe) => c.ConfigCosteo(
+  diasAbiertosMes: registro.config.diasAbiertosMes,
+  margenObjetivo: registro.config.margenObjetivo,
+  comisionMediosPago: registro.comisionSinpe * fraccionSinpe + registro.comisionEfectivo * (1 - fraccionSinpe),
+  mermaPorDefecto: registro.config.mermaPorDefecto,
+  tarifaManoObraHora: registro.config.tarifaManoObraHora,
+  redondeoPrecio: registro.config.redondeoPrecio,
+  metodoReparto: registro.config.metodoReparto,
+  impuestoSobreCompras: registro.impuestoSobreCompras,
+);
+
 /// Un artículo del catálogo con lo que lo identifica en pantalla.
 class ArticuloDelCatalogo {
   const ArticuloDelCatalogo({required this.producto, this.variante, this.registro});
@@ -68,19 +109,31 @@ class ArticuloDelCatalogo {
 /// El costeo del catálogo entero: junta base, ventas y parámetros y llama al
 /// paquete puro. Se recalcula cuando cambia cualquiera de las entradas.
 class Costeo {
-  const Costeo({required this.resultado, required this.articulos, required this.config});
+  const Costeo({
+    required this.resultado,
+    required this.articulos,
+    required this.config,
+    required this.registro,
+    required this.fraccionSinpe,
+  });
   final c.ResultadoCosteo resultado;
 
   /// Por clave de artículo, en el mismo orden que `resultado.articulos`.
   final Map<String, ArticuloDelCatalogo> articulos;
+
+  /// La efectiva, con la comisión ya ponderada por el mix.
   final c.ConfigCosteo config;
+  final ConfigCosteoRegistro registro;
+  final double fraccionSinpe;
 
   c.ArticuloCosteado? calculadoDe(String clave) =>
       resultado.articulos.where((a) => a.articulo.id == clave).firstOrNull;
 }
 
 final costeoProvider = FutureProvider<Costeo>((ref) async {
-  final config = await ref.watch(configCosteoProvider.future);
+  final registro = await ref.watch(configCosteoProvider.future);
+  final fraccionSinpe = await ref.watch(mixDePagoProvider.future);
+  final config = configEfectiva(registro, fraccionSinpe);
   final insumos = await ref.watch(insumoNotifierProvider.future);
   final costos = await ref.watch(costoDeInsumosProvider.future);
   final fijos = await ref.watch(costoFijoNotifierProvider.future);
@@ -118,6 +171,9 @@ final costeoProvider = FutureProvider<Costeo>((ref) async {
         margenObjetivo: r?.margenObjetivo,
         ajustePrecio: r?.ajustePrecio ?? 0,
         volumenEsReal: real > 0,
+        // Solo en general el IVA va dentro del precio; en simplificado el
+        // impuesto ya entró como fracción de las compras.
+        tasaImpuesto: registro.regimen == Regimen.general ? (a.producto.tasaIva ?? registro.tasaIvaPorDefecto) : 0,
       ),
     );
     if (r != null) {
@@ -135,5 +191,11 @@ final costeoProvider = FutureProvider<Costeo>((ref) async {
     articulos: articulos,
     recetas: recetas,
   );
-  return Costeo(resultado: resultado, articulos: {for (final a in catalogo) a.clave: a}, config: config);
+  return Costeo(
+    resultado: resultado,
+    articulos: {for (final a in catalogo) a.clave: a},
+    config: config,
+    registro: registro,
+    fraccionSinpe: fraccionSinpe,
+  );
 });

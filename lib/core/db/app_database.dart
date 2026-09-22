@@ -122,6 +122,9 @@ class AppDatabase {
         // v6 -> v7: las tablas del costeo (decision 0040). Nuevas y vacias:
         // no hay nada que migrar. Se sincronizan como el catalogo.
         if (viejo < 7) await crearTablasDeCosteo(db);
+
+        // v7 -> v8: impuestos y comisiones por medio (decision 0042).
+        if (viejo < 8) await agregarImpuestos(db);
       },
     );
 
@@ -136,7 +139,32 @@ class AppDatabase {
     return db;
   }
 
-  static const version = 7;
+  static const version = 8;
+
+  /// v7 -> v8: impuestos y comisiones por medio (decision 0042). `producto`
+  /// gana `tasa_iva` (NULL = la tasa por defecto de Ajustes) y
+  /// `config_costeo` gana el regimen, sus factores y una comision por medio
+  /// de pago. La comision unica de antes se copia a la de SINPE: era lo que
+  /// significaba en la practica (efectivo no cobra comision).
+  static Future<void> agregarImpuestos(DatabaseExecutor db) async {
+    Future<void> columna(String tabla, String nombre, String ddl) async {
+      final columnas = await db.rawQuery('PRAGMA table_info($tabla)');
+      if (columnas.any((c) => c['name'] == nombre)) return;
+      await db.execute('ALTER TABLE $tabla ADD COLUMN $ddl');
+    }
+
+    await columna('producto', 'tasa_iva', 'tasa_iva REAL');
+    await columna('config_costeo', 'regimen', "regimen TEXT NOT NULL DEFAULT 'simplificado'");
+    await columna('config_costeo', 'factor_iva_compras', 'factor_iva_compras REAL NOT NULL DEFAULT 0.03');
+    await columna('config_costeo', 'factor_renta_compras', 'factor_renta_compras REAL NOT NULL DEFAULT 0.025');
+    await columna('config_costeo', 'tasa_iva_por_defecto', 'tasa_iva_por_defecto REAL NOT NULL DEFAULT 0.13');
+    await columna('config_costeo', 'comision_efectivo', 'comision_efectivo REAL NOT NULL DEFAULT 0');
+    final columnas = await db.rawQuery('PRAGMA table_info(config_costeo)');
+    if (!columnas.any((c) => c['name'] == 'comision_sinpe')) {
+      await db.execute('ALTER TABLE config_costeo ADD COLUMN comision_sinpe REAL NOT NULL DEFAULT 0');
+      await db.execute('UPDATE config_costeo SET comision_sinpe = comision_medios_pago');
+    }
+  }
 
   /// v6 -> v7. Publica por lo mismo que las anteriores.
   static Future<void> crearTablasDeCosteo(DatabaseExecutor db) async {
@@ -231,6 +259,12 @@ class AppDatabase {
       tarifa_mano_obra_hora   REAL NOT NULL DEFAULT 0,
       redondeo_precio         REAL NOT NULL DEFAULT 50,
       metodo_reparto          TEXT NOT NULL DEFAULT 'unidad',
+      regimen                 TEXT NOT NULL DEFAULT 'simplificado',
+      factor_iva_compras      REAL NOT NULL DEFAULT 0.03,
+      factor_renta_compras    REAL NOT NULL DEFAULT 0.025,
+      tasa_iva_por_defecto    REAL NOT NULL DEFAULT 0.13,
+      comision_efectivo       REAL NOT NULL DEFAULT 0,
+      comision_sinpe          REAL NOT NULL DEFAULT 0,
       updated_at              TEXT NOT NULL
     );
     ''',
@@ -441,6 +475,7 @@ class AppDatabase {
       categoria_id  TEXT REFERENCES categoria(id),
       precio_base   REAL NOT NULL,
       variantes     TEXT,
+      tasa_iva      REAL,
       updated_at    TEXT NOT NULL,
       deleted_at    TEXT
     );

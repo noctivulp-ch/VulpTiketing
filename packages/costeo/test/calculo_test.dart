@@ -269,6 +269,8 @@ void main() {
     });
   });
 
+  group('impuestos', pruebasDeImpuestos);
+
   test('es determinista: dos llamadas iguales dan lo mismo', () {
     ResultadoCosteo correr() => calcularCatalogo(
       config: config,
@@ -281,5 +283,47 @@ void main() {
     final b = correr();
     expect(a.articulos.single.precioFinal, b.articulos.single.precioFinal);
     expect(a.utilidadMes, b.utilidadMes);
+  });
+}
+
+// ── Impuestos (decisión 0042) ────────────────────────────────────────────────
+void pruebasDeImpuestos() {
+  const base = ConfigCosteo(margenObjetivo: 0.5, comisionMediosPago: 0, mermaPorDefecto: 0, redondeoPrecio: 1);
+
+  test('régimen general: el IVA va dentro del precio como fracción tasa/(1+tasa)', () {
+    // Costo 1.000, margen 50 %, IVA 13 % → fracción 0,1150 → precio = 1000 / (1 − 0,5 − 0,1150).
+    final r = calcularCatalogo(
+      config: base,
+      costosFijos: const [],
+      insumos: const [],
+      articulos: const [Articulo(id: 'x', nombre: 'X', precioActual: 2600, otrosCostosDirectos: 1000, tasaImpuesto: 0.13, unidadesMes: 10, volumenEsReal: true)],
+      recetas: const [],
+    );
+    final x = r.articulos.single;
+    expect(x.articulo.fraccionImpuestoDelPrecio, closeTo(0.13 / 1.13, 1e-9));
+    expect(x.precioSugerido, closeTo(1000 / (0.5 - 0.13 / 1.13), 1e-9));
+    // Al precio actual de 2.600: 299,1 de IVA dentro; utilidad = 2600 − 1000 − 299,1.
+    expect(x.impuestoPrecioUnidad, closeTo(2600 * 0.13 / 1.13, 1e-6));
+    expect(x.utilidadUnidad, closeTo(2600 - 1000 - 2600 * 0.13 / 1.13, 1e-6));
+    expect(r.impuestoSobrePrecioMes, closeTo(2600 * 0.13 / 1.13 * 10, 1e-6));
+  });
+
+  test('régimen simplificado: el impuesto es una fracción del costo de insumos, no del precio', () {
+    // Insumo 800 por unidad; factores 3 % + 2,5 % = 5,5 % → 44 de impuesto por unidad.
+    final r = calcularCatalogo(
+      config: const ConfigCosteo(margenObjetivo: 0.5, comisionMediosPago: 0, mermaPorDefecto: 0, redondeoPrecio: 1, impuestoSobreCompras: 0.055),
+      costosFijos: const [],
+      insumos: const [Insumo(id: 'i', nombre: 'I', unidadBase: UnidadBase.unidad, contenidoPorCompra: 1, precioCompra: 800)],
+      articulos: const [Articulo(id: 'x', nombre: 'X', precioActual: 2000, unidadesMes: 10, volumenEsReal: true)],
+      recetas: const [LineaReceta(articuloId: 'x', insumoId: 'i', cantidadPorLote: 1)],
+    );
+    final x = r.articulos.single;
+    expect(x.impuestoComprasUnidad, closeTo(44, 1e-9));
+    expect(x.costoTotalUnidad, closeTo(844, 1e-9));
+    expect(x.precioSugerido, closeTo(844 / 0.5, 1e-9));
+    expect(x.impuestoPrecioUnidad, 0);
+    expect(r.impuestoSobrePrecioMes, 0);
+    // Y entra en la contribución como costo variable.
+    expect(r.contribucionUnidad, closeTo(2000 - 844, 1e-9));
   });
 }

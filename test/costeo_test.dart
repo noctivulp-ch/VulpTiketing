@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:vulp_tiketing/core/db/app_database.dart';
 import 'package:vulp_tiketing/core/db/db_providers.dart';
 import 'package:vulp_tiketing/features/costeo/aplicar_precio.dart';
+import 'package:vulp_tiketing/features/costeo/config_costeo_model.dart';
 import 'package:vulp_tiketing/features/costeo/costeo_notifiers.dart';
 import 'package:vulp_tiketing/features/costeo/costeo_provider.dart';
 import 'package:vulp_tiketing/features/costeo/costo_fijo_model.dart';
@@ -159,7 +160,7 @@ void main() {
     await container.read(costoFijoNotifierProvider.notifier).crear(
       CostoFijoRegistro(id: 'alq', concepto: 'Alquiler', montoMensual: 100000, updatedAt: DateTime.now()),
     );
-    await container.read(configCosteoProvider.notifier).guardar(const c.ConfigCosteo(margenObjetivo: 0.5, comisionMediosPago: 0, mermaPorDefecto: 0, redondeoPrecio: 1));
+    await container.read(configCosteoProvider.notifier).guardar(ConfigCosteoRegistro(config: const c.ConfigCosteo(margenObjetivo: 0.5, mermaPorDefecto: 0, redondeoPrecio: 1), regimen: Regimen.general, tasaIvaPorDefecto: 0, updatedAt: DateTime.now()));
     final articulos = container.read(articuloCosteoProvider.notifier);
     final registro = await articulos.asegurar('casado', '');
     await articulos.guardarArticulo(registro.copyWith(unidadesEstimadasMes: 100, updatedAt: DateTime.now()));
@@ -183,12 +184,16 @@ void main() {
   });
 
   test('la configuración se guarda una sola vez y vuelve a leerse', () async {
-    expect((await container.read(configCosteoProvider.future)).margenObjetivo, 0.6, reason: 'de fábrica');
-    await container.read(configCosteoProvider.notifier).guardar(const c.ConfigCosteo(margenObjetivo: 0.45, metodoReparto: c.MetodoReparto.tiempo));
-    await container.read(configCosteoProvider.notifier).guardar(const c.ConfigCosteo(margenObjetivo: 0.4));
+    expect((await container.read(configCosteoProvider.future)).config.margenObjetivo, 0.6, reason: 'de fábrica');
+    final notifier = container.read(configCosteoProvider.notifier);
+    await notifier.guardar(ConfigCosteoRegistro(config: const c.ConfigCosteo(margenObjetivo: 0.45, metodoReparto: c.MetodoReparto.tiempo), updatedAt: DateTime.now()));
+    await notifier.guardar(ConfigCosteoRegistro(config: const c.ConfigCosteo(margenObjetivo: 0.4), regimen: Regimen.general, comisionSinpe: 0.02, updatedAt: DateTime.now()));
     expect(await db.query('config_costeo'), hasLength(1));
     container.invalidate(configCosteoProvider);
-    expect((await container.read(configCosteoProvider.future)).margenObjetivo, 0.4);
+    final leida = await container.read(configCosteoProvider.future);
+    expect(leida.config.margenObjetivo, 0.4);
+    expect(leida.regimen, Regimen.general);
+    expect(leida.comisionSinpe, 0.02);
   });
 
   test('aplicar precio escribe SOLO el artículo pedido: base, o variante (y base si es la por defecto)', () async {

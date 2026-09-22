@@ -6,11 +6,18 @@ import '../../../core/theme/bento_bandeja.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_aviso.dart';
 import '../../../core/ui/bento_falla.dart';
+import '../config_costeo_model.dart';
 import '../costeo_notifiers.dart';
+import '../costo_de_insumos_provider.dart';
 import 'formato_costeo.dart';
 
 /// Los parámetros del negocio. Se guardan con un botón, no campo a campo: son
-/// siete números que se piensan juntos, y cada uno mueve todos los precios.
+/// números que se piensan juntos, y cada uno mueve todos los precios.
+///
+/// Dos pozos: el negocio (margen, merma, mano de obra, redondeo, reparto) y
+/// los impuestos y comisiones (0042): régimen, sus factores o tasas, y qué
+/// cobra cada medio de pago. En simplificado se muestra el trimestre en
+/// curso ya calculado — es lo que se declara.
 class AjustesCosteoPanel extends ConsumerStatefulWidget {
   const AjustesCosteoPanel({super.key});
 
@@ -22,49 +29,71 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
   final _formKey = GlobalKey<FormState>();
   final _dias = TextEditingController();
   final _margen = TextEditingController();
-  final _comision = TextEditingController();
   final _merma = TextEditingController();
   final _tarifa = TextEditingController();
   final _redondeo = TextEditingController();
+  final _factorIva = TextEditingController();
+  final _factorRenta = TextEditingController();
+  final _tasaIva = TextEditingController();
+  final _comisionEfectivo = TextEditingController();
+  final _comisionSinpe = TextEditingController();
   c.MetodoReparto _reparto = c.MetodoReparto.unidad;
+  Regimen _regimen = Regimen.simplificado;
   bool _cargado = false;
 
-  void _cargar(c.ConfigCosteo config) {
+  void _cargar(ConfigCosteoRegistro r) {
     if (_cargado) return;
     _cargado = true;
-    _dias.text = '${config.diasAbiertosMes}';
-    _margen.text = porcentajeParaEditar(config.margenObjetivo);
-    _comision.text = porcentajeParaEditar(config.comisionMediosPago);
-    _merma.text = porcentajeParaEditar(config.mermaPorDefecto);
-    _tarifa.text = numero(config.tarifaManoObraHora);
-    _redondeo.text = numero(config.redondeoPrecio);
-    _reparto = config.metodoReparto;
+    _dias.text = '${r.config.diasAbiertosMes}';
+    _margen.text = porcentajeParaEditar(r.config.margenObjetivo);
+    _merma.text = porcentajeParaEditar(r.config.mermaPorDefecto);
+    _tarifa.text = numero(r.config.tarifaManoObraHora);
+    _redondeo.text = numero(r.config.redondeoPrecio);
+    _reparto = r.config.metodoReparto;
+    _regimen = r.regimen;
+    _factorIva.text = porcentajeParaEditar(r.factorIvaCompras);
+    _factorRenta.text = porcentajeParaEditar(r.factorRentaCompras);
+    _tasaIva.text = porcentajeParaEditar(r.tasaIvaPorDefecto);
+    _comisionEfectivo.text = porcentajeParaEditar(r.comisionEfectivo);
+    _comisionSinpe.text = porcentajeParaEditar(r.comisionSinpe);
   }
 
   @override
   void dispose() {
-    for (final c in [_dias, _margen, _comision, _merma, _tarifa, _redondeo]) {
+    for (final c in [_dias, _margen, _merma, _tarifa, _redondeo, _factorIva, _factorRenta, _tasaIva, _comisionEfectivo, _comisionSinpe]) {
       c.dispose();
     }
     super.dispose();
   }
 
-  Future<void> _guardar() async {
+  Future<void> _guardar(ConfigCosteoRegistro actual) async {
     if (!_formKey.currentState!.validate()) return;
     final config = c.ConfigCosteo(
       diasAbiertosMes: int.parse(_dias.text.trim()),
       margenObjetivo: parsearPorcentaje(_margen.text)!,
-      comisionMediosPago: parsearPorcentaje(_comision.text)!,
       mermaPorDefecto: parsearPorcentaje(_merma.text)!,
       tarifaManoObraHora: parsearNumero(_tarifa.text)!,
       redondeoPrecio: parsearNumero(_redondeo.text)!,
       metodoReparto: _reparto,
     );
-    if (config.divisor <= 0) {
-      mostrarAviso(context, '✗ Margen + comisión no pueden llegar al 100 %');
+    final registro = actual.copyWith(
+      config: config,
+      regimen: _regimen,
+      factorIvaCompras: parsearPorcentaje(_factorIva.text)!,
+      factorRentaCompras: parsearPorcentaje(_factorRenta.text)!,
+      tasaIvaPorDefecto: parsearPorcentaje(_tasaIva.text)!,
+      comisionEfectivo: parsearPorcentaje(_comisionEfectivo.text)!,
+      comisionSinpe: parsearPorcentaje(_comisionSinpe.text)!,
+    );
+    // La peor comisión posible más el margen y, en general, la peor fracción
+    // de IVA: si eso llega a 1 no hay precio posible para algún artículo.
+    final peorComision = registro.comisionSinpe > registro.comisionEfectivo ? registro.comisionSinpe : registro.comisionEfectivo;
+    final peorIva = _regimen == Regimen.general ? registro.tasaIvaPorDefecto / (1 + registro.tasaIvaPorDefecto) : 0;
+    if (config.margenObjetivo + peorComision + peorIva >= 1) {
+      mostrarAviso(context, '✗ Margen, comisión e IVA juntos no pueden llegar al 100 % del precio');
       return;
     }
-    await ref.read(configCosteoProvider.notifier).guardar(config);
+    await ref.read(configCosteoProvider.notifier).guardar(registro);
     if (mounted) mostrarAviso(context, '✓ Parámetros guardados');
   }
 
@@ -88,19 +117,19 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
     return config.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => BentoFalla(mensaje: 'No se pudieron leer los parámetros.', error: e),
-      data: (cfg) {
-        _cargar(cfg);
+      data: (registro) {
+        _cargar(registro);
         final textos = Theme.of(context).textTheme;
-        return ListView(
-          padding: const EdgeInsets.all(BentoSpacing.gapCelda),
-          children: [
-            BentoPozo(
-              child: Form(
-                key: _formKey,
+        return Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(BentoSpacing.gapCelda),
+            children: [
+              BentoPozo(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Parámetros del negocio', style: textos.titleMedium),
+                    Text('El negocio', style: textos.titleMedium),
                     const SizedBox(height: BentoSpacing.unidad / 2),
                     Text(
                       'Cada uno mueve todos los precios sugeridos. El margen es sobre el PRECIO: '
@@ -109,10 +138,7 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
                     ),
                     const SizedBox(height: BentoSpacing.gapCelda),
                     _campo(_margen, 'Margen objetivo (%)', _porcentaje),
-                    _campo(_comision, 'Comisión de medios de pago (%)', _porcentaje,
-                        ayuda: 'Datáfono, SINPE con comisión, plataformas de entrega'),
-                    _campo(_merma, 'Merma por defecto (%)', _porcentaje,
-                        ayuda: 'Cuando el insumo no declara la suya'),
+                    _campo(_merma, 'Merma por defecto (%)', _porcentaje, ayuda: 'Cuando el insumo no declara la suya'),
                     _campo(_tarifa, 'Tarifa de mano de obra por hora (₡)', _positivo,
                         ayuda: 'Cero si nadie se la paga, pero el modelo la pide: si el producto no aguanta '
                             'pagar el trabajo que lleva, no es rentable'),
@@ -144,13 +170,80 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: BentoSpacing.gapCelda),
-                    FilledButton(onPressed: _guardar, child: const Text('Guardar parámetros')),
                   ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: BentoSpacing.pared),
+              BentoPozo(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Impuestos y comisiones', style: textos.titleMedium),
+                    const SizedBox(height: BentoSpacing.unidad / 2),
+                    Text(
+                      'Comprobar las cifras con el decreto vigente antes de declarar: cambian, y esto es una '
+                      'libreta, no un contador.',
+                      style: textos.bodySmall,
+                    ),
+                    const SizedBox(height: BentoSpacing.unidad),
+                    Text('Régimen', style: textos.labelLarge),
+                    RadioGroup<Regimen>(
+                      groupValue: _regimen,
+                      onChanged: (r) => setState(() => _regimen = r!),
+                      child: const Column(
+                        children: [
+                          RadioListTile(
+                            value: Regimen.simplificado,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('Simplificado'),
+                            subtitle: Text('El impuesto sale de las COMPRAS del trimestre × factores. Sin IVA en la venta'),
+                          ),
+                          RadioListTile(
+                            value: Regimen.general,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('General'),
+                            subtitle: Text('IVA dentro del precio de cada producto, según su tasa'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: BentoSpacing.unidad),
+                    if (_regimen == Regimen.simplificado) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _campo(_factorIva, 'Factor IVA (%)', _porcentaje, ayuda: 'Sobre compras')),
+                          const SizedBox(width: BentoSpacing.unidad),
+                          Expanded(child: _campo(_factorRenta, 'Factor renta (%)', _porcentaje, ayuda: 'Sobre compras')),
+                        ],
+                      ),
+                      _TrimestreSimplificado(registro: registro),
+                    ] else
+                      _campo(_tasaIva, 'IVA por defecto (%)', _porcentaje,
+                          ayuda: 'El de un producto que no dice otra cosa. Cada producto puede llevar la suya: 13, 4, 2, 1 o exento'),
+                    const SizedBox(height: BentoSpacing.unidad),
+                    Text('Comisión por medio de pago', style: textos.labelLarge),
+                    const SizedBox(height: BentoSpacing.unidad / 2),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _campo(_comisionEfectivo, 'Efectivo (%)', _porcentaje)),
+                        const SizedBox(width: BentoSpacing.unidad),
+                        Expanded(child: _campo(_comisionSinpe, 'SINPE / transferencia (%)', _porcentaje, ayuda: 'Lo que cobre el banco o la plataforma')),
+                      ],
+                    ),
+                    Text(
+                      'La comisión que usa el cálculo es el promedio de estas dos ponderado por cómo se '
+                      'cobró de verdad en los últimos 30 días.',
+                      style: textos.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: BentoSpacing.gapCelda),
+              FilledButton(onPressed: () => _guardar(registro), child: const Text('Guardar parámetros')),
+            ],
+          ),
         );
       },
     );
@@ -171,4 +264,32 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
       validator: validar,
     ),
   );
+}
+
+/// Lo que se declara este trimestre en simplificado, con lo comprado hasta
+/// hoy: compras × (factor IVA + factor renta). Con los factores GUARDADOS,
+/// no con los del formulario sin guardar.
+class _TrimestreSimplificado extends ConsumerWidget {
+  const _TrimestreSimplificado({required this.registro});
+  final ConfigCosteoRegistro registro;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hoy = DateTime.now();
+    final inicio = DateTime(hoy.year, ((hoy.month - 1) ~/ 3) * 3 + 1);
+    final fin = DateTime(inicio.year, inicio.month + 3);
+    final compras = ref.watch(totalComprasProvider((inicio, fin))).valueOrNull;
+    final textos = Theme.of(context).textTheme;
+    if (compras == null) return const SizedBox.shrink();
+    final iva = compras * registro.factorIvaCompras;
+    final renta = compras * registro.factorRentaCompras;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: BentoSpacing.unidad),
+      child: Text(
+        'Trimestre en curso: compras ${colones(compras)} → IVA ${colones(iva)} + renta ${colones(renta)} '
+        '= ${colones(iva + renta)} a declarar (con los factores guardados). Se declara el 15 del mes siguiente al trimestre.',
+        style: textos.bodySmall,
+      ),
+    );
+  }
 }
