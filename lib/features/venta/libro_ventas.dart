@@ -104,10 +104,35 @@ const esquemaLibro = [
       )
     );
   ''',
+  ..._tablasNuevasDelLibro,
   'CREATE INDEX IF NOT EXISTS idx_linea_venta_venta ON linea_venta(venta_id);',
   'CREATE INDEX IF NOT EXISTS idx_venta_estado_fecha ON venta(estado, fecha_hora);',
   'CREATE INDEX IF NOT EXISTS idx_venta_fecha ON venta(fecha_hora);',
   'CREATE INDEX IF NOT EXISTS idx_linea_venta_producto ON linea_venta(producto_id);',
+];
+
+/// Tablas que se sumaron al libro después de que hubiera libros escritos.
+/// Forman parte de [esquemaLibro] y además se crean donde falten al adjuntar
+/// un libro viejo. Solo lo NUEVO va acá: replicar el esquema entero sobre un
+/// libro viejo tropieza con índices de columnas que ese libro no tiene.
+const _tablasNuevasDelLibro = [
+  // Compras de insumos (decisión 0041): lo que ENTRA, en el mismo libro que
+  // lo que sale. `insumo_id` sin REFERENCES, como todo lo demás del libro.
+  '''
+    CREATE TABLE IF NOT EXISTS compra_insumo (
+      id             TEXT PRIMARY KEY,
+      insumo_id      TEXT NOT NULL,
+      fecha          TEXT NOT NULL,
+      presentaciones REAL NOT NULL DEFAULT 1,
+      contenido      REAL NOT NULL,
+      pagado         REAL NOT NULL,
+      notas          TEXT,
+      updated_at     TEXT NOT NULL,
+      deleted_at     TEXT
+    );
+  ''',
+  'CREATE INDEX IF NOT EXISTS idx_compra_insumo_fecha ON compra_insumo(fecha);',
+  'CREATE INDEX IF NOT EXISTS idx_compra_insumo_insumo ON compra_insumo(insumo_id);',
 ];
 
 /// Columnas que se agregaron a las tablas del libro después de que hubiera
@@ -140,6 +165,18 @@ const _columnasNuevasDelLibro = {
 /// un `SELECT` de una fila.
 Future<void> ponerAlDiaEsquemaDeLibro(DatabaseExecutor db, {String? alias}) async {
   final prefijo = alias == null ? '' : '$alias.';
+
+  // Tablas que se sumaron al libro después de que hubiera libros escritos
+  // (compra_insumo, 0041): se crean donde falten. Solo si el libro ya tiene
+  // `venta`: un archivo sin tablas es uno que todavía no se creó, y ese lo
+  // crea `_crear` entero.
+  final tieneVenta = (await db.rawQuery('PRAGMA ${prefijo}table_info(venta)')).isNotEmpty;
+  if (tieneVenta) {
+    for (final sentencia in _tablasNuevasDelLibro) {
+      await db.execute(_calificar(sentencia, prefijo));
+    }
+  }
+
   for (final tabla in _columnasNuevasDelLibro.entries) {
     final columnas = await db.rawQuery('PRAGMA ${prefijo}table_info(${tabla.key})');
     if (columnas.isEmpty) continue; // El libro todavía no tiene esta tabla.
@@ -152,6 +189,25 @@ Future<void> ponerAlDiaEsquemaDeLibro(DatabaseExecutor db, {String? alias}) asyn
       await db.execute(columna.value.replaceFirst('TABLE ${tabla.key}', 'TABLE $prefijo${tabla.key}'));
     }
   }
+}
+
+/// `CREATE TABLE x` / `CREATE INDEX i ON x` con el esquema delante, para
+/// aplicar el DDL del libro sobre uno adjunto. SQLite exige el índice en el
+/// mismo esquema que su tabla, y lo resuelve por el nombre de la tabla, así
+/// que el índice va calificado por su NOMBRE y la tabla sin calificar.
+String _calificar(String sentencia, String prefijo) {
+  if (prefijo.isEmpty) return sentencia;
+  // `replaceFirstMapped`, no `replaceFirst`: el reemplazo con `$1` de Dart no
+  // expande grupos.
+  return sentencia
+      .replaceFirstMapped(
+        RegExp(r'CREATE TABLE IF NOT EXISTS (\w+)'),
+        (m) => 'CREATE TABLE IF NOT EXISTS $prefijo${m[1]}',
+      )
+      .replaceFirstMapped(
+        RegExp(r'CREATE INDEX IF NOT EXISTS (\w+) ON (\w+)'),
+        (m) => 'CREATE INDEX IF NOT EXISTS $prefijo${m[1]} ON ${m[2]}',
+      );
 }
 
 /// `linea_venta.producto_id` NO lleva REFERENCES a `producto`: el catálogo vive

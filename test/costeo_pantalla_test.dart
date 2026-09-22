@@ -111,7 +111,7 @@ void main() {
 
     await tester.enterText(find.widgetWithText(TextFormField, 'Nombre'), 'Harina');
     await tester.enterText(find.widgetWithText(TextFormField, 'Trae (g)'), '1000');
-    await tester.enterText(find.widgetWithText(TextFormField, 'Precio de compra (₡)'), '4500');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Precio de arranque (₡)'), '4500');
     await tester.enterText(find.widgetWithText(TextFormField, 'Merma (%)'), '3');
     await tester.tap(find.text('Guardar'));
     for (var i = 0; i < 3; i++) {
@@ -125,6 +125,43 @@ void main() {
     final guardado = (await tester.runAsync(() => container.read(insumoNotifierProvider.future)))!.single;
     expect(guardado.unidadBase, c.UnidadBase.gramo);
     expect(guardado.merma, closeTo(0.03, 1e-9));
+  });
+
+  testWidgets('desde un insumo se anota una compra y el costo de la lista cambia con ella', (tester) async {
+    await tester.runAsync(() => container.read(insumoNotifierProvider.notifier).crear(
+      InsumoRegistro(id: 'harina', nombre: 'Harina', unidadBase: c.UnidadBase.gramo, contenidoPorCompra: 1000, precioCompra: 900, merma: 0, updatedAt: DateTime.now()),
+    ));
+    await montar(tester);
+    await tester.tap(find.text('Insumos'));
+    for (var i = 0; i < 4; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 120)));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    expect(find.text('₡0.90'), findsOneWidget, reason: 'sin compras manda el arranque');
+    expect(find.textContaining('precio de arranque'), findsOneWidget);
+
+    await tester.tap(find.text('Harina'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Anotar compra'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.enterText(find.widgetWithText(TextFormField, 'Cuántas'), '2');
+    await tester.enterText(find.widgetWithText(TextFormField, 'De cuánto (g)'), '5000');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Pagado por todo (₡)'), '4000');
+    await tester.pump();
+    expect(find.text('10000 g → ₡0.40 por g'), findsOneWidget, reason: 'la cuenta a la vista mientras se escribe');
+    await tester.tap(find.text('Anotar'));
+    for (var i = 0; i < 4; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 120)));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    await tester.tap(find.text('Cerrar'));
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 120)));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    expect(find.text('₡0.40'), findsOneWidget);
+    expect(find.textContaining('promedio de compras'), findsOneWidget);
+    expect(find.textContaining('Comprado: mes ₡4000'), findsOneWidget);
   });
 
   testWidgets('el detalle del artículo apaga "Aplicar" cuando se cobra justo lo sugerido, y no toca la carta sin pulsarlo', (tester) async {

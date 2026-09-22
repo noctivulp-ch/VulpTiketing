@@ -44,3 +44,4 @@ Volver a [../index](../index.md)
 | [0038](0038-atajos-a-ajustes-y-abrir-archivos-propios.md) | Atajos a los ajustes de Android, abrir los archivos propios, y Acerca de | Aceptada |
 | [0039](0039-variantes-de-producto-como-json.md) | Variantes de un producto como JSON en `producto`, y su nombre en la línea de venta | Aceptada |
 | [0040](0040-costeo-de-recetas-como-modulo.md) | Costeo de recetas como módulo informativo, con "aplicar precio" opcional | Aceptada |
+| [0041](0041-libro-de-compras-de-insumos.md) | Compras de insumos como entradas del libro, con costo promedio ponderado | Aceptada |

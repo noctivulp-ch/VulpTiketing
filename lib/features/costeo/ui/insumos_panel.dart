@@ -9,13 +9,17 @@ import '../../../core/ui/bento_aviso.dart';
 import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/bento_falla.dart';
 import '../costeo_notifiers.dart';
+import '../costo_de_insumos_provider.dart';
 import '../insumo_model.dart';
+import 'compras_insumo.dart';
 import 'formato_costeo.dart';
 
 const _uuid = Uuid();
 
-/// El catálogo de materias primas. Un insumo, una fila, un precio: cuando
-/// sube el huevo se cambia acá y todas las recetas lo saben.
+/// El catálogo de materias primas y sus compras (0041). El insumo se
+/// registra una vez; cada vez que se abastece se anota una compra, y el
+/// costo que usan las recetas sale del promedio de las compras recientes.
+/// Tocar un insumo abre sus compras; el lápiz edita el maestro.
 class InsumosPanel extends ConsumerWidget {
   const InsumosPanel({super.key});
 
@@ -23,7 +27,13 @@ class InsumosPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final insumos = ref.watch(insumoNotifierProvider);
     final config = ref.watch(configCosteoProvider).valueOrNull ?? const c.ConfigCosteo();
+    final costos = ref.watch(costoDeInsumosProvider).valueOrNull ?? const {};
     final textos = Theme.of(context).textTheme;
+    final hoy = DateTime.now();
+    final mes = (DateTime(hoy.year, hoy.month), DateTime(hoy.year, hoy.month + 1));
+    final trimestre = (DateTime(hoy.year, ((hoy.month - 1) ~/ 3) * 3 + 1), DateTime(hoy.year, ((hoy.month - 1) ~/ 3) * 3 + 4));
+    final compradoMes = ref.watch(totalComprasProvider(mes)).valueOrNull;
+    final compradoTrimestre = ref.watch(totalComprasProvider(trimestre)).valueOrNull;
     return insumos.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => BentoFalla(mensaje: 'No se pudieron leer los insumos.', error: e),
@@ -50,9 +60,12 @@ class InsumosPanel extends ConsumerWidget {
                       separatorBuilder: (_, _) => const SizedBox(height: BentoSpacing.unidad),
                       itemBuilder: (context, i) {
                         final insumo = activos[i];
-                        final efectivo = insumo.puro.costoEfectivo(config.mermaPorDefecto);
+                        final costo = costos[insumo.id];
+                        final base = costo?.costoPorUnidadBase ?? insumo.puro.costoPorUnidadBase;
+                        final merma = insumo.merma ?? config.mermaPorDefecto;
+                        final efectivo = merma >= 1 ? double.infinity : base / (1 - merma);
                         return BentoPozo(
-                          onTap: () => mostrarFormularioInsumo(context, insumo: insumo),
+                          onTap: () => mostrarComprasDeInsumo(context, insumo),
                           child: Row(
                             children: [
                               Expanded(
@@ -61,8 +74,7 @@ class InsumosPanel extends ConsumerWidget {
                                   children: [
                                     Text(insumo.nombre, style: textos.titleSmall),
                                     Text(
-                                      '${colones(insumo.precioCompra)} por ${numero(insumo.contenidoPorCompra)} '
-                                      '${insumo.unidadBase.abreviatura}'
+                                      '${costo?.origen.texto ?? OrigenDelCosto.arranque.texto}'
                                       '${insumo.merma == null ? '' : ' · merma ${porcentaje(insumo.merma)}'}'
                                       '${insumo.proveedor == null ? '' : ' · ${insumo.proveedor}'}',
                                       style: textos.bodySmall,
@@ -77,14 +89,24 @@ class InsumosPanel extends ConsumerWidget {
                                   Text('por ${insumo.unidadBase.abreviatura}, con merma', style: textos.bodySmall),
                                 ],
                               ),
+                              IconButton(
+                                tooltip: 'Editar ${insumo.nombre}',
+                                onPressed: () => mostrarFormularioInsumo(context, insumo: insumo),
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                visualDensity: VisualDensity.compact,
+                              ),
                             ],
                           ),
                         );
                       },
                     ),
             ),
+            // Lo comprado: la cifra de "cuánto se gasta", y en el régimen
+            // simplificado la base del impuesto del trimestre.
             _BarraInferior(
-              texto: '${activos.length} insumo(s)',
+              texto: compradoMes == null
+                  ? '${activos.length} insumo(s)'
+                  : 'Comprado: mes ${colones(compradoMes)} · trimestre ${colones(compradoTrimestre ?? 0)}',
               accion: 'Nuevo insumo',
               onAccion: () => mostrarFormularioInsumo(context),
             ),
@@ -240,7 +262,11 @@ class _InsumoFormDialogState extends ConsumerState<_InsumoFormDialog> {
             const SizedBox(height: BentoSpacing.unidad),
             TextFormField(
               controller: _precio,
-              decoration: const InputDecoration(labelText: 'Precio de compra (₡)', helperText: 'Lo que se paga por esa presentación'),
+              decoration: const InputDecoration(
+                labelText: 'Precio de arranque (₡)',
+                helperText: 'Lo que se paga por esa presentación. Manda solo hasta la primera compra anotada',
+                helperMaxLines: 2,
+              ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (v) {
                 final n = parsearNumero(v ?? '');

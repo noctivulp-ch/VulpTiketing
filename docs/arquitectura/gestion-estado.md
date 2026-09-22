@@ -33,6 +33,8 @@ Esta lista es la referencia concreta contra la que comparar antes de escribir c�
 | `CostoFijoNotifier` | Costo fijo | crear, actualizar, descontinuar | — |
 | `ConfigCosteoNotifier` | la única fila de parámetros | guardar | — |
 | `ArticuloCosteoNotifier` | datos de costeo por artículo y sus líneas de receta | asegurar, guardarArticulo, ponerLinea, quitarLinea | la receta no tiene ciclo propio: vive con su artículo |
+| `CompraInsumoNotifier` | compras de insumos, en el libro ([0041](../decisiones/0041-libro-de-compras-de-insumos.md)) | anotar, corregir, anular | lista en memoria: se leen por rango a través de los libros (`comprasDeInsumosProvider`) |
+| *(derivado)* `costoDeInsumosProvider` | costo por unidad base de cada insumo y su origen; `totalComprasProvider(rango)` | solo lee | — |
 | *(derivado)* `costeoProvider` | junta catálogo, ventas de 30 días y parámetros y llama a `packages/costeo` | solo lee | escribir: la única puerta es `aplicarPrecio`, explícita y por artículo |
 | *(no existe)* `VarianteNotifier` | Las variantes de un producto **no son una entidad**: viven como JSON en `producto.variantes` y se editan en el formulario del producto ([0039](../decisiones/0039-variantes-de-producto-como-json.md)) | — | crear un Notifier, un DAO o una tabla para ellas; pasan por `ProductoNotifier.actualizar` |
 | *(Futuro)* `InsumoNotifier` | Materias primas — ciclo de vida aún no definido | a definir cuando se implemente esta feature | no reusar la forma de `ProductoNotifier` sin volver a evaluar si aplica |

@@ -63,13 +63,22 @@ class LectorDeLibros {
     return [for (final (_, l) in conCobertura) l];
   }
 
-  /// Primera y última venta activa del libro, o nulo si está vacío.
+  /// Primera y última entrada del libro —venta o compra de insumo (0041)—,
+  /// o nulo si está vacío. Un libro con compras y sin ventas NO está vacío:
+  /// la primera versión miraba solo `venta` y las compras de un mes sin
+  /// ventas no aparecían en ningún total.
   static final _coberturaCerrados = <String, (DateTime, DateTime)?>{};
 
   Future<(DateTime, DateTime)?> _cobertura(LibroVentas libro) async {
     if (libro.cerrado && _coberturaCerrados.containsKey(libro.id)) return _coberturaCerrados[libro.id];
     final e = await esquemaDe(libro);
-    final fila = (await _db.rawQuery("SELECT MIN(fecha_hora) a, MAX(fecha_hora) b FROM $e.venta WHERE estado = 'activa'")).first;
+    final fila = (await _db.rawQuery('''
+      SELECT MIN(a) a, MAX(b) b FROM (
+        SELECT MIN(fecha_hora) a, MAX(fecha_hora) b FROM $e.venta WHERE estado = 'activa'
+        UNION ALL
+        SELECT MIN(fecha) a, MAX(fecha) b FROM $e.compra_insumo WHERE deleted_at IS NULL
+      )
+    ''')).first;
     final cobertura = fila['a'] == null
         ? null
         : (DateTime.parse(fila['a'] as String), DateTime.parse(fila['b'] as String));

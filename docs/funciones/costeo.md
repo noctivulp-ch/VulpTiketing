@@ -10,7 +10,7 @@ artículo concreto.
 | Sección | Qué se hace |
 |---|---|
 | **Artículos** | El resultado. Arriba, el negocio a los precios de hoy y el volumen de los últimos 30 días: utilidad, ingreso, costos fijos, margen neto, unidades, punto de equilibrio (al mes y por día), colchón. Debajo, un pozo por artículo: precio actual, costo total, precio sugerido, margen real (en rojo si no llega al objetivo o se vende a pérdida) y avisos |
-| **Insumos** | Materias primas: nombre, en qué se usa (g/ml/u), cuánto trae la presentación, precio de compra, merma propia (o la de Ajustes), proveedor, notas. La lista muestra el **costo efectivo por unidad base**, con merma |
+| **Insumos** | Materias primas y **sus compras** ([0041](../decisiones/0041-libro-de-compras-de-insumos.md)). El insumo se registra una vez (nombre, en qué se usa, merma, proveedor, precio de arranque); cada vez que se abastece se **anota una compra** (cuántas, de cuánto, pagado). La lista muestra el costo efectivo por unidad base con merma y de dónde salió (promedio de 90 días / última compra / arranque). Abajo, lo comprado en el mes y en el trimestre — la base del régimen simplificado |
 | **Fijos** | Alquiler, servicios, sueldos… monto mensual por concepto, y el total |
 | **Ajustes** | Margen objetivo (sobre el PRECIO), comisión de medios de pago, merma por defecto, tarifa de mano de obra por hora, redondeo del precio, días abiertos, y reparto de fijos por unidad o por tiempo |
 
@@ -32,6 +32,14 @@ Tocar un artículo abre su detalle:
   (base, o el de la variante — y el base si es la por defecto). Pide
   confirmación y dice que solo toca ese artículo. Apagado si no hay precio
   calculable o ya se cobra exactamente eso.
+
+## De dónde sale el costo de un insumo
+
+Del **promedio ponderado de sus compras de los últimos 90 días**
+(Σ pagado ÷ Σ unidades). Si no hay ninguna en la ventana, la última compra;
+si no hay compras, el precio de arranque del insumo. La pantalla lo dice.
+Anular una compra la saca del promedio sin borrarla del libro. Las compras
+viven en el mismo libro rodante que las ventas.
 
 ## De dónde sale el volumen
 

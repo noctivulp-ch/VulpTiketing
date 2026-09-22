@@ -18,3 +18,7 @@ double? parsearPorcentaje(String texto) {
   final n = parsearNumero(texto);
   return n == null ? null : n / 100;
 }
+
+/// "21/9/2026". Sin `intl`: la app no inicializa datos de idioma y una fecha
+/// numérica se lee igual en cualquier locale.
+String fechaCorta(DateTime d) => '${d.day}/${d.month}/${d.year}';

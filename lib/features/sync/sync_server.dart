@@ -37,11 +37,12 @@ const tablasSincronizables = [
   'config_costeo',
   'articulo_costeo',
   'linea_receta',
+  'compra_insumo',
 ];
 
 /// Tablas que viven en el libro adjunto y por lo tanto pueden no existir: una
 /// instalación sin ninguna venta todavía no tiene libro.
-const _tablasDelLibro = {'venta', 'linea_venta'};
+const _tablasDelLibro = {'venta', 'linea_venta', 'compra_insumo'};
 
 /// Versión del protocolo de sync. Subirla cuando cambie la FORMA del payload.
 const versionProtocoloSync = 1;

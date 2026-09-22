@@ -164,8 +164,17 @@ Cinco tablas, sincronizables, sin `REFERENCES` al catálogo. DDL exacto en
 | `articulo_costeo` | id; UNIQUE (`producto_id`, `variante_id`) con `variante_id = ''` sin variantes | unidades por lote, otros costos directos, minutos del lote, unidades estimadas al mes, margen propio (nullable), ajuste con signo |
 | `linea_receta` | id; UNIQUE (`articulo_id`, `insumo_id`) | `cantidad_por_lote` en la unidad base del insumo |
 
+**`compra_insumo` vive en el libro** (`ventas-<inicio>.db`), no acá
+([0041](../decisiones/0041-libro-de-compras-de-insumos.md)): id, `insumo_id`,
+`fecha`, `presentaciones`, `contenido` (por presentación, en unidad base),
+`pagado`, notas, `updated_at`, `deleted_at`. El libro pasa a ser el del
+negocio: lo que entra y lo que sale. `insumo.precio_compra` y
+`contenido_por_compra` son el **precio de arranque**: mandan solo hasta la
+primera compra anotada.
+
 Nada derivado se guarda: costos, precios sugeridos y márgenes salen de
-`packages/costeo` en cada lectura.
+`packages/costeo` en cada lectura; el costo de cada insumo, del promedio de
+sus compras.
 
 ## Configuración local del dispositivo (fuera de SQLite)
 

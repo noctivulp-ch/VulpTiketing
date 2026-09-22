@@ -9,6 +9,7 @@ import '../venta/lectura_de_libros.dart';
 import '../venta/libro_ventas.dart';
 import 'articulo_costeo_model.dart';
 import 'costeo_notifiers.dart';
+import 'costo_de_insumos_provider.dart';
 
 /// Cuántos días hacia atrás se mira para el volumen real. Un mes rodante y
 /// no el mes calendario: el día 3 de un mes, "este mes" son dos días.
@@ -81,6 +82,7 @@ class Costeo {
 final costeoProvider = FutureProvider<Costeo>((ref) async {
   final config = await ref.watch(configCosteoProvider.future);
   final insumos = await ref.watch(insumoNotifierProvider.future);
+  final costos = await ref.watch(costoDeInsumosProvider.future);
   final fijos = await ref.watch(costoFijoNotifierProvider.future);
   final estado = await ref.watch(articuloCosteoProvider.future);
   final productos = await ref.watch(productoNotifierProvider.future);
@@ -128,7 +130,8 @@ final costeoProvider = FutureProvider<Costeo>((ref) async {
   final resultado = c.calcularCatalogo(
     config: config,
     costosFijos: [for (final f in fijos) if (f.activo) f.puro],
-    insumos: [for (final i in insumos) if (i.activo) i.puro],
+    // El costo de cada insumo sale de sus compras (0041), no del maestro.
+    insumos: [for (final i in insumos) if (i.activo) insumoConCosto(i, costos[i.id])],
     articulos: articulos,
     recetas: recetas,
   );

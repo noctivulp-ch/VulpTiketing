@@ -190,6 +190,8 @@ void main() {
     expect(
       await indicesDe(db),
       equals([
+        'idx_compra_insumo_fecha',
+        'idx_compra_insumo_insumo',
         'idx_linea_venta_producto',
         'idx_linea_venta_venta',
         'idx_venta_estado_fecha',

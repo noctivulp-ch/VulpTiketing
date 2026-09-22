@@ -36,3 +36,11 @@ Feature: Recipe costing
     When the Gerente taps "Aplicar" on one item and confirms
     Then only that item's price changes: the base price, or the variant price (and the base price if it is the default variant)
     And the button is disabled when no price can be computed or the current price already equals the suggested one
+
+  Scenario: Input purchases are ledger entries and set the input cost
+    Given an "Insumo" registered once with its unit, waste and a starting price
+    When the Gerente notes a purchase (how many packages, content each, total paid)
+    Then the entry is written to the current ledger file, next to the sales ([0041])
+    And the input cost is the weighted average of its purchases in the last 90 days, else the last purchase, else the starting price — and the screen says which
+    And voiding a purchase removes it from the average without deleting it from the ledger
+    And the Insumos section shows what was bought this month and this quarter, which is the simplified regime's tax base
