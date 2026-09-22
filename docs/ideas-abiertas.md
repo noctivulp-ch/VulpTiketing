@@ -203,3 +203,34 @@ lo pida. **No se generaliza.**
 - Qué mes usa como volumen por defecto (el anterior completo, o un promedio).
 - Si las sub-recetas (una masa base en cinco productos) entran en la primera
   versión o después. Requieren detectar ciclos.
+
+---
+
+## 5. Versátil sin desprestigiar la base (2026-09-21)
+
+El dueño quiere que la app sirva también para su negocio —apps open source
+vendidas por Patreon— y para un trabajo de desarrollo empresarial de la U
+(costos, punto de equilibrio). Criterio: *"hacer más versátil la app sin
+desprestigiar su funcionalidad base"*. Lo de la soda no se toca; lo nuevo es
+apagable.
+
+La investigación y la lista completa están en
+[investigacion/costeo-tributacion-y-versatilidad.md](investigacion/costeo-tributacion-y-versatilidad.md).
+Hallazgo que cambia el diseño: en el régimen simplificado el impuesto se
+calcula **sobre las compras** del trimestre, así que el libro de compras de
+insumos es también la base imponible de una soda.
+
+Orden acordado (que exista → mejorar → optimizar → pulir):
+
+1. **Libro de compras de insumos** con promedio ponderado móvil (el insumo se
+   registra una vez; cada compra es una entrada; el costo sale de las
+   entradas). Un insumo sin compras puede llevar un precio de arranque a mano
+   que deja de contar con la primera compra real.
+2. **Impuestos flexibles**: tasa por producto, comisión por medio de pago,
+   régimen en Ajustes (simplificado con factores sobre compras / general).
+3. **Moneda opcional** (símbolo y decimales).
+4. **Food cost %**, equilibrio en colones, escenarios.
+5. **Elegir ventanas de venta** en Configuración: las dos, solo Venta Rápida,
+   solo Panel.
+6. Perfil de negocio de servicios (sin receta sin alerta, amortización).
+7. Importar ventas desde CSV (Patreon) — después, si vale la pena.

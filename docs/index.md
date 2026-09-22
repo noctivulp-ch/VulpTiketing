@@ -59,3 +59,6 @@ Diseño cerrado (19 ADRs aceptados) y **scaffold de Flutter creado**: proyecto c
 
 [ideas-abiertas.md](ideas-abiertas.md) — planteadas y sin decidir: tutoriales grabados desde la PC, el sistema de diseño como librería propia, y Bluetooth de respaldo. Cada una con lo que ya existe a favor y lo que hay que decidir antes de empezar.
 
+## Investigación
+
+- [Costeo, tributación en CR y versatilidad](investigacion/costeo-tributacion-y-versatilidad.md) — cómo se costea comida, promedio ponderado, régimen simplificado vs general (2026), el caso de un negocio digital, y qué le falta a la app. Con fechas de fuente.
