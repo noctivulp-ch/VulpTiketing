@@ -40,7 +40,11 @@ verdad, este es el momento barato de hacerlo.
 
 | Función | Detalle |
 |---|---|
-| Variantes de producto | Tamaños, cortes, con o sin papas: nombre y precio dentro del producto ([0039](decisiones/0039-variantes-de-producto-como-json.md)). Selector al vender; ranking por variante |
+| Variantes de producto | Tamaños, cortes, con o sin papas: nombre y precio dentro del producto ([0039](decisiones/0039-variantes-de-producto-como-json.md)). Una por defecto (su precio es el base, preseleccionada al cobrar), orden fijado por el Gerente; selector al vender; ranking por variante |
+| Reportes leen libros cerrados | Reportes, calendario y exportación cruzan todos los libros del rango ([0025](decisiones/0025-archivado-anual-rodante.md)). Antes el primer año cerrado habría salido "sin ventas" |
+| Categorías desde Catálogo | Botón flotante que rota entre productos y categorías; sale de Configuración |
+| Panel de agregar en teléfono | Abierto cubre todo el sitio del carrito; la barra de cobro no se mueve |
+| Texto neutro e iconos | Sin "soda" en pantalla; 23 iconos de categoría más (pizza, ropa, ferretería, farmacia…) con sus pistas |
 | Costeo de recetas | *pendiente en esta misma versión* — ver `ideas-abiertas.md`, idea 4 |
 
 Migraciones: `producto.variantes` (v5 → v6, `ALTER TABLE`) y

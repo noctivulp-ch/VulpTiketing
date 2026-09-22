@@ -36,7 +36,7 @@ class PanelAcercaDe extends StatelessWidget {
         Text('Versión $versionApp (build $compilacionApp)', style: textos.bodyMedium),
         const SizedBox(height: BentoSpacing.gapCelda),
         Text(
-          'Inventario, ventas y reportes para una soda. Funciona sin internet y '
+          'Inventario, ventas y reportes para un negocio pequeño. Funciona sin internet y '
           'las cajas se sincronizan entre ellas por la red local.',
           style: textos.bodySmall,
         ),

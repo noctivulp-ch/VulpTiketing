@@ -203,7 +203,7 @@ class _AvisoDeDesarrollo extends StatelessWidget {
               child: Text(
                 'BUILD DE PRUEBAS. Acepta un token fijo y conocido, así que '
                 'cualquiera con el código puede manejar este aparato. '
-                'Antes de dejarlo en la soda hay que reinstalar la app con '
+                'Antes de dejarlo en el negocio hay que reinstalar la app con '
                 '`flutter build apk --release`.',
                 style: Theme.of(
                   context,
