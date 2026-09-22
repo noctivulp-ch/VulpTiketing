@@ -7,6 +7,7 @@ import '../../../core/ui/bento_aviso.dart';
 import '../caja_notifier.dart';
 import '../corte_caja_model.dart';
 import 'corte_caja_dialog.dart';
+import '../../../core/moneda.dart';
 
 /// El cuadro de corte de caja: lo que hay que contar y con qué compararlo.
 ///
@@ -99,7 +100,7 @@ class CajaCortePozo extends ConsumerWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text('₡${monto.toStringAsFixed(2)}', style: textos.titleMedium, maxLines: 1),
+          child: Text(Moneda.de(context).formatear(monto), style: textos.titleMedium, maxLines: 1),
         ),
       ],
     );

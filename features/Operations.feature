@@ -55,3 +55,8 @@ Feature: Inventory CRUD Operations
     Given the user is logged in as "Gerente"
     When the "Producto" has at least one "LineaVenta" referencing it, or is not discontinued, or not all known devices are confirmed synchronized
     Then the purge action must be disabled, with a message explaining why
+  Scenario: The currency is a display setting
+    Given the app shows whole colones by default
+    When the user sets another symbol and decimals in Configuración → Moneda
+    Then every amount on screen, in inputs and in exported PDFs uses that symbol and those decimals ([0043])
+    And no stored amount is converted or rewritten

@@ -26,6 +26,7 @@ import 'elegir_variante.dart';
 import '../linea_venta_model.dart';
 import '../venta_model.dart';
 import '../venta_en_curso_notifier.dart';
+import '../../../core/moneda.dart';
 
 /// Ventana 2 — ver docs/pantallas/flujo-descripcion.md#ventana-2--panel-de-venta-carrito-completo
 /// y docs/pantallas/prototipos-ascii.md. Carrito multi-línea + panel de
@@ -454,7 +455,7 @@ class _BarraDeCobro extends StatelessWidget {
     );
     final textoCambio = Align(
       alignment: Alignment.centerLeft,
-      child: Text(cambio == null ? 'Cambio: —' : 'Cambio: ₡${cambio!.toStringAsFixed(2)}'),
+      child: Text(cambio == null ? 'Cambio: —' : 'Cambio: ${Moneda.de(context).formatear(cambio!)}'),
     );
     final vertical = BentoAncho.de(context).esCompacto;
     // Apilado, Cambio y Total quedan uno debajo del otro en la misma columna:
@@ -464,7 +465,7 @@ class _BarraDeCobro extends StatelessWidget {
     // contra su borde, al lado del botón.
     final textoTotal = Align(
       alignment: vertical ? Alignment.centerLeft : Alignment.centerRight,
-      child: Text('₡${total.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleMedium),
+      child: Text(Moneda.de(context).formatear(total), style: Theme.of(context).textTheme.titleMedium),
     );
     final casillaSinpe = CasillaSinpe(activa: sinpe, onCambio: onSinpe);
     final finalizar = FilledButton(
@@ -615,7 +616,7 @@ class _FilaLineaVenta extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
     );
     final precio = Text(
-      '₡${subtotal.toStringAsFixed(2)}',
+      Moneda.de(context).formatear(subtotal),
       style: tema.textTheme.labelLarge,
       maxLines: 1,
     );
@@ -892,7 +893,7 @@ class _PanelAgregarProductoState extends ConsumerState<_PanelAgregarProducto> {
                 return ListTile(
                   leading: seleccionado ? const Icon(Icons.check_circle) : null,
                   title: Text(producto.nombre),
-                  trailing: Text(precioParaMostrar(producto, decimales: 2)),
+                  trailing: Text(precioParaMostrar(context, producto)),
                   selected: seleccionado,
                   onTap: () {
                     if (_modoSeleccion) {

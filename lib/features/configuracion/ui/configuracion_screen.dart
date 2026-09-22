@@ -10,6 +10,8 @@ import '../../auth/sesion_notifier.dart';
 import '../../import_export/ui/tiketback_panels.dart';
 import '../../import_export/ui/tiketdata_panel.dart';
 import '../../sync/sync_notifier.dart';
+import '../../../core/moneda.dart';
+import '../../../core/ui/bento_aviso.dart';
 import '../../../core/theme/bento_efectos.dart';
 import '../../../core/theme/bento_fotos.dart';
 import '../../../core/ui/bento_dialogo.dart';
@@ -31,6 +33,7 @@ enum _Opcion {
   ordenProducto,
   acento,
   modoTema,
+  moneda,
   optimizacion,
   permisosSistema,
   tokenMcp,
@@ -131,6 +134,12 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
           ),
           // Las categorías se editan desde Catálogo (el botón que rota): son
           // parte de la carta, no un ajuste.
+          _TileConfiguracion(
+            icono: Icons.payments_outlined,
+            etiqueta: 'Moneda',
+            seleccionado: _seleccion == _Opcion.moneda,
+            onTap: () => setState(() => _seleccion = _Opcion.moneda),
+          ),
           _TileConfiguracion(
             icono: Icons.speed_outlined,
             etiqueta: 'Optimización',
@@ -254,6 +263,8 @@ class _ConfiguracionScreenState extends ConsumerState<ConfiguracionScreen> {
         return const _PanelAcento();
       case _Opcion.modoTema:
         return const _PanelModoTema();
+      case _Opcion.moneda:
+        return const _PanelMoneda();
       case _Opcion.optimizacion:
         return const _PanelOptimizacion();
       case _Opcion.permisosSistema:
@@ -579,6 +590,105 @@ class _PanelModoTema extends ConsumerWidget {
             onSelectionChanged: (seleccion) =>
                 ref.read(preferenciasNotifierProvider.notifier).cambiarModoTema(seleccion.first),
           ),
+          loading: () => const SizedBox.shrink(),
+          error: (e, st) => Text('Error: $e'),
+        ),
+      ],
+    );
+  }
+}
+
+
+/// Con qué se escribe el dinero (0043). Símbolo libre y decimales en 0 o 2:
+/// colones enteros de fábrica; dólares con centavos si el negocio cobra así.
+/// No convierte nada: los números guardados son los mismos, cambia cómo se
+/// leen y se capturan.
+class _PanelMoneda extends ConsumerStatefulWidget {
+  const _PanelMoneda();
+
+  @override
+  ConsumerState<_PanelMoneda> createState() => _PanelMonedaState();
+}
+
+class _PanelMonedaState extends ConsumerState<_PanelMoneda> {
+  final _simbolo = TextEditingController();
+  bool _cargado = false;
+
+  @override
+  void dispose() {
+    _simbolo.dispose();
+    super.dispose();
+  }
+
+  Future<void> _guardar(Moneda actual) async {
+    final simbolo = _simbolo.text.trim();
+    if (simbolo.isEmpty || simbolo.length > 4) {
+      mostrarAviso(context, '✗ El símbolo va de 1 a 4 caracteres');
+      return;
+    }
+    await ref
+        .read(preferenciasNotifierProvider.notifier)
+        .cambiarMoneda(Moneda(simbolo: simbolo, decimales: actual.decimales));
+    if (mounted) mostrarAviso(context, '✓ Moneda: ${Moneda(simbolo: simbolo, decimales: actual.decimales).formatear(1234.5)}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preferenciasAsync = ref.watch(preferenciasNotifierProvider);
+    final textos = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Moneda', style: textos.titleMedium),
+        const SizedBox(height: BentoSpacing.unidad / 2),
+        Text(
+          'Cómo se escriben los montos en este aparato. No convierte nada: los números guardados '
+          'son los mismos. Los aparatos de un negocio se ponen igual una vez.',
+          style: textos.bodySmall,
+        ),
+        const SizedBox(height: BentoSpacing.gapCelda),
+        preferenciasAsync.when(
+          data: (prefs) {
+            if (!_cargado) {
+              _cargado = true;
+              _simbolo.text = prefs.moneda.simbolo;
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      child: TextField(
+                        controller: _simbolo,
+                        decoration: const InputDecoration(labelText: 'Símbolo', isDense: true),
+                        maxLength: 4,
+                      ),
+                    ),
+                    const SizedBox(width: BentoSpacing.unidad),
+                    FilledButton.tonal(onPressed: () => _guardar(prefs.moneda), child: const Text('Aplicar símbolo')),
+                  ],
+                ),
+                const SizedBox(height: BentoSpacing.unidad),
+                Text('Decimales', style: textos.labelLarge),
+                const SizedBox(height: BentoSpacing.unidad / 2),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('Enteros (₡3000)')),
+                    ButtonSegment(value: 2, label: Text('Centavos (\$12.50)')),
+                  ],
+                  selected: {prefs.moneda.decimales},
+                  onSelectionChanged: (s) => ref
+                      .read(preferenciasNotifierProvider.notifier)
+                      .cambiarMoneda(Moneda(simbolo: prefs.moneda.simbolo, decimales: s.first)),
+                ),
+                const SizedBox(height: BentoSpacing.unidad),
+                Text('Se ve así: ${prefs.moneda.formatear(1234.5)}', style: textos.bodyMedium),
+              ],
+            );
+          },
           loading: () => const SizedBox.shrink(),
           error: (e, st) => Text('Error: $e'),
         ),

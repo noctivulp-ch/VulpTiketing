@@ -44,6 +44,7 @@ verdad, este es el momento barato de hacerlo.
 | Reportes leen libros cerrados | Reportes, calendario y exportación cruzan todos los libros del rango ([0025](decisiones/0025-archivado-anual-rodante.md)). Antes el primer año cerrado habría salido "sin ventas" |
 | Categorías desde Catálogo | Botón flotante que rota entre productos y categorías; sale de Configuración |
 | Panel de agregar en teléfono | Abierto cubre todo el sitio del carrito; la barra de cobro no se mueve |
+| Moneda opcional | Símbolo y decimales en Configuración → Moneda, de presentación; colones enteros de fábrica ([0043](decisiones/0043-moneda-opcional.md)) |
 | Texto neutro e iconos | Sin "soda" en pantalla; 23 iconos de categoría más (pizza, ropa, ferretería, farmacia…) con sus pistas |
 | Costeo de recetas | Ventana 6, solo Gerente ([0040](decisiones/0040-costeo-de-recetas-como-modulo.md)): insumos, costos fijos, parámetros, receta por artículo (variantes incluidas), precio sugerido y margen real con volumen de ventas reales. Informa; "Aplicar" es explícito y por artículo. Esquema **v7** (cinco tablas sincronizables). **Compras de insumos** en el libro, con costo promedio ponderado de 90 días y totales por mes y trimestre ([0041](decisiones/0041-libro-de-compras-de-insumos.md)). **Impuestos**: régimen simplificado (factores sobre compras) o general (IVA por producto), comisión por medio de pago ponderada por el mix real ([0042](decisiones/0042-impuestos-flexibles-y-regimen.md)); esquema v8 |
 

@@ -10,6 +10,7 @@ import '../costeo_notifiers.dart';
 import '../costeo_provider.dart';
 import '../insumo_model.dart';
 import 'formato_costeo.dart';
+import '../../../core/moneda.dart';
 
 /// El detalle de un artículo: sus cuentas, su receta y sus parámetros. Todo
 /// se edita acá y el catálogo se recalcula al guardar. La única escritura al
@@ -28,7 +29,7 @@ class _ArticuloDetalle extends ConsumerWidget {
       builder: (dialogContext) => BentoDialogo(
         titulo: const Text('¿Aplicar el precio sugerido?'),
         contenido: Text(
-          '${catalogo.nombre} pasa de ${colones(catalogo.precioActual)} a ${colones(precio)} en la carta. '
+          '${catalogo.nombre} pasa de ${colones(context, catalogo.precioActual)} a ${colones(context, precio)} en la carta. '
           'Solo este artículo; los demás no se tocan.',
         ),
         acciones: BentoAcciones(
@@ -87,7 +88,7 @@ class _ArticuloDetalle extends ConsumerWidget {
           // ya se cobra exactamente eso. Es la única puerta al catálogo.
           FilledButton(
             onPressed: puedeAplicar ? () => _aplicarPrecio(context, ref, catalogo, a.precioFinal) : null,
-            child: Text('Aplicar ${colones(a.precioFinal)}'),
+            child: Text('Aplicar ${colones(context, a.precioFinal)}'),
           ),
         ],
       ),
@@ -116,18 +117,18 @@ class _Cuentas extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('Por unidad', style: textos.labelLarge),
-        fila('Insumos', colones(a.costoInsumosUnidad, decimales: 2)),
-        fila('Mano de obra', colones(a.manoObraUnidad, decimales: 2)),
-        if (a.articulo.otrosCostosDirectos > 0) fila('Otros directos', colones(a.articulo.otrosCostosDirectos, decimales: 2)),
-        fila('Costos fijos que absorbe', colones(a.overheadUnidad, decimales: 2)),
-        if (a.impuestoComprasUnidad > 0) fila('Impuesto simplificado (sobre compras)', colones(a.impuestoComprasUnidad, decimales: 2)),
-        fila('Costo total', colones(a.costoTotalUnidad, decimales: 2), fuerte: true),
+        fila('Insumos', colones(context, a.costoInsumosUnidad, decimales: 2)),
+        fila('Mano de obra', colones(context, a.manoObraUnidad, decimales: 2)),
+        if (a.articulo.otrosCostosDirectos > 0) fila('Otros directos', colones(context, a.articulo.otrosCostosDirectos, decimales: 2)),
+        fila('Costos fijos que absorbe', colones(context, a.overheadUnidad, decimales: 2)),
+        if (a.impuestoComprasUnidad > 0) fila('Impuesto simplificado (sobre compras)', colones(context, a.impuestoComprasUnidad, decimales: 2)),
+        fila('Costo total', colones(context, a.costoTotalUnidad, decimales: 2), fuerte: true),
         const Divider(),
-        fila('Precio sugerido (margen ${porcentaje(a.margenObjetivo)})', colones(a.precioSugerido, decimales: 2)),
-        fila('Redondeado${a.articulo.ajustePrecio == 0 ? '' : ' y ajustado'}', colones(a.precioFinal), fuerte: true),
-        fila('Se cobra hoy', colones(catalogo.precioActual), fuerte: true),
+        fila('Precio sugerido (margen ${porcentaje(a.margenObjetivo)})', colones(context, a.precioSugerido, decimales: 2)),
+        fila('Redondeado${a.articulo.ajustePrecio == 0 ? '' : ' y ajustado'}', colones(context, a.precioFinal), fuerte: true),
+        fila('Se cobra hoy', colones(context, catalogo.precioActual), fuerte: true),
         if (a.articulo.tasaImpuesto > 0)
-          fila('IVA dentro del precio (${porcentaje(a.articulo.tasaImpuesto)})', colones(a.impuestoPrecioUnidad, decimales: 2)),
+          fila('IVA dentro del precio (${porcentaje(a.articulo.tasaImpuesto)})', colones(context, a.impuestoPrecioUnidad, decimales: 2)),
         fila('Margen real al precio de hoy', porcentaje(a.margenReal)),
         fila(
           a.articulo.volumenEsReal ? 'Vendidas en $diasDeVolumen días' : 'Volumen estimado',
@@ -204,7 +205,7 @@ class _Receta extends ConsumerWidget {
                         style: textos.bodyMedium,
                       ),
                     ),
-                    Text(colones(l.costoLinea, decimales: 2), style: textos.bodySmall),
+                    Text(colones(context, l.costoLinea, decimales: 2), style: textos.bodySmall),
                     IconButton(
                       icon: const Icon(Icons.close, size: 18),
                       tooltip: 'Quitar de la receta',
@@ -218,7 +219,7 @@ class _Receta extends ConsumerWidget {
         if (calculado.lineas.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 2),
-            child: Text('Insumos del lote: ${colones(calculado.costoInsumosLote, decimales: 2)}', style: textos.bodySmall),
+            child: Text('Insumos del lote: ${colones(context, calculado.costoInsumosLote, decimales: 2)}', style: textos.bodySmall),
           ),
       ],
     );
@@ -385,7 +386,7 @@ class _ParametrosState extends ConsumerState<_Parametros> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            campo(_otros, 'Otros directos (₡/u)', ayuda: 'Etiqueta, maquila'),
+            campo(_otros, 'Otros directos (${Moneda.de(context).simbolo}/u)', ayuda: 'Etiqueta, maquila'),
             const SizedBox(width: BentoSpacing.unidad),
             campo(_estimadas, 'Estimadas al mes', ayuda: 'Solo si no hay ventas', entero: true),
           ],
@@ -396,7 +397,7 @@ class _ParametrosState extends ConsumerState<_Parametros> {
           children: [
             campo(_margen, 'Margen propio (%)', ayuda: 'Vacío usa el de Ajustes'),
             const SizedBox(width: BentoSpacing.unidad),
-            campo(_ajuste, 'Ajuste (₡, con signo)', ayuda: '+ estrella, − gancho'),
+            campo(_ajuste, 'Ajuste (${Moneda.de(context).simbolo}, con signo)', ayuda: '+ estrella, − gancho'),
           ],
         ),
         const SizedBox(height: BentoSpacing.unidad),

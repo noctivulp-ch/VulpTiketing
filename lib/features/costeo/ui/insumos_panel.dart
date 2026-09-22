@@ -13,6 +13,7 @@ import '../costo_de_insumos_provider.dart';
 import '../insumo_model.dart';
 import 'compras_insumo.dart';
 import 'formato_costeo.dart';
+import '../../../core/moneda.dart';
 
 const _uuid = Uuid();
 
@@ -85,7 +86,7 @@ class InsumosPanel extends ConsumerWidget {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(colones(efectivo, decimales: 2), style: textos.titleSmall),
+                                  Text(colones(context, efectivo, decimales: 2), style: textos.titleSmall),
                                   Text('por ${insumo.unidadBase.abreviatura}, con merma', style: textos.bodySmall),
                                 ],
                               ),
@@ -106,7 +107,7 @@ class InsumosPanel extends ConsumerWidget {
             _BarraInferior(
               texto: compradoMes == null
                   ? '${activos.length} insumo(s)'
-                  : 'Comprado: mes ${colones(compradoMes)} · trimestre ${colones(compradoTrimestre ?? 0)}',
+                  : 'Comprado: mes ${colones(context, compradoMes)} · trimestre ${colones(context, compradoTrimestre ?? 0)}',
               accion: 'Nuevo insumo',
               onAccion: () => mostrarFormularioInsumo(context),
             ),
@@ -262,8 +263,8 @@ class _InsumoFormDialogState extends ConsumerState<_InsumoFormDialog> {
             const SizedBox(height: BentoSpacing.unidad),
             TextFormField(
               controller: _precio,
-              decoration: const InputDecoration(
-                labelText: 'Precio de arranque (₡)',
+              decoration: InputDecoration(
+                labelText: 'Precio de arranque ${Moneda.de(context).entreParentesis}',
                 helperText: 'Lo que se paga por esa presentación. Manda solo hasta la primera compra anotada',
                 helperMaxLines: 2,
               ),

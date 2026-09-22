@@ -10,6 +10,7 @@ import '../compra_insumo_notifier.dart';
 import '../costo_de_insumos_provider.dart';
 import '../insumo_model.dart';
 import 'formato_costeo.dart';
+import '../../../core/moneda.dart';
 
 const _uuid = Uuid();
 
@@ -43,10 +44,10 @@ class _ComprasDeInsumo extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (costo != null) ...[
-            Text('${colones(costo.costoPorUnidadBase, decimales: 2)} por $u', style: textos.titleMedium),
+            Text('${colones(context, costo.costoPorUnidadBase, decimales: 2)} por $u', style: textos.titleMedium),
             Text(costo.origen.texto, style: textos.bodySmall),
             if (insumo.merma != null)
-              Text('con merma ${porcentaje(insumo.merma)}: ${colones(costo.costoPorUnidadBase / (1 - insumo.merma!), decimales: 2)} por $u', style: textos.bodySmall),
+              Text('con merma ${porcentaje(insumo.merma)}: ${colones(context, costo.costoPorUnidadBase / (1 - insumo.merma!), decimales: 2)} por $u', style: textos.bodySmall),
           ],
           const SizedBox(height: BentoSpacing.gapCelda),
           Row(
@@ -78,9 +79,9 @@ class _ComprasDeInsumo extends ConsumerWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(colones(c.pagado), style: textos.bodyMedium),
+                      Text(colones(context, c.pagado), style: textos.bodyMedium),
                       const SizedBox(width: BentoSpacing.unidad),
-                      Text('${colones(c.costoUnitario, decimales: 2)}/$u', style: textos.bodySmall),
+                      Text('${colones(context, c.costoUnitario, decimales: 2)}/$u', style: textos.bodySmall),
                     ],
                   ),
                 ),
@@ -159,7 +160,7 @@ class _CompraFormDialogState extends ConsumerState<_CompraFormDialog> {
     await (_esEdicion ? notifier.corregir(compra) : notifier.anotar(compra));
     if (mounted) {
       Navigator.of(context).pop();
-      mostrarAviso(context, '✓ Compra anotada: ${colones(compra.costoUnitario, decimales: 2)} por ${widget.insumo.unidadBase.abreviatura}');
+      mostrarAviso(context, '✓ Compra anotada: ${colones(context, compra.costoUnitario, decimales: 2)} por ${widget.insumo.unidadBase.abreviatura}');
     }
   }
 
@@ -218,7 +219,7 @@ class _CompraFormDialogState extends ConsumerState<_CompraFormDialog> {
             const SizedBox(height: BentoSpacing.unidad),
             TextFormField(
               controller: _pagado,
-              decoration: const InputDecoration(labelText: 'Pagado por todo (₡)'),
+              decoration: InputDecoration(labelText: 'Pagado por todo ${Moneda.de(context).entreParentesis}'),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
               validator: (v) => (parsearNumero(v ?? '') ?? -1) >= 0 ? null : 'Número inválido',
@@ -227,7 +228,7 @@ class _CompraFormDialogState extends ConsumerState<_CompraFormDialog> {
             // La cuenta a la vista mientras se escribe: es lo que evita anotar
             // 5 kg como 5 g.
             Text(
-              unidades > 0 ? '${numero(unidades)} $u → ${colones(pagado / unidades, decimales: 2)} por $u' : '—',
+              unidades > 0 ? '${numero(unidades)} $u → ${colones(context, pagado / unidades, decimales: 2)} por $u' : '—',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: BentoSpacing.unidad),

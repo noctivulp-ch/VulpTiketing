@@ -18,6 +18,7 @@ import '../producto_query_provider.dart';
 import '../variante_model.dart';
 import 'banco_imagenes_dialog.dart';
 import 'imagen_del_banco_vista.dart';
+import '../../../core/moneda.dart';
 
 const _uuid = Uuid();
 
@@ -332,7 +333,7 @@ class _ProductoFormDialogState extends ConsumerState<ProductoFormDialog> {
           if (_variantes.isEmpty)
             TextFormField(
               controller: _precioController,
-              decoration: const InputDecoration(labelText: 'Precio base (₡)'),
+              decoration: InputDecoration(labelText: 'Precio base ${Moneda.de(context).entreParentesis}'),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Requerido';
@@ -649,7 +650,7 @@ class _EditorDeVariantes extends StatelessWidget {
                   flex: 2,
                   child: TextFormField(
                     controller: v.precio,
-                    decoration: const InputDecoration(labelText: 'Precio (₡)'),
+                    decoration: InputDecoration(labelText: 'Precio ${Moneda.de(context).entreParentesis}'),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: (texto) {
                       if (texto == null || texto.trim().isEmpty) {

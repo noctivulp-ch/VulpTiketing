@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../caja/corte_caja_model.dart';
 import '../venta/venta_model.dart';
 import 'reportes_provider.dart';
+import '../../core/moneda.dart';
 
 /// En qué se exporta un reporte.
 ///
@@ -32,7 +33,11 @@ enum FormatoReporte {
 /// que la pantalla ya tiene, así que exportar muestra exactamente lo mismo que
 /// se está viendo — si volviera a consultar podría exportar otra cosa.
 class ReporteExportService {
-  const ReporteExportService();
+  const ReporteExportService({this.moneda = Moneda.colon});
+
+  /// Con qué se escriben los montos (0043). Llega de la pantalla, que la lee
+  /// del árbol; el servicio no tiene contexto.
+  final Moneda moneda;
 
   /// El archivo ya armado, en memoria.
   ///
@@ -311,7 +316,7 @@ class ReporteExportService {
         build: (context) => [
           pw.Header(level: 0, text: titulo),
           pw.Text(
-            'Total: ₡${total.toStringAsFixed(2)}',
+            'Total: ${moneda.formatear(total)}',
             style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
           ),
           pw.Text('${ventas.length} venta(s) · $articulos artículo(s)'),
@@ -320,8 +325,8 @@ class ReporteExportService {
           // no aporta.
           if (sinpe > 0)
             pw.Text(
-              'Efectivo ₡${(total - sinpe).toStringAsFixed(2)}  ·  '
-              'SINPE ₡${sinpe.toStringAsFixed(2)}',
+              'Efectivo ${moneda.formatear(total - sinpe)}  ·  '
+              'SINPE ${moneda.formatear(sinpe)}',
             ),
           pw.SizedBox(height: 8),
           if (porTurno != null) ...[
@@ -329,7 +334,7 @@ class ReporteExportService {
               headers: const ['Turno', 'Total'],
               data: [
                 for (final turno in Turno.values)
-                  [_nombreTurno(turno), '₡${porTurno[turno]!.toStringAsFixed(2)}'],
+                  [_nombreTurno(turno), moneda.formatear(porTurno[turno]!)],
               ],
             ),
             pw.SizedBox(height: 16),
@@ -347,7 +352,7 @@ class ReporteExportService {
                   [
                     nombreDeMomento(corte.momento),
                     _hora(corte.fechaHora),
-                    '₡${corte.monto.toStringAsFixed(2)}',
+                    moneda.formatear(corte.monto),
                   ],
               ],
             ),
@@ -362,7 +367,7 @@ class ReporteExportService {
               headers: const ['Producto', 'Cantidad', 'Total'],
               data: [
                 for (final item in masVendido)
-                  [item.$1, '${item.$2}', '₡${item.$3.toStringAsFixed(2)}'],
+                  [item.$1, '${item.$2}', moneda.formatear(item.$3)],
               ],
             ),
             pw.SizedBox(height: 16),
@@ -389,8 +394,8 @@ class ReporteExportService {
                       _hora(venta.venta.fechaHora),
                       l.linea.nota == null ? l.descripcion : '${l.descripcion} (${l.linea.nota})',
                       '${l.linea.cantidad}',
-                      '₡${l.linea.precioAplicado.toStringAsFixed(2)}',
-                      '₡${l.subtotal.toStringAsFixed(2)}',
+                      moneda.formatear(l.linea.precioAplicado),
+                      moneda.formatear(l.subtotal),
                       // Solo se nombra lo que NO es lo normal, y con la
                       // referencia cuando está: en una columna de doscientas
                       // filas repetir "Efectivo" es ruido.

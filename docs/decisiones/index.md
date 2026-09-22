@@ -46,3 +46,4 @@ Volver a [../index](../index.md)
 | [0040](0040-costeo-de-recetas-como-modulo.md) | Costeo de recetas como módulo informativo, con "aplicar precio" opcional | Aceptada |
 | [0041](0041-libro-de-compras-de-insumos.md) | Compras de insumos como entradas del libro, con costo promedio ponderado | Aceptada |
 | [0042](0042-impuestos-flexibles-y-regimen.md) | Impuestos por régimen, tasa por producto y comisión por medio de pago | Aceptada |
+| [0043](0043-moneda-opcional.md) | Moneda opcional: símbolo y decimales, de presentación | Aceptada |

@@ -112,11 +112,21 @@ void main() {
   });
 
   group('el precio que se muestra', () {
-    test('con variantes es el de la por defecto (el precio base); sin ellas, el base', () {
-      expect(precioParaMostrar(cafe), '₡800');
+    testWidgets('con variantes es el de la por defecto (el precio base); sin ellas, el base', (tester) async {
       final casado = Producto(id: 'c', nombre: 'Casado', precioBase: 3000, updatedAt: DateTime(2026));
-      expect(precioParaMostrar(casado), '₡3000');
-      expect(precioParaMostrar(casado, decimales: 2), '₡3000.00');
+      late String conVariantes;
+      late String sinVariantes;
+      await tester.pumpWidget(
+        Builder(
+          builder: (context) {
+            conVariantes = precioParaMostrar(context, cafe);
+            sinVariantes = precioParaMostrar(context, casado);
+            return const SizedBox();
+          },
+        ),
+      );
+      expect(conVariantes, '₡800');
+      expect(sinVariantes, '₡3000', reason: 'colones enteros sin moneda configurada');
     });
   });
 

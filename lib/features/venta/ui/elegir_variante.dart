@@ -5,10 +5,11 @@ import '../../../core/ui/bento_dialogo.dart';
 import '../../../core/ui/monto_editable.dart';
 import '../../producto/producto_model.dart';
 import '../../producto/variante_model.dart';
+import '../../../core/moneda.dart';
 
 /// Cómo se escribe el precio de una variante donde se elige: sin decimales,
 /// como en la carta. `montoParaEditar` es para escribirlo, no para leerlo.
-String _precioDe(Variante v) => '₡${v.precio.toStringAsFixed(0)}';
+String _precioDe(BuildContext context, Variante v) => Moneda.de(context).formatear(v.precio);
 
 /// Pregunta cuál variante, con una opción grande por cada una.
 ///
@@ -39,7 +40,7 @@ Future<Variante?> elegirVariante(BuildContext context, Producto producto) {
                 child: Row(
                   children: [
                     Expanded(child: Text(v.nombre, overflow: TextOverflow.ellipsis)),
-                    Text(_precioDe(v)),
+                    Text(_precioDe(dialogContext, v)),
                   ],
                 ),
               )
@@ -50,7 +51,7 @@ Future<Variante?> elegirVariante(BuildContext context, Producto producto) {
                 child: Row(
                   children: [
                     Expanded(child: Text(v.nombre, overflow: TextOverflow.ellipsis)),
-                    Text(_precioDe(v)),
+                    Text(_precioDe(dialogContext, v)),
                   ],
                 ),
               ),
@@ -95,7 +96,7 @@ class SelectorDeVariante extends StatelessWidget {
       children: [
         for (final v in variantes)
           ChoiceChip(
-            label: Text('${v.nombre} · ${_precioDe(v)}'),
+            label: Text('${v.nombre} · ${_precioDe(context, v)}'),
             selected: elegida?.id == v.id,
             onSelected: (_) => onElegir(v),
           ),
@@ -109,8 +110,7 @@ class SelectorDeVariante extends StatelessWidget {
 /// Con variantes es el de la **por defecto** —que es `precio_base`—, sin
 /// "desde": es lo que se cobra si no se dice otra cosa, y lo que se contesta
 /// a quien pregunta cuánto vale. Los otros precios se ven al elegir.
-String precioParaMostrar(Producto producto, {int decimales = 0}) =>
-    '₡${producto.precioBase.toStringAsFixed(decimales)}';
+String precioParaMostrar(BuildContext context, Producto producto) => Moneda.de(context).formatear(producto.precioBase);
 
 /// El texto con el que se rellena el campo de precio al elegir una variante.
 String precioEditableDe(Variante v) => montoParaEditar(v.precio);

@@ -145,6 +145,10 @@ Grid de tiles (una celda = una opción), confirmado como buen formato porque agr
 - **Agregar producto nuevo al vuelo**: restringido a Gerente.
 - **Control de "cambio"**: exclusivamente un campo de texto reactivo, debounce de 400ms (agilidad ante todo), sin botón adicional. El único botón real de la barra inferior es "finalizar venta".
 
+### Configuración → Moneda (2026-09-21)
+
+Símbolo y decimales de presentación ([0043](../decisiones/0043-moneda-opcional.md)); no convierte nada.
+
 ## Ventana 6 — Costeo (solo Gerente, 2026-09-21)
 
 Ver [funciones/costeo.md](../funciones/costeo.md) y la

@@ -28,6 +28,7 @@ import '../../caja/ui/caja_corte_pozo.dart';
 import '../../venta/libro_ventas.dart';
 import '../reportes_provider.dart';
 import 'elegir_periodo.dart';
+import '../../../core/moneda.dart';
 
 /// Ventana 4 — ver docs/pantallas/flujo-descripcion.md#ventana-4--reportes
 /// y docs/pantallas/prototipos-ascii.md. Reporte unificado con drill-down
@@ -136,7 +137,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     if (formato == null || !mounted) return;
 
     final (desde, hasta) = rangoDeFechas(_rango, _fecha);
-    final servicio = const ReporteExportService();
+    final servicio = ReporteExportService(moneda: Moneda.de(context));
 
     // Se leen de la base y no del cuadro de pantalla porque el cuadro es de HOY
     // y acá se puede estar exportando un día pasado — que es justo cuando el
@@ -756,7 +757,7 @@ class _VistaGeneral extends StatelessWidget {
           // displaySmall (40) vs bodyLarge (16) de los turnos
           // da 2.5x.
           BentoTextoTallado(
-            '₡${reporte.total.toStringAsFixed(2)}',
+            Moneda.de(context).formatear(reporte.total),
             sobre: lacaDe(context).pozo,
             nivel: TalladoNivel.marcado,
             estilo: Theme.of(context).textTheme.displaySmall,
@@ -766,8 +767,8 @@ class _VistaGeneral extends StatelessWidget {
           // nada y le quita sitio al número que sí importa.
           if (reporte.porSinpe > 0)
             Text(
-              'Efectivo ₡${reporte.porEfectivo.toStringAsFixed(2)}'
-              '  ·  SINPE ₡${reporte.porSinpe.toStringAsFixed(2)}',
+              'Efectivo ${Moneda.de(context).formatear(reporte.porEfectivo)}'
+              '  ·  SINPE ${Moneda.de(context).formatear(reporte.porSinpe)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(
@@ -895,7 +896,7 @@ class _TarjetaTurno extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              '₡${monto.toStringAsFixed(0)}',
+              Moneda.de(context).formatear(monto),
               style: Theme.of(context).textTheme.titleMedium,
               maxLines: 1,
             ),

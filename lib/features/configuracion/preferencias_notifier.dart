@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/moneda.dart';
 import '../../core/theme/bento_efectos.dart';
 import '../../core/theme/bento_fotos.dart';
 import '../../core/theme/bento_theme.dart';
@@ -15,6 +16,8 @@ const _keyAcento = 'acento_tinte';
 const _keyModoTema = 'modo_tema';
 const _keyEfectosApagados = 'efectos_apagados';
 const _keyFotosApagadas = 'fotos_apagadas';
+const _keyMonedaSimbolo = 'moneda_simbolo';
+const _keyMonedaDecimales = 'moneda_decimales';
 
 class Preferencias {
   const Preferencias({
@@ -23,6 +26,7 @@ class Preferencias {
     this.modoTema = ModoTema.sistema,
     this.efectosApagados = const {},
     this.fotosApagadasEn = const {},
+    this.moneda = Moneda.colon,
   });
 
   final OrdenProducto ordenProducto;
@@ -39,12 +43,17 @@ class Preferencias {
   /// celda — solo el coste de decodificar la imagen.
   final Set<VentanaConFotos> fotosApagadasEn;
 
+  /// Cómo se escribe el dinero (0043). Es del aparato, no del negocio: no
+  /// viaja por el sync. Los dos aparatos de un negocio se ponen igual una vez.
+  final Moneda moneda;
+
   Preferencias copyWith({
     OrdenProducto? ordenProducto,
     AcentoTinte? acento,
     ModoTema? modoTema,
     Set<EfectoPesado>? efectosApagados,
     Set<VentanaConFotos>? fotosApagadasEn,
+    Moneda? moneda,
   }) {
     return Preferencias(
       ordenProducto: ordenProducto ?? this.ordenProducto,
@@ -52,6 +61,7 @@ class Preferencias {
       modoTema: modoTema ?? this.modoTema,
       efectosApagados: efectosApagados ?? this.efectosApagados,
       fotosApagadasEn: fotosApagadasEn ?? this.fotosApagadasEn,
+      moneda: moneda ?? this.moneda,
     );
   }
 }
@@ -82,13 +92,25 @@ class PreferenciasNotifier extends AsyncNotifier<Preferencias> {
         .map((n) => VentanaConFotos.values.where((v) => v.name == n).firstOrNull)
         .nonNulls
         .toSet();
+    final simbolo = prefs.getString(_keyMonedaSimbolo);
+    final moneda = simbolo == null
+        ? Moneda.colon
+        : Moneda(simbolo: simbolo, decimales: prefs.getInt(_keyMonedaDecimales) ?? 0);
     return Preferencias(
       ordenProducto: orden,
       acento: acento,
       modoTema: modoTema,
       efectosApagados: apagados,
       fotosApagadasEn: sinFotos,
+      moneda: moneda,
     );
+  }
+
+  Future<void> cambiarMoneda(Moneda moneda) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyMonedaSimbolo, moneda.simbolo);
+    await prefs.setInt(_keyMonedaDecimales, moneda.decimales);
+    state = AsyncData((state.valueOrNull ?? const Preferencias()).copyWith(moneda: moneda));
   }
 
   /// Enciende o apaga UN efecto. No hay un "modo ahorro" que los apague todos

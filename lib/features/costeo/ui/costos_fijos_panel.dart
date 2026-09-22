@@ -9,6 +9,7 @@ import '../../../core/ui/bento_falla.dart';
 import '../costeo_notifiers.dart';
 import '../costo_fijo_model.dart';
 import 'formato_costeo.dart';
+import '../../../core/moneda.dart';
 
 const _uuid = Uuid();
 
@@ -62,7 +63,7 @@ class CostosFijosPanel extends ConsumerWidget {
                                   ],
                                 ),
                               ),
-                              Text('${colones(f.montoMensual)} / mes', style: textos.titleSmall),
+                              Text('${colones(context, f.montoMensual)} / mes', style: textos.titleSmall),
                             ],
                           ),
                         );
@@ -77,7 +78,7 @@ class CostosFijosPanel extends ConsumerWidget {
                   padding: const EdgeInsets.all(BentoSpacing.unidad),
                   child: Row(
                     children: [
-                      Expanded(child: Text('Total ${colones(total)} / mes', style: textos.titleSmall)),
+                      Expanded(child: Text('Total ${colones(context, total)} / mes', style: textos.titleSmall)),
                       FilledButton.icon(
                         onPressed: () => mostrarFormularioCostoFijo(context),
                         icon: const Icon(Icons.add),
@@ -166,7 +167,7 @@ class _CostoFijoFormDialogState extends ConsumerState<_CostoFijoFormDialog> {
             const SizedBox(height: BentoSpacing.unidad),
             TextFormField(
               controller: _monto,
-              decoration: const InputDecoration(labelText: 'Monto mensual (₡)'),
+              decoration: InputDecoration(labelText: 'Monto mensual ${Moneda.de(context).entreParentesis}'),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (v) {
                 final n = parsearNumero(v ?? '');

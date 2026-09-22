@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/bento_theme.dart';
 import '../../../core/ui/bento_dialogo.dart';
 import '../corte_caja_model.dart';
+import '../../../core/moneda.dart';
 
 class CorteAnotado {
   const CorteAnotado({required this.momento, required this.monto});
@@ -95,7 +96,7 @@ class _DialogoCorteState extends State<_DialogoCorte> {
               controller: _monto,
               autofocus: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Lo que queda en la caja (₡)'),
+              decoration: InputDecoration(labelText: 'Lo que queda en la caja ${Moneda.de(context).entreParentesis}'),
               validator: (v) {
                 final texto = v?.trim() ?? '';
                 if (texto.isEmpty) return 'Requerido';
@@ -139,7 +140,7 @@ class _DialogoCorteState extends State<_DialogoCorte> {
               // ese, y sin él hay que salir a mirarlo al cuadro.
               Text(
                 'Volver a pulsar ${nombreDeMomento(widget.ultimo!)} '
-                'reemplaza su conteo de ₡${widget.montoDelUltimo.toStringAsFixed(2)}',
+                'reemplaza su conteo de ${Moneda.de(context).formatear(widget.montoDelUltimo)}',
                 style: textos.bodySmall,
               ),
             ],

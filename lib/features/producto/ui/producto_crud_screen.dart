@@ -18,6 +18,7 @@ import 'categorias_panel.dart';
 import 'imagen_del_banco_vista.dart';
 import 'lista_productos_agrupada.dart';
 import 'producto_form_dialog.dart';
+import '../../../core/moneda.dart';
 
 /// Ventana 3 — ver docs/pantallas/flujo-descripcion.md#ventana-3--crud-de-producto
 /// y docs/pantallas/prototipos-ascii.md.
@@ -444,8 +445,8 @@ class _FilaProducto extends StatelessWidget {
                   // un número recortado se lee como otro número, y eso es peor
                   // que no verlo.
                   producto.activo
-                      ? '₡${producto.precioBase.toStringAsFixed(2)}'
-                      : '₡${producto.precioBase.toStringAsFixed(2)} · Fuera de la carta',
+                      ? Moneda.de(context).formatear(producto.precioBase)
+                      : '${Moneda.de(context).formatear(producto.precioBase)} · Fuera de la carta',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     // Atenuado, no translúcido: bajar la opacidad se
                     // llevaría el contraste por debajo del mínimo AA, y el

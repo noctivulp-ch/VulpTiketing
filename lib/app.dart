@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/bento_efectos.dart';
+import 'core/moneda.dart';
 import 'core/theme/bento_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/sesion_notifier.dart';
@@ -32,6 +33,9 @@ class VulpTiketingApp extends ConsumerWidget {
         ModoTema.oscuro => ThemeMode.dark,
         ModoTema.sistema => ThemeMode.system,
       },
+      // La moneda envuelve todo lo que se pinta: cualquier `Text` con un monto
+      // la lee del árbol sin necesitar `ref` (0043).
+      builder: (context, hijo) => MonedaScope(moneda: preferencias?.moneda ?? Moneda.colon, child: hijo!),
       home: restaurando
           ? const _Arranque()
           : (rol == null ? const LoginScreen() : const DashboardShell()),

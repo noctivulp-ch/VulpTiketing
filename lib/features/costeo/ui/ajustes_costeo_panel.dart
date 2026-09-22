@@ -10,6 +10,7 @@ import '../config_costeo_model.dart';
 import '../costeo_notifiers.dart';
 import '../costo_de_insumos_provider.dart';
 import 'formato_costeo.dart';
+import '../../../core/moneda.dart';
 
 /// Los parámetros del negocio. Se guardan con un botón, no campo a campo: son
 /// números que se piensan juntos, y cada uno mueve todos los precios.
@@ -133,17 +134,17 @@ class _AjustesCosteoPanelState extends ConsumerState<AjustesCosteoPanel> {
                     const SizedBox(height: BentoSpacing.unidad / 2),
                     Text(
                       'Cada uno mueve todos los precios sugeridos. El margen es sobre el PRECIO: '
-                      '60 % es que de cada ₡100 vendidos, ₡60 son utilidad.',
+                      '60 % es que de cada 100 vendidos, 60 son utilidad.',
                       style: textos.bodySmall,
                     ),
                     const SizedBox(height: BentoSpacing.gapCelda),
                     _campo(_margen, 'Margen objetivo (%)', _porcentaje),
                     _campo(_merma, 'Merma por defecto (%)', _porcentaje, ayuda: 'Cuando el insumo no declara la suya'),
-                    _campo(_tarifa, 'Tarifa de mano de obra por hora (₡)', _positivo,
+                    _campo(_tarifa, 'Tarifa de mano de obra por hora ${Moneda.de(context).entreParentesis}', _positivo,
                         ayuda: 'Cero si nadie se la paga, pero el modelo la pide: si el producto no aguanta '
                             'pagar el trabajo que lleva, no es rentable'),
-                    _campo(_redondeo, 'Redondeo del precio (₡)', _positivo,
-                        ayuda: 'El precio sugerido sube al múltiplo: 50 → ₡2.750, no ₡2.703'),
+                    _campo(_redondeo, 'Redondeo del precio ${Moneda.de(context).entreParentesis}', _positivo,
+                        ayuda: 'El precio sugerido sube al múltiplo: con 50, 2.703 pasa a 2.750'),
                     _campo(_dias, 'Días abiertos al mes', (v) {
                       final n = int.tryParse(v?.trim() ?? '');
                       return (n == null || n < 1 || n > 31) ? 'Entre 1 y 31' : null;
@@ -286,8 +287,8 @@ class _TrimestreSimplificado extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: BentoSpacing.unidad),
       child: Text(
-        'Trimestre en curso: compras ${colones(compras)} → IVA ${colones(iva)} + renta ${colones(renta)} '
-        '= ${colones(iva + renta)} a declarar (con los factores guardados). Se declara el 15 del mes siguiente al trimestre.',
+        'Trimestre en curso: compras ${colones(context, compras)} → IVA ${colones(context, iva)} + renta ${colones(context, renta)} '
+        '= ${colones(context, iva + renta)} a declarar (con los factores guardados). Se declara el 15 del mes siguiente al trimestre.',
         style: textos.bodySmall,
       ),
     );

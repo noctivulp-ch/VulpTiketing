@@ -1,7 +1,13 @@
-/// Formatos de la ventana de costeo. Colones sin decimales para lo que se
-/// cobra; con dos para los costos por unidad, que salen de dividir y son
-/// fracciones de verdad (el gramo de harina cuesta 4,64).
-String colones(double v, {int decimales = 0}) => v.isNaN ? '—' : '₡${v.toStringAsFixed(decimales)}';
+import 'package:flutter/widgets.dart';
+
+import '../../../core/moneda.dart';
+
+/// Formatos de la ventana de costeo. La moneda del árbol (0043) para lo que
+/// se cobra; con dos decimales forzados para los costos por unidad, que
+/// salen de dividir y son fracciones de verdad (el gramo de harina cuesta
+/// 4,64) aunque la moneda vaya en enteros.
+String colones(BuildContext context, double v, {int? decimales}) =>
+    v.isNaN ? '—' : Moneda.de(context).formatear(v, decimales: decimales);
 
 String porcentaje(double? v) => v == null || v.isNaN ? '—' : '${(v * 100).toStringAsFixed(v.abs() < 0.1 ? 1 : 0)} %';
 

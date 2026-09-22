@@ -273,7 +273,7 @@ class _TarjetaProducto extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: BentoTextoTallado(
-              precioParaMostrar(producto),
+              precioParaMostrar(context, producto),
               sobre: laca.pozo,
               estilo: tema.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
             ),

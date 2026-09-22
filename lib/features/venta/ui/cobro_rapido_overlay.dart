@@ -14,6 +14,7 @@ import '../../producto/variante_model.dart';
 import '../venta_en_curso_notifier.dart';
 import 'casilla_sinpe.dart';
 import 'elegir_variante.dart';
+import '../../../core/moneda.dart';
 
 /// Overlay de cobro de un solo producto (0018 cantidad default 1, precio
 /// editable con el base como punto de partida, cambio con debounce 400 ms
@@ -131,7 +132,7 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
             overflow: TextOverflow.ellipsis,
           ),
           BentoTextoTallado(
-            '₡${total.toStringAsFixed(2)}',
+            Moneda.de(context).formatear(total),
             sobre: laca.pozo,
             nivel: TalladoNivel.marcado,
             estilo: acostado ? tema.textTheme.headlineSmall : tema.textTheme.displaySmall,
@@ -213,7 +214,7 @@ class _CobroRapidoOverlayState extends ConsumerState<CobroRapidoOverlay> {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              _cambio == null ? '—' : '₡${_cambio!.toStringAsFixed(2)}',
+              _cambio == null ? '—' : Moneda.de(context).formatear(_cambio!),
               maxLines: 1,
               style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),

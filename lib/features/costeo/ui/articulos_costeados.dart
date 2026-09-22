@@ -87,7 +87,7 @@ class _Negocio extends StatelessWidget {
           Text('Últimos $diasDeVolumen días, a los precios de hoy', style: textos.bodySmall),
           const SizedBox(height: BentoSpacing.unidad / 2),
           BentoTextoTallado(
-            'Utilidad ${colones(r.utilidadMes)}',
+            'Utilidad ${colones(context, r.utilidadMes)}',
             sobre: laca.pozo,
             nivel: TalladoNivel.marcado,
             estilo: textos.headlineSmall,
@@ -95,8 +95,8 @@ class _Negocio extends StatelessWidget {
           const SizedBox(height: BentoSpacing.unidad),
           Row(
             children: [
-              cifra('Ingreso', colones(r.ingresoMes)),
-              cifra('Costos fijos', colones(r.costosFijosMes)),
+              cifra('Ingreso', colones(context, r.ingresoMes)),
+              cifra('Costos fijos', colones(context, r.costosFijosMes)),
               cifra('Margen neto', porcentaje(r.margenNetoPromedio)),
             ],
           ),
@@ -110,7 +110,7 @@ class _Negocio extends StatelessWidget {
           ),
           if (r.impuestoSobrePrecioMes > 0) ...[
             const SizedBox(height: BentoSpacing.unidad / 2),
-            Text('IVA dentro de lo vendido: ${colones(r.impuestoSobrePrecioMes)}', style: textos.bodySmall),
+            Text('IVA dentro de lo vendido: ${colones(context, r.impuestoSobrePrecioMes)}', style: textos.bodySmall),
           ],
           if (r.colchon != null) ...[
             const SizedBox(height: BentoSpacing.unidad / 2),
@@ -153,7 +153,7 @@ class _FilaArticulo extends StatelessWidget {
           Row(
             children: [
               Expanded(child: Text(catalogo.nombre, style: textos.titleSmall, maxLines: 2, overflow: TextOverflow.ellipsis)),
-              Text(colones(a.articulo.precioActual), style: textos.titleSmall),
+              Text(colones(context, a.articulo.precioActual), style: textos.titleSmall),
             ],
           ),
           const SizedBox(height: BentoSpacing.unidad / 2),
@@ -161,7 +161,7 @@ class _FilaArticulo extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Costo ${colones(a.costoTotalUnidad)} · sugerido ${colones(a.precioFinal)}',
+                  'Costo ${colones(context, a.costoTotalUnidad)} · sugerido ${colones(context, a.precioFinal)}',
                   style: textos.bodySmall,
                 ),
               ),
