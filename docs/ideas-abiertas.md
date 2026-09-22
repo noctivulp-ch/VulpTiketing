@@ -234,3 +234,9 @@ Orden acordado (que exista → mejorar → optimizar → pulir):
    solo Panel.
 6. Perfil de negocio de servicios (sin receta sin alerta, amortización).
 7. Importar ventas desde CSV (Patreon) — después, si vale la pena.
+8. **Medios de pago activables** (pedido del dueño, 2026-09-21): tarjeta y
+   transferencia como opciones de cobro además de efectivo y SINPE,
+   encendidas o apagadas desde Configuración según el negocio. Cada medio con
+   su comisión (0042 ya pondera por el mix real). Toca `venta.metodo_pago`
+   (hoy dos valores), la casilla de cobro (0032: una casilla porque eran dos
+   medios; con cuatro es un selector), reportes por medio y el corte de caja.
