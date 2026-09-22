@@ -24,7 +24,20 @@ import 'package:sqflite/sqflite.dart';
 /// `corte_caja` viaja como todo lo demas: si el Gerente mira los reportes en su
 /// telefono y la caja se cuenta en el de la caja, el corte tiene que estar en
 /// los dos o el cuadro diria que la apertura no se anoto.
-const tablasSincronizables = ['categoria', 'producto', 'venta', 'linea_venta', 'corte_caja'];
+/// Las del costeo (0040) viajan como el catalogo: el Gerente costea en un
+/// aparato y lo ve en todos. Entran en la misma subida a esquema 5.
+const tablasSincronizables = [
+  'categoria',
+  'producto',
+  'venta',
+  'linea_venta',
+  'corte_caja',
+  'insumo',
+  'costo_fijo',
+  'config_costeo',
+  'articulo_costeo',
+  'linea_receta',
+];
 
 /// Tablas que viven en el libro adjunto y por lo tanto pueden no existir: una
 /// instalación sin ninguna venta todavía no tiene libro.

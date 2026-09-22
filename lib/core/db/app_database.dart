@@ -118,6 +118,10 @@ class AppDatabase {
         // (decision 0039). Nullable y sin DEFAULT como el icono: NULL es "sin
         // variantes", que es lo que eran todos hasta ahora.
         if (viejo < 6) await agregarVariantesDeProducto(db);
+
+        // v6 -> v7: las tablas del costeo (decision 0040). Nuevas y vacias:
+        // no hay nada que migrar. Se sincronizan como el catalogo.
+        if (viejo < 7) await crearTablasDeCosteo(db);
       },
     );
 
@@ -132,7 +136,14 @@ class AppDatabase {
     return db;
   }
 
-  static const version = 6;
+  static const version = 7;
+
+  /// v6 -> v7. Publica por lo mismo que las anteriores.
+  static Future<void> crearTablasDeCosteo(DatabaseExecutor db) async {
+    for (final sentencia in esquemaCosteo) {
+      await db.execute(sentencia);
+    }
+  }
 
   /// v5 -> v6. Publica por lo mismo que las anteriores: que la prueba de
   /// migracion la aplique sobre una base vieja de verdad.
@@ -169,7 +180,93 @@ class AppDatabase {
   /// lo que hace que funcione — SQLite resuelve los nombres sin calificar
   /// contra las bases adjuntas, asi que `SELECT * FROM venta` va solo al libro
   /// abierto y el resto del codigo no tuvo que cambiar.
-  static const esquema = [_createCategoria, _createProducto, _createLibroVentas, _createCorteCaja];
+  static const esquema = [
+    _createCategoria,
+    _createProducto,
+    _createLibroVentas,
+    _createCorteCaja,
+    ...esquemaCosteo,
+  ];
+
+  /// Las tablas del costeo (decision 0040), en una lista propia para que la
+  /// migracion v7 y `onCreate` apliquen exactamente lo mismo.
+  ///
+  /// Sin REFERENCES al catalogo, como todo lo demas: la integridad la sostiene
+  /// la app, y una receta que apunte a un insumo borrado se ve como alerta, no
+  /// como fallo de la base.
+  static const esquemaCosteo = [
+    '''
+    CREATE TABLE IF NOT EXISTS insumo (
+      id                    TEXT PRIMARY KEY,
+      nombre                TEXT NOT NULL,
+      unidad_base           TEXT NOT NULL DEFAULT 'gramo',
+      contenido_por_compra  REAL NOT NULL DEFAULT 1,
+      precio_compra         REAL NOT NULL DEFAULT 0,
+      merma                 REAL,
+      proveedor             TEXT,
+      notas                 TEXT,
+      updated_at            TEXT NOT NULL,
+      deleted_at            TEXT
+    );
+    ''',
+    '''
+    CREATE TABLE IF NOT EXISTS costo_fijo (
+      id             TEXT PRIMARY KEY,
+      concepto       TEXT NOT NULL,
+      monto_mensual  REAL NOT NULL DEFAULT 0,
+      notas          TEXT,
+      updated_at     TEXT NOT NULL,
+      deleted_at     TEXT
+    );
+    ''',
+    // Una sola fila, id 'unica'. Es una tabla y no preferencias para que viaje
+    // por el sync: el margen objetivo es del negocio, no del aparato.
+    '''
+    CREATE TABLE IF NOT EXISTS config_costeo (
+      id                      TEXT PRIMARY KEY,
+      dias_abiertos_mes       INTEGER NOT NULL DEFAULT 26,
+      margen_objetivo         REAL NOT NULL DEFAULT 0.6,
+      comision_medios_pago    REAL NOT NULL DEFAULT 0.03,
+      merma_por_defecto       REAL NOT NULL DEFAULT 0.05,
+      tarifa_mano_obra_hora   REAL NOT NULL DEFAULT 0,
+      redondeo_precio         REAL NOT NULL DEFAULT 50,
+      metodo_reparto          TEXT NOT NULL DEFAULT 'unidad',
+      updated_at              TEXT NOT NULL
+    );
+    ''',
+    // Lo que la hoja anade a un producto o a una de sus variantes. La clave
+    // es (producto_id, variante_id) con variante_id '' para el producto sin
+    // variantes: una fila por cosa que se vende como "una unidad".
+    '''
+    CREATE TABLE IF NOT EXISTS articulo_costeo (
+      id                      TEXT PRIMARY KEY,
+      producto_id             TEXT NOT NULL,
+      variante_id             TEXT NOT NULL DEFAULT '',
+      unidades_por_lote       INTEGER NOT NULL DEFAULT 1,
+      otros_costos_directos   REAL NOT NULL DEFAULT 0,
+      minutos_lote            REAL NOT NULL DEFAULT 0,
+      unidades_estimadas_mes  INTEGER NOT NULL DEFAULT 0,
+      margen_objetivo         REAL,
+      ajuste_precio           REAL NOT NULL DEFAULT 0,
+      updated_at              TEXT NOT NULL,
+      deleted_at              TEXT,
+      UNIQUE (producto_id, variante_id)
+    );
+    ''',
+    '''
+    CREATE TABLE IF NOT EXISTS linea_receta (
+      id                 TEXT PRIMARY KEY,
+      articulo_id        TEXT NOT NULL,
+      insumo_id          TEXT NOT NULL,
+      cantidad_por_lote  REAL NOT NULL DEFAULT 0,
+      notas              TEXT,
+      updated_at         TEXT NOT NULL,
+      deleted_at         TEXT,
+      UNIQUE (articulo_id, insumo_id)
+    );
+    ''',
+    'CREATE INDEX IF NOT EXISTS idx_linea_receta_articulo ON linea_receta(articulo_id);',
+  ];
 
   /// Indices de la base principal. Desde v3 los de `venta`/`linea_venta` no
   /// estan aca: se aplican a cada libro (ver `esquemaLibro`), porque es ahi
