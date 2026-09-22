@@ -151,6 +151,22 @@ CREATE INDEX idx_corte_caja_dia ON corte_caja(dia);
 
 Se **sincroniza** como el resto: si el Gerente mira los reportes en su teléfono y la caja se cuenta en el de la caja, el corte tiene que estar en los dos.
 
+## Costeo (decisión 0040) — v7
+
+Cinco tablas, sincronizables, sin `REFERENCES` al catálogo. DDL exacto en
+`AppDatabase.esquemaCosteo`.
+
+| Tabla | Clave | Qué guarda |
+|---|---|---|
+| `insumo` | id | nombre, `unidad_base` (gramo/mililitro/unidad), `contenido_por_compra`, `precio_compra`, `merma` (nullable → la global), proveedor, notas; `updated_at`, `deleted_at` |
+| `costo_fijo` | id | concepto, `monto_mensual`, notas; `updated_at`, `deleted_at` |
+| `config_costeo` | id = `'unica'` | días abiertos, margen objetivo, comisión, merma por defecto, tarifa de mano de obra, redondeo, `metodo_reparto` (unidad/tiempo) |
+| `articulo_costeo` | id; UNIQUE (`producto_id`, `variante_id`) con `variante_id = ''` sin variantes | unidades por lote, otros costos directos, minutos del lote, unidades estimadas al mes, margen propio (nullable), ajuste con signo |
+| `linea_receta` | id; UNIQUE (`articulo_id`, `insumo_id`) | `cantidad_por_lote` en la unidad base del insumo |
+
+Nada derivado se guarda: costos, precios sugeridos y márgenes salen de
+`packages/costeo` en cada lectura.
+
 ## Configuración local del dispositivo (fuera de SQLite)
 
 No son tablas de negocio — viven en almacenamiento seguro nativo del dispositivo (ej. `flutter_secure_storage`, que usa Keychain/Keystore del sistema operativo), no en la base de datos SQLite ni se sincronizan entre dispositivos (ver decisión 0011):

@@ -13,7 +13,9 @@ import '../../core/theme/bento_cuadricula.dart';
 import '../../core/theme/bento_icon.dart';
 import '../../core/theme/bento_velo.dart';
 import '../../core/theme/bento_theme.dart';
+import '../auth/sesion_notifier.dart';
 import '../configuracion/ui/configuracion_screen.dart';
+import '../costeo/ui/costeo_screen.dart';
 import '../producto/ui/producto_crud_screen.dart';
 import '../reportes/ui/reportes_screen.dart';
 import '../venta/ui/panel_venta_screen.dart';
@@ -85,7 +87,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> with WidgetsBin
 
   int _indice = 0;
 
-  static const _iconos = [
+  static const _iconosBase = [
     'venta_rapida', // Ventana 1
     'panel_venta', // Ventana 2
     'producto', // Ventana 3
@@ -93,7 +95,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> with WidgetsBin
     'configuracion', // Ventana 5
   ];
 
-  static const _pantallas = [
+  static const _pantallasBase = [
     VentaRapidaScreen(),
     PanelVentaScreen(),
     ProductoCrudScreen(),
@@ -101,7 +103,20 @@ class _DashboardShellState extends ConsumerState<DashboardShell> with WidgetsBin
     ConfiguracionScreen(),
   ];
 
+  // La sexta ventana, Costeo (0040), es solo del Gerente: la Registradora
+  // sigue viendo cinco y sus gestos y atajos no cambian. Va al final para
+  // que las cinco de siempre conserven su posición — memoria muscular.
+  List<String> get _iconos =>
+      _esGerente ? [..._iconosBase, 'costeo'] : _iconosBase;
+  List<Widget> get _pantallas =>
+      _esGerente ? [..._pantallasBase, const CosteoScreen()] : _pantallasBase;
+
+  bool get _esGerente => ref.watch(sesionNotifierProvider) == Rol.gerente;
+
   Widget _stack() {
+    // Si la sesión deja de ser Gerente estando en Costeo, la ventana ya no
+    // existe: se vuelve a la última que sí.
+    if (_indice >= _pantallas.length) _indice = _pantallas.length - 1;
     // El contenido llega hasta el borde y el velo lo desvanece al pasar por
     // debajo. Con `SafeArea` en cambio se empuja todo hacia abajo y queda un
     // borde muerto, y una lista que sube se corta en seco.

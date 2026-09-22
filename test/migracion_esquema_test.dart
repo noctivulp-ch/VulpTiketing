@@ -176,7 +176,7 @@ void main() {
     addTearDown(db.close);
     await AppDatabase.crearEsquema(db);
 
-    expect(await indicesDe(db), equals(['idx_corte_caja_dia', 'idx_producto_categoria']));
+    expect(await indicesDe(db), equals(['idx_corte_caja_dia', 'idx_linea_receta_articulo', 'idx_producto_categoria']));
   });
 
   test('un libro trae sus propios indices', () async {

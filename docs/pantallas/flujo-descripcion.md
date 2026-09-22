@@ -144,3 +144,12 @@ Grid de tiles (una celda = una opción), confirmado como buen formato porque agr
 - **Cantidad por defecto**: 1 en todos los casos (venta rápida, agregar producto individual, selección múltiple).
 - **Agregar producto nuevo al vuelo**: restringido a Gerente.
 - **Control de "cambio"**: exclusivamente un campo de texto reactivo, debounce de 400ms (agilidad ante todo), sin botón adicional. El único botón real de la barra inferior es "finalizar venta".
+
+## Ventana 6 — Costeo (solo Gerente, 2026-09-21)
+
+Ver [funciones/costeo.md](../funciones/costeo.md) y la
+[decisión 0040](../decisiones/0040-costeo-de-recetas-como-modulo.md). Cuatro
+secciones en una fila de segmentos (Artículos, Insumos, Fijos, Ajustes) y el
+contenido debajo, sin diálogos para navegar. El detalle de un artículo sí es un
+diálogo: cuentas, receta y parámetros, con el único botón que escribe en la
+carta. La Registradora no la ve; sus cinco ventanas y sus gestos no cambian.

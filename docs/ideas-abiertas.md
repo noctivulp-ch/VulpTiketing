@@ -130,7 +130,7 @@ aparatos podría ser el punto de acceso.
 
 ---
 
-## 4. Costeo de recetas: módulo dentro, no app aparte ni tiketing genérico
+## 4. Costeo de recetas: módulo dentro, no app aparte ni tiketing genérico — **hecho** (ADR 0040, 2026-09-21)
 
 Existe una hoja de cálculo de costos y precios en `AppCreator/Tablas/`
 (`CalculoCostoRecetas.ods`, con siete notas en `docs/CalculoCostoRecetas/`,

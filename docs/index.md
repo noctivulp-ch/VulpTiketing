@@ -29,6 +29,7 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 - [Reportes](funciones/reportes.md)
 - [Roles y autenticación](funciones/roles-y-auth.md)
 - [Backup](funciones/backup.md)
+- [Costeo de recetas](funciones/costeo.md) — solo Gerente; informa, y "Aplicar" es explícito por artículo
 
 ## Datos de prueba
 

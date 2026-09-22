@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -44,6 +45,20 @@ void main() {
     expect(find.byType(DashboardShell), findsOneWidget);
     expect(find.text('Gerente'), findsNothing, reason: 'no debe pedir el rol otra vez');
     expect(find.text('Registradora'), findsNothing);
+  });
+
+  // La sexta ventana, Costeo, es solo del Gerente: la Registradora sigue
+  // viendo cinco y sus gestos y atajos no cambian (0040). Dos pruebas y no
+  // una: montar dos veces en la misma deja el contenedor de la primera.
+  testWidgets('la Registradora no tiene la ventana de Costeo', (tester) async {
+    await montar(tester, sesionGuardada: Rol.registradora);
+    expect(find.byKey(const ValueKey('nav_configuracion')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav_costeo')), findsNothing);
+  });
+
+  testWidgets('el Gerente sí tiene la ventana de Costeo', (tester) async {
+    await montar(tester, sesionGuardada: Rol.gerente);
+    expect(find.byKey(const ValueKey('nav_costeo')), findsOneWidget);
   });
 }
 
