@@ -25,6 +25,7 @@ import '../../caja/caja_notifier.dart';
 import '../../caja/corte_caja_dao.dart';
 import '../../caja/corte_caja_model.dart';
 import '../../caja/ui/caja_corte_pozo.dart';
+import '../../venta/libro_ventas.dart';
 import '../reportes_provider.dart';
 import 'elegir_periodo.dart';
 
@@ -99,7 +100,11 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
       // existe porque nadie desplaza 5.000 filas en un teléfono; un informe es
       // otra cosa, y uno que dijera "incluye las 300 más recientes de 2.847" no
       // se le manda a nadie.
-      lotes: () async => ventasDelRangoPorLotes(await ref.read(databaseProvider.future), params),
+      lotes: () async => ventasDelRangoPorLotes(
+        await ref.read(databaseProvider.future),
+        await ref.read(libroVentasServiceProvider.future),
+        params,
+      ),
     );
   }
 

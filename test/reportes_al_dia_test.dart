@@ -42,7 +42,10 @@ void main() {
       options: OpenDatabaseOptions(singleInstance: false),
     );
     await AppDatabase.crearEsquema(db);
-    await aplicarEsquemaLibro(db);
+    // Como en producción: el libro es un archivo adjunto, no tablas en `main`.
+    // Con las tablas en los dos sitios, SQLite escribe en `main` y los
+    // reportes —que ahora leen por libro— miran el adjunto: se cruzan.
+    await LibroVentasService(directorio: dir.path).adjuntarAbierto(db);
     await db.insert('categoria', {
       'id': 'cat',
       'nombre': 'Arroces',

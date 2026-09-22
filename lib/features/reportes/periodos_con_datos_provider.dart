@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/db_providers.dart';
+import '../venta/lectura_de_libros.dart';
+import '../venta/libro_ventas.dart';
 
 /// Qué períodos tienen ventas, para que el selector de fecha lo diga ANTES de
 /// entrar.
@@ -45,24 +47,37 @@ class PeriodosConDatos {
 /// Los días con ventas de un año. Se pide por año porque el calendario se mueve
 /// de mes en mes dentro del mismo año la mayor parte del tiempo, y así cambiar
 /// de mes no dispara una consulta.
+/// A través de todos los libros que cruzan el año: un año pasado vive en un
+/// libro cerrado, y sin esto el calendario lo mostraría vacío.
 final periodosConDatosProvider = FutureProvider.family<PeriodosConDatos, int>((ref, anio) async {
   final db = await ref.watch(databaseProvider.future);
-  final filas = await db.rawQuery(
-    "SELECT DISTINCT substr(fecha_hora, 1, 10) AS dia FROM venta "
+  final lector = LectorDeLibros(db, () => ref.read(libroVentasServiceProvider.future));
+  final desde = DateTime(anio);
+  final hasta = DateTime(anio + 1);
+  final dias = <String>{};
+  for (final filas in await lector.enCadaLibro(desde, hasta, (e) => db.rawQuery(
+    "SELECT DISTINCT substr(fecha_hora, 1, 10) AS dia FROM $e.venta "
     "WHERE estado = 'activa' AND fecha_hora >= ? AND fecha_hora < ?",
-    ['$anio-01-01T00:00:00.000', '${anio + 1}-01-01T00:00:00.000'],
-  );
-  return PeriodosConDatos(dias: {for (final f in filas) f['dia'] as String});
+    [desde.toIso8601String(), hasta.toIso8601String()],
+  ))) {
+    dias.addAll(filas.map((f) => f['dia'] as String));
+  }
+  return PeriodosConDatos(dias: dias);
 });
 
 /// Los años que tienen alguna venta, para la lista de años.
 ///
 /// Consulta aparte: la de arriba mira un año concreto, y para pintar la lista
-/// hace falta saber de todos a la vez sin pedir uno por uno.
+/// hace falta saber de todos a la vez sin pedir uno por uno. Recorre TODOS los
+/// libros: el rango va abierto por los dos lados.
 final aniosConVentasProvider = FutureProvider<Set<int>>((ref) async {
   final db = await ref.watch(databaseProvider.future);
-  final filas = await db.rawQuery(
-    "SELECT DISTINCT substr(fecha_hora, 1, 4) AS anio FROM venta WHERE estado = 'activa'",
-  );
-  return {for (final f in filas) int.parse(f['anio'] as String)};
+  final lector = LectorDeLibros(db, () => ref.read(libroVentasServiceProvider.future));
+  final anios = <int>{};
+  for (final filas in await lector.enCadaLibro(DateTime(2000), DateTime(2200), (e) => db.rawQuery(
+    "SELECT DISTINCT substr(fecha_hora, 1, 4) AS anio FROM $e.venta WHERE estado = 'activa'",
+  ))) {
+    anios.addAll(filas.map((f) => int.parse(f['anio'] as String)));
+  }
+  return anios;
 });

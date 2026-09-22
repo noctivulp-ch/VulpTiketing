@@ -77,7 +77,7 @@ void main() {
   test('los lotes traen TODAS las ventas del período, sin tope', () async {
     var total = 0;
     var lotes = 0;
-    await for (final lote in ventasDelRangoPorLotes(db, params, lote: 200)) {
+    await for (final lote in ventasDelRangoPorLotes(db, LibroVentasService(directorio: dir.path), params, lote: 200)) {
       total += lote.length;
       lotes++;
     }
@@ -90,7 +90,7 @@ void main() {
     // Paginar por OFFSET repite filas si el orden no es estable. Se comprueba
     // con los ids, no con el conteo: 700 duplicados y 700 distintos suman igual.
     final vistas = <String>{};
-    await for (final lote in ventasDelRangoPorLotes(db, params, lote: 200)) {
+    await for (final lote in ventasDelRangoPorLotes(db, LibroVentasService(directorio: dir.path), params, lote: 200)) {
       for (final v in lote) {
         expect(vistas.add(v.venta.id), isTrue, reason: '${v.venta.id} vino dos veces');
       }
@@ -105,7 +105,7 @@ void main() {
       destino: destino,
       titulo: 'Ventas del año · 2026',
       total: 3500000,
-      lotes: ventasDelRangoPorLotes(db, params, lote: 200),
+      lotes: ventasDelRangoPorLotes(db, LibroVentasService(directorio: dir.path), params, lote: 200),
     );
 
     expect(escritas, cuantas);
@@ -126,7 +126,7 @@ void main() {
       destino: destino,
       titulo: 'Ventas del año · 2026',
       total: 3500000,
-      lotes: ventasDelRangoPorLotes(db, params, lote: 50),
+      lotes: ventasDelRangoPorLotes(db, LibroVentasService(directorio: dir.path), params, lote: 50),
     );
 
     expect(await destino.length(), greaterThan(cuantas * 40));

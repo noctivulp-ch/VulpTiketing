@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/db_providers.dart';
 import '../venta/linea_venta_model.dart';
+import '../venta/lectura_de_libros.dart';
+import '../venta/libro_ventas.dart';
 import '../venta/venta_model.dart';
 
 /// Solo lectura, se deriva de Venta/LineaVenta — ver
@@ -175,6 +177,14 @@ const _sqlDescripcionLinea =
     "COALESCE(p.nombre, lv.nombre_libre) || COALESCE(' · ' || lv.variante, '') AS descripcion";
 const _sqlJoinProducto = 'LEFT JOIN main.producto p ON p.id = lv.producto_id';
 
+/// El lector de libros con la conexión y el servicio de esta app. Todas las
+/// consultas de ventas pasan por él: es lo que hace que un año que ya cerró
+/// su libro siga apareciendo en Reportes.
+Future<LectorDeLibros> _lector(Ref ref) async => LectorDeLibros(
+  await ref.watch(databaseProvider.future),
+  () => ref.read(libroVentasServiceProvider.future),
+);
+
 Turno _turnoDeNombre(String nombre) => nombre == 'primero' ? Turno.primero : Turno.segundo;
 
 /// Agrega en SQL, no en Dart.
@@ -192,37 +202,45 @@ final reportesProvider = FutureProvider.family<ReporteResultado, ReportesParamet
   params,
 ) async {
   final db = await ref.watch(databaseProvider.future);
+  final lector = await _lector(ref);
 
   final (desde, hasta) = rangoDeFechas(params.rango, params.fechaReferencia);
   final args = [desde.toIso8601String(), hasta.toIso8601String()];
 
+  // Cada consulta corre una vez por libro que cruce el rango y se funde acá:
+  // los totales se suman, el ranking se une por clave. Un día cae entero en
+  // un libro; una semana, un mes o un año pueden cruzar dos.
+
   // 1. Totales por turno. El total general es su suma, así no hace falta una
   //    cuarta consulta.
-  final totalesRows = await db.rawQuery('''
+  final porTurno = {for (final t in Turno.values) t: 0.0};
+  for (final totalesRows in await lector.enCadaLibro(desde, hasta, (e) => db.rawQuery('''
     SELECT $_sqlTurno AS turno,
            SUM(lv.precio_aplicado * lv.cantidad) AS total
-    FROM linea_venta lv
-    JOIN venta v ON v.id = lv.venta_id
+    FROM $e.linea_venta lv
+    JOIN $e.venta v ON v.id = lv.venta_id
     WHERE $_sqlRangoActivo
     GROUP BY turno
-  ''', args);
-
-  final porTurno = {for (final t in Turno.values) t: 0.0};
-  for (final row in totalesRows) {
-    porTurno[_turnoDeNombre(row['turno'] as String)] = (row['total'] as num?)?.toDouble() ?? 0;
+  ''', args))) {
+    for (final row in totalesRows) {
+      final turno = _turnoDeNombre(row['turno'] as String);
+      porTurno[turno] = porTurno[turno]! + ((row['total'] as num?)?.toDouble() ?? 0);
+    }
   }
   final total = porTurno.values.fold(0.0, (a, b) => a + b);
 
   // Cuánto entró por transferencia. Se agrega en SQL como todo lo demás: traer
   // las ventas para sumarlas en Dart es justo lo que se corrigió al construir
   // este reporte.
-  final sinpeRows = await db.rawQuery('''
+  var porSinpe = 0.0;
+  for (final sinpeRows in await lector.enCadaLibro(desde, hasta, (e) => db.rawQuery('''
     SELECT SUM(lv.precio_aplicado * lv.cantidad) AS total
-    FROM linea_venta lv
-    JOIN venta v ON v.id = lv.venta_id
+    FROM $e.linea_venta lv
+    JOIN $e.venta v ON v.id = lv.venta_id
     WHERE $_sqlRangoActivo AND v.metodo_pago = 'sinpe'
-  ''', args);
-  final porSinpe = (sinpeRows.first['total'] as num?)?.toDouble() ?? 0;
+  ''', args))) {
+    porSinpe += (sinpeRows.first['total'] as num?)?.toDouble() ?? 0;
+  }
 
   // 2. Ranking, con el nombre resuelto en la misma consulta (antes era una
   //    consulta por producto distinto). Las líneas libres quedan fuera a
@@ -235,17 +253,33 @@ final reportesProvider = FutureProvider.family<ReporteResultado, ReportesParamet
   //    se quiere saber al decidir qué cocinar. La clave del grupo lleva la
   //    variante para que las listas de más y menos vendidos no se excluyan
   //    entre sí por producto entero.
-  final rankingRows = await db.rawQuery('''
+  //
+  //    Con más de un libro, las cantidades de la misma clave se suman y se
+  //    reordena en Dart: cada libro devuelve su ranking parcial ya agregado,
+  //    que son a lo sumo tantas filas como productos.
+  final acumulado = <String, RankingItem>{};
+  for (final parcial in await lector.enCadaLibro(desde, hasta, (e) => db.rawQuery('''
     SELECT lv.producto_id || COALESCE('#' || lv.variante, '') AS id,
            COALESCE(p.nombre, 'Producto eliminado') || COALESCE(' · ' || lv.variante, '') AS nombre,
            SUM(lv.cantidad) AS cantidad
-    FROM linea_venta lv
-    JOIN venta v ON v.id = lv.venta_id
-    LEFT JOIN producto p ON p.id = lv.producto_id
+    FROM $e.linea_venta lv
+    JOIN $e.venta v ON v.id = lv.venta_id
+    $_sqlJoinProducto
     WHERE $_sqlRangoActivo AND lv.producto_id IS NOT NULL
     GROUP BY lv.producto_id, lv.variante
-    ORDER BY cantidad DESC
-  ''', args);
+  ''', args))) {
+    for (final row in parcial) {
+      final id = row['id'] as String;
+      final previo = acumulado[id];
+      acumulado[id] = RankingItem(
+        nombre: row['nombre'] as String,
+        cantidad: (previo?.cantidad ?? 0) + (row['cantidad'] as num).toInt(),
+      );
+    }
+  }
+  final rankingRows = [
+    for (final e in acumulado.entries) {'id': e.key, 'nombre': e.value.nombre, 'cantidad': e.value.cantidad},
+  ]..sort((a, b) => (b['cantidad'] as int).compareTo(a['cantidad'] as int));
 
   final masVendidos = <RankingItem>[];
   final idsEnMas = <String>{};
@@ -272,18 +306,22 @@ final reportesProvider = FutureProvider.family<ReporteResultado, ReportesParamet
   //    de `ventasPorTurno`. Llenarlo siempre hacía que un reporte anual
   //    retuviera en memoria todas las ventas del año con todas sus líneas.
   final ventasPorTurno = {for (final t in Turno.values) t: <VentaConLineas>[]};
-  if (params.rango == RangoReporte.dia) {
-    final ventasRows = await db.query(
-      'venta',
-      where: 'estado = ? AND fecha_hora >= ? AND fecha_hora < ?',
-      whereArgs: ['activa', ...args],
+  final esquemasDelDia = params.rango == RangoReporte.dia
+      ? await lector.esquemasDelRango(desde, hasta)
+      : const <String>[];
+  if (esquemasDelDia.isNotEmpty) {
+    // Un día vive entero en un libro, así que acá "cada libro" es uno.
+    final e = esquemasDelDia.last;
+    final ventasRows = await db.rawQuery(
+      'SELECT v.* FROM $e.venta v WHERE $_sqlRangoActivo',
+      args,
     );
     // Todas las líneas del rango en UNA consulta, agrupadas en Dart — no una
     // consulta por venta.
     final lineasRows = await db.rawQuery('''
       SELECT lv.*, $_sqlDescripcionLinea
-      FROM linea_venta lv
-      JOIN venta v ON v.id = lv.venta_id
+      FROM $e.linea_venta lv
+      JOIN $e.venta v ON v.id = lv.venta_id
       $_sqlJoinProducto
       WHERE $_sqlRangoActivo
     ''', args);
@@ -381,44 +419,59 @@ final detalleRangoProvider = FutureProvider.family<DetalleRango, PaginaDetalle>(
   final params = peticion.params;
   final desplazamiento = peticion.pagina * limiteDetalleRango;
   final db = await ref.watch(databaseProvider.future);
+  final lector = await _lector(ref);
   final (desde, hasta) = rangoDeFechas(params.rango, params.fechaReferencia);
   final args = [desde.toIso8601String(), hasta.toIso8601String()];
 
-  final cuenta = await db.rawQuery('SELECT COUNT(*) c FROM venta v WHERE $_sqlRangoActivo', args);
-  final total = (cuenta.first['c'] as num).toInt();
-
-  final ventasRows = await db.rawQuery(
-    'SELECT v.* FROM venta v WHERE $_sqlRangoActivo '
-    'ORDER BY v.fecha_hora DESC LIMIT $limiteDetalleRango OFFSET $desplazamiento',
-    args,
-  );
-  if (ventasRows.isEmpty) {
-    return DetalleRango(ventas: const [], totalVentas: total, pagina: peticion.pagina);
+  // La página es GLOBAL sobre el rango, más recientes primero. Los libros se
+  // recorren del más nuevo al más viejo: cada uno dice cuántas ventas tiene
+  // en el rango, se salta lo que quede atrás y se toma lo que falte para
+  // llenar la tanda, siguiendo en el anterior si no alcanzó.
+  final esquemas = (await lector.esquemasDelRango(desde, hasta)).reversed.toList();
+  var total = 0;
+  var porSaltar = desplazamiento;
+  var porTomar = limiteDetalleRango;
+  final ventas = <VentaConLineas>[];
+  for (final e in esquemas) {
+    final cuenta = await db.rawQuery('SELECT COUNT(*) c FROM $e.venta v WHERE $_sqlRangoActivo', args);
+    final enEste = (cuenta.first['c'] as num).toInt();
+    total += enEste;
+    if (porTomar == 0) continue;
+    if (porSaltar >= enEste) {
+      porSaltar -= enEste;
+      continue;
+    }
+    final ventasRows = await db.rawQuery(
+      'SELECT v.* FROM $e.venta v WHERE $_sqlRangoActivo '
+      'ORDER BY v.fecha_hora DESC LIMIT $porTomar OFFSET $porSaltar',
+      args,
+    );
+    porSaltar = 0;
+    porTomar -= ventasRows.length;
+    ventas.addAll(await _conLineas(db, e, ventasRows));
   }
 
-  // Las líneas de ESAS ventas en una sola consulta, no una por venta.
+  return DetalleRango(ventas: ventas, totalVentas: total, pagina: peticion.pagina);
+});
+
+/// Las ventas de [ventasRows] con sus líneas, traídas en UNA consulta al
+/// esquema [e] y agrupadas en Dart — no una consulta por venta.
+Future<List<VentaConLineas>> _conLineas(Database db, String e, List<Map<String, Object?>> ventasRows) async {
+  if (ventasRows.isEmpty) return const [];
   final ids = ventasRows.map((r) => "'${r['id']}'").join(',');
   final lineasRows = await db.rawQuery(
-    'SELECT lv.*, $_sqlDescripcionLinea FROM linea_venta lv $_sqlJoinProducto '
+    'SELECT lv.*, $_sqlDescripcionLinea FROM $e.linea_venta lv $_sqlJoinProducto '
     'WHERE lv.venta_id IN ($ids)',
   );
   final lineasPorVenta = <String, List<LineaDetallada>>{};
   for (final row in lineasRows) {
     (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaDetallada.fromMap(row));
   }
-
-  return DetalleRango(
-    ventas: [
-      for (final row in ventasRows)
-        VentaConLineas(
-          venta: Venta.fromMap(row),
-          lineas: lineasPorVenta[row['id'] as String] ?? const [],
-        ),
-    ],
-    totalVentas: total,
-    pagina: peticion.pagina,
-  );
-});
+  return [
+    for (final row in ventasRows)
+      VentaConLineas(venta: Venta.fromMap(row), lineas: lineasPorVenta[row['id'] as String] ?? const []),
+  ];
+}
 
 /// **Todas** las ventas de un rango, en lotes, para exportar.
 ///
@@ -432,43 +485,33 @@ final detalleRangoProvider = FutureProvider.family<DetalleRango, PaginaDetalle>(
 /// sea cual sea el período.
 Stream<List<VentaConLineas>> ventasDelRangoPorLotes(
   Database db,
+  LibroVentasService libros,
   ReportesParametros params, {
   int lote = 500,
 }) async* {
   final (desde, hasta) = rangoDeFechas(params.rango, params.fechaReferencia);
   final args = [desde.toIso8601String(), hasta.toIso8601String()];
+  final lector = LectorDeLibros(db, () async => libros);
 
-  var desplazamiento = 0;
-  while (true) {
-    final ventasRows = await db.rawQuery(
-      'SELECT v.* FROM venta v WHERE $_sqlRangoActivo '
-      'ORDER BY v.fecha_hora ASC LIMIT $lote OFFSET $desplazamiento',
-      args,
-    );
-    if (ventasRows.isEmpty) return;
+  // Libro por libro, del más viejo al más nuevo, y dentro de cada uno por
+  // tandas: la exportación de un año que cruzó dos libros sale completa y en
+  // orden.
+  for (final e in await lector.esquemasDelRango(desde, hasta)) {
+    var desplazamiento = 0;
+    while (true) {
+      final ventasRows = await db.rawQuery(
+        'SELECT v.* FROM $e.venta v WHERE $_sqlRangoActivo '
+        'ORDER BY v.fecha_hora ASC LIMIT $lote OFFSET $desplazamiento',
+        args,
+      );
+      if (ventasRows.isEmpty) break;
+      yield await _conLineas(db, e, ventasRows);
 
-    final ids = ventasRows.map((r) => "'${r['id']}'").join(',');
-    final lineasRows = await db.rawQuery(
-      'SELECT lv.*, $_sqlDescripcionLinea FROM linea_venta lv $_sqlJoinProducto '
-      'WHERE lv.venta_id IN ($ids)',
-    );
-    final lineasPorVenta = <String, List<LineaDetallada>>{};
-    for (final row in lineasRows) {
-      (lineasPorVenta[row['venta_id'] as String] ??= []).add(LineaDetallada.fromMap(row));
+      // Ascendente y por OFFSET: el rango ya está cerrado —no entran ventas
+      // nuevas de un período pasado mientras se exporta—, así que la tanda
+      // N+1 no se solapa con la N.
+      if (ventasRows.length < lote) break;
+      desplazamiento += lote;
     }
-
-    yield [
-      for (final row in ventasRows)
-        VentaConLineas(
-          venta: Venta.fromMap(row),
-          lineas: lineasPorVenta[row['id'] as String] ?? const [],
-        ),
-    ];
-
-    // Ascendente y por OFFSET: el rango ya está cerrado —no entran ventas
-    // nuevas de un período pasado mientras se exporta—, así que la página N+1
-    // no se solapa con la N.
-    if (ventasRows.length < lote) return;
-    desplazamiento += lote;
   }
 }

@@ -188,6 +188,14 @@ lo pida. **No se generaliza.**
 5. "Aplicar precio" explícito y por producto. Nunca automático ni en bloque:
    cambiar el volumen de uno mueve el precio de todos.
 
+   **Precisado por el dueño (2026-09-21):** llevar el precio de venta según
+   el cálculo es **estrictamente opcional**. Hay quien maneja los precios
+   aparte por sus razones, y para esa persona el módulo es **soporte e
+   información**: muestra costo, margen real contra lo que cobra y alertas,
+   y no toca `precio_base` jamás. Quien quiera que sea la herramienta
+   principal usa "aplicar precio". *"Tiketing al final es una libreta de
+   apuntes con esteroides."* Esto va como regla del ADR cuando se escriba.
+
 ### Por decidir antes de empezar
 
 - **¿Los costos se sincronizan?** Sí ⇒ `esquemaSync` 5 y todos los aparatos a

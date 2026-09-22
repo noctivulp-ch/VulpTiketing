@@ -24,6 +24,15 @@ Cada entidad tiene su propio ciclo de vida — **ningún CRUD se recicla entre e
 
 Ver [decisión 0008](../decisiones/0008-modelo-venta-multilinea-terminologia.md) para el razonamiento detrás del modelo multi-línea y el renombre Plato → Producto.
 
+## Leer más de un libro
+
+Los reportes, el calendario y la exportación leen **a través de todos los
+libros** que cruzan el rango, cerrados incluidos, con `LectorDeLibros`
+(`features/venta/lectura_de_libros.dart`). Cualquier consulta nueva de ventas
+tiene que pasar por ahí: una consulta a `venta` sin calificar mira solo el
+libro abierto y se queda ciega al primer año cerrado. Ver
+[decisión 0025](../decisiones/0025-archivado-anual-rodante.md).
+
 ## Esquema exacto de columnas
 
 En desarrollo en [esquema-db.md](esquema-db.md) — documento de prototipo con las tablas SQL propuestas y los puntos abiertos a decidir.

@@ -253,6 +253,7 @@ Future<dynamic> _ejecutar(
       final params = ReportesParametros(rango: rango, fechaReferencia: DateTime.now());
       final reporte = await container.read(reportesProvider(params).future);
       final db = await container.read(databaseProvider.future);
+      final libros = await container.read(libroVentasServiceProvider.future);
       final destino = await const CarpetaExportacion().archivoPara(
         'reporte-${rango.name}.${formato.extension}',
       );
@@ -263,11 +264,11 @@ Future<dynamic> _ejecutar(
           titulo: 'Ventas · ${rango.name}',
           total: reporte.total,
           porTurno: reporte.porTurno,
-          lotes: ventasDelRangoPorLotes(db, params),
+          lotes: ventasDelRangoPorLotes(db, libros, params),
         );
       } else {
         final ventas = <VentaConLineas>[];
-        await for (final lote in ventasDelRangoPorLotes(db, params)) {
+        await for (final lote in ventasDelRangoPorLotes(db, libros, params)) {
           ventas.addAll(lote);
         }
         cuantas = ventas.length;
