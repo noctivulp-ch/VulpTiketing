@@ -54,11 +54,11 @@ void main() {
     test('es una dirección https válida y parseable', () {
       final uri = Uri.parse(enlaceAutor);
       expect(uri.scheme, 'https');
-      expect(uri.host, 'patreon.com');
+      expect(uri.host, 'www.patreon.com');
     });
 
     test('apunta a la cuenta del autor', () {
-      expect(Uri.parse(enlaceAutor).pathSegments.first, 'NoctiVulp');
+      expect(Uri.parse(enlaceAutor).pathSegments, ['cw', 'NoctiVulp']);
     });
 
     test('conserva los parámetros del enlace original', () {

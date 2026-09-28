@@ -47,6 +47,6 @@ const atribucionApp =
 /// de autoría, no una invitación a pagar. Va **sin decoración de enlace** a
 /// propósito: en la pantalla se lee como una firma, no como un botón.
 const enlaceAutor =
-    'https://patreon.com/NoctiVulp'
+    'https://www.patreon.com/cw/NoctiVulp'
     '?utm_medium=unknown&utm_source=join_link'
     '&utm_campaign=creatorshare_creator&utm_content=copyLink';
