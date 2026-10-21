@@ -31,10 +31,6 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 - [Backup](funciones/backup.md)
 - [Costeo de recetas](funciones/costeo.md) — solo Gerente; informa, y "Aplicar" es explícito por artículo
 
-## Datos de prueba
-
-- [seed/](../seed/README.md) — el menú real y la base de pruebas única (500 ventas repartidas por semanas, días y turnos)
-
 ## Decisiones
 
 - [Índice de decisiones (ADRs)](decisiones/index.md)
@@ -45,7 +41,6 @@ Fuente de verdad funcional cerrada: [`features/*.feature`](../features/) (Gherki
 
 ## Datos reales
 
-- [Menú — la soda](menu-de-ejemplo.md) (transcripción del menú físico, fuente del catálogo inicial en `seed/catalogo-inicial.tiketdata`)
 
 ## Estado general (2026-07-28)
 

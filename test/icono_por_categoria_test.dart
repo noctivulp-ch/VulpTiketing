@@ -18,7 +18,7 @@ import 'package:vulp_tiketing/features/producto/ui/imagen_del_banco_vista.dart';
 void main() {
   group('qué icono le toca a cada categoría', () {
     test('las categorías reales de la soda aciertan', () {
-      // Son las del menú de la soda, tal como están escritas en la base.
+      // Nombres de categoría típicos de una soda, escritos como los escribe la gente.
       expect(iconoDeCategoria('Arroces').clave, 'casado');
       expect(iconoDeCategoria('Batidos en Leche').clave, 'batido');
       expect(iconoDeCategoria('Refrescos Naturales').clave, 'refresco');

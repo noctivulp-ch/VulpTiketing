@@ -50,7 +50,7 @@ flutter run -d linux        # o un dispositivo Android
 flutter test
 ```
 
-Los datos de ejemplo para probar la app están en [`seed/`](seed/README.md).
+La app arranca vacía: el catálogo se crea desde Configuración o se importa de un `.tiketdata`.
 
 ## Documentación
 

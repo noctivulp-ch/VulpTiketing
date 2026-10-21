@@ -79,7 +79,7 @@ asumir un monitor fijo.
 
 Probado end-to-end contra la app real: login completo (tap usuario → tap
 contraseña → enter_text → tap Entrar) navega correctamente al Dashboard;
-`vulp_direct import_tiketdata` contra `seed/catalogo-inicial.tiketdata`
+`vulp_direct import_tiketdata` contra un catálogo de prueba
 importa los 39 productos/8 categorías y el grid de Venta Rápida se
 actualiza en vivo sin reiniciar la app — el mismo flujo que antes
 crasheaba por la UI con el bug de [gestión de estado](../arquitectura/gestion-estado.md#gotcha-real--late-final-en-un-campo-asignado-dentro-de-build) (`LateInitializationError`).

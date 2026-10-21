@@ -341,10 +341,8 @@ Future<dynamic> _ejecutar(
       return {'id': id};
 
     case 'cargar_base_pruebas':
-      // La base de pruebas ÚNICA: el menú real más 500 ventas repartidas por
-      // semanas, días y turnos (`seed/base-de-pruebas.json`, generado por
-      // `scripts/generar_datos_prueba.dart`). La manda
-      // `scripts/cargar-datos-prueba.sh`.
+      // Carga una base de pruebas completa (catálogo y ventas) que manda una
+      // herramienta del entorno de desarrollo; el repositorio no trae ninguna.
       //
       // El CONTENIDO viaja en el comando, no una ruta: desde Android 10 la app
       // no puede leer `/sdcard`, así que un `adb push` no le sirve de nada. Acá

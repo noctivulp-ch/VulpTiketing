@@ -24,7 +24,7 @@ import 'package:vulp_tiketing/features/producto/producto_query_provider.dart';
 import '_escalera.dart';
 import '_generador.dart';
 
-/// Catálogos a probar. 40 es el real de la soda; 5.000 es el absurdo
+/// Catálogos a probar. 40 es el tamaño de una soda real; 5.000 es el absurdo
 /// deliberado, para ver dónde deja de responder el filtrado por tecla.
 const _tamanos = [40, 500, 5000];
 

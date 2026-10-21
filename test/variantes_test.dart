@@ -294,14 +294,14 @@ void main() {
       await AppDatabase.crearEsquema(db);
       final servicio = TiketdataService(db);
 
-      // El archivo real de la carta, exportado antes de que existiera la
-      // columna: sus filas no la traen y tienen que entrar igual.
+      // Un catálogo con el formato de la 1.0.0, anterior a la columna: sus
+      // filas no la traen y tienen que entrar igual.
       await servicio.importarCatalogo(
         rutaOrigen: 'test/fixtures/catalogo-1.0.0.tiketdata',
         modo: ModoImportacion.fusionar,
       );
       final productos = (await db.query('producto')).map(Producto.fromMap).toList();
-      expect(productos, hasLength(63));
+      expect(productos, hasLength(6));
       expect(productos.every((p) => !p.tieneVariantes), isTrue);
 
       // Se le ponen variantes a uno y se exporta: el archivo nuevo las lleva.

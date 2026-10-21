@@ -51,8 +51,8 @@ verdad, este es el momento barato de hacerlo.
 
 Migraciones: `producto.variantes` (v5 → v6, `ALTER TABLE`), las cinco tablas del costeo (v6 → v7, vacías) y
 `linea_venta.variante` en cada libro al adjuntarlo. Un `.tiketdata` de la
-1.0.0 se importa sin cambios (probado con el catálogo real de la carta,
-`test/fixtures/catalogo-1.0.0.tiketdata`).
+1.0.0 se importa sin cambios (probado con un catálogo en el formato de la
+1.0.0, `test/fixtures/catalogo-1.0.0.tiketdata`).
 
 ### 1.0.0 (build 1) — 2026-08-10 · **publicada**
 

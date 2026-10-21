@@ -40,7 +40,7 @@ Future<void> crearEsquemaDeEstres(Database db) async {
   await aplicarEsquemaLibro(db);
 }
 
-/// Catálogo real de la soda, con la mezcla que importa: los primeros 8
+/// Catálogo típico de una soda, con la mezcla que importa: los primeros 8
 /// son los items de alta rotación (₡800–1.000) y son los que se venden más.
 /// Generar con precios uniformes daría un ticket promedio irreal y mediciones
 /// engañosas.
