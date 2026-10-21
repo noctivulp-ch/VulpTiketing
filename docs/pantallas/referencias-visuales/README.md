@@ -2,6 +2,8 @@
 
 Imágenes de referencia (2026-07-29), guardadas para corregir un sesgo de diseño real detectado por el usuario en la UI actual.
 
+> Las fotografías son de terceros y no se publican con el repositorio: aquí queda solo su descripción.
+
 ## Las 6 referencias
 
 | Archivo | Qué muestra |
