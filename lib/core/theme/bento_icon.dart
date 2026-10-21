@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 /// Icono vectorial propio — ver docs/pantallas/iconografia.md.
-/// SVG monocromo (generado con Python, scripts/iconografia/) sin color
+/// SVG monocromo (generado con Python, tools/iconografia/) sin color
 /// horneado; se retinta en tiempo de ejecucion segun jerarquia:
 /// `activo=false` usa el tono neutro de la escala de grises
 /// (`colorScheme.onSurfaceVariant`), `activo=true` usa el acento

@@ -278,7 +278,7 @@ class ReporteExportService {
   /// incrusta Noto Sans, que sí lo trae.
   ///
   /// Recortada a los caracteres que el reporte usa —ver
-  /// `scripts/generar-fuente-pdf.sh`—: las dos variantes completas pesaban
+  /// `tools/generar-fuente-pdf.sh`—: las dos variantes completas pesaban
   /// 1,2 MB y quedaron en 42 KB. Este APK corre en un teléfono de gama baja.
   Future<pw.ThemeData> _tema() async {
     final regular = pw.Font.ttf(await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'));

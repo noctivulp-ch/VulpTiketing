@@ -60,7 +60,7 @@ dependencies:
   intl: ^0.20.2
 
   # Iconos vectoriales propios (docs/pantallas/iconografia.md) - SVG
-  # generado con Python (scripts/iconografia/), monocromo, retintado en
+  # generado con Python (tools/iconografia/), monocromo, retintado en
   # runtime.
   flutter_svg: ^2.1.0
 

@@ -9,7 +9,7 @@ Los bocetos de pantallas usaban emojis como placeholder de íconos (🛒🧺📦
 
 ## Decisión
 
-- **Generación**: Python + [`svgwrite`](https://pypi.org/project/svgwrite/) (dependencia liviana, sin bindings nativos) en un `.venv` propio bajo `scripts/iconografia/` — Arch gestiona Python como entorno externo, no se instala nada globalmente ([convención ya establecida](../../CLAUDE.md) de `scripts/` para herramientas puntuales del workspace).
+- **Generación**: Python + [`svgwrite`](https://pypi.org/project/svgwrite/) (dependencia liviana, sin bindings nativos) en un `.venv` propio bajo `tools/iconografia/` — Arch gestiona Python como entorno externo, no se instala nada globalmente ([convención ya establecida](../../CLAUDE.md) de `scripts/` para herramientas puntuales del workspace).
 - **Formato**: SVG, grilla `24×24`, trazo (`stroke`) uniforme de `1.75`, `stroke-linecap`/`stroke-linejoin: round`, `fill: none` (estilo *outline*, no relleno) — salvo un par de detalles pequeños rellenos a propósito (el rayo de "Venta Rápida", las ruedas del carrito) para que se lean bien a tamaño chico.
 - **Monocromo a propósito**: cada SVG usa un solo color base (`#1A1A1A`) sin ninguna intención de ser el color final — se **retiñe en tiempo de ejecución** en Flutter vía `flutter_svg` + `ColorFilter.mode(color, BlendMode.srcIn)`. Esto es lo que permite que un mismo ícono sirva para el estado inactivo (gris neutro) y activo (acento) sin mantener dos archivos.
 - **Jerarquía por escala de grises + acento desaturado, configurable**: el tema (`buildBentoTheme`) usa `ColorScheme.fromSeed(seedColor: ..., dynamicSchemeVariant: DynamicSchemeVariant.neutral)` — la variante `neutral` de Material 3 mantiene el esquema cerca del gris con solo un matiz del color semilla, en vez del esquema vivo/saturado por defecto. Tres semillas desaturadas disponibles (`AcentoTinte`: azulado, verdoso, café), elegibles desde Configuración vía `PreferenciasNotifier` — ninguna es un color vivo protagonico.
@@ -17,7 +17,7 @@ Los bocetos de pantallas usaban emojis como placeholder de íconos (🛒🧺📦
 
 ## Gotcha encontrado — nunca usar `<style>`/clases CSS en los SVG
 
-El primer intento definía el trazo con un bloque `<style>` + `class="t"` por elemento (más corto de escribir). `flutter_svg` (vía `vector_graphics_compiler`) **no soporta `<style>`** y lo ignora en silencio — las formas quedaban sin ningún trazo aplicado (`fill`/`stroke` caían al default SVG: relleno negro sólido, sin trazo), un error que solo se notó al correr `flutter test` (`unhandled element <style/>`), no en la previsualización con `cairosvg` (que sí soporta `<style>` y por eso mostraba los íconos bien). Se corrigió aplicando `fill`/`stroke`/`stroke-width`/etc. como **atributos de presentación directos en cada elemento**, no vía clase. El script (`scripts/iconografia/generar_iconos.py`) lo deja documentado en su docstring para no repetirlo.
+El primer intento definía el trazo con un bloque `<style>` + `class="t"` por elemento (más corto de escribir). `flutter_svg` (vía `vector_graphics_compiler`) **no soporta `<style>`** y lo ignora en silencio — las formas quedaban sin ningún trazo aplicado (`fill`/`stroke` caían al default SVG: relleno negro sólido, sin trazo), un error que solo se notó al correr `flutter test` (`unhandled element <style/>`), no en la previsualización con `cairosvg` (que sí soporta `<style>` y por eso mostraba los íconos bien). Se corrigió aplicando `fill`/`stroke`/`stroke-width`/etc. como **atributos de presentación directos en cada elemento**, no vía clase. El script (`tools/iconografia/generar_iconos.py`) lo deja documentado en su docstring para no repetirlo.
 
 ## Alternativas descartadas
 
@@ -27,7 +27,7 @@ El primer intento definía el trazo con un bloque `<style>` + `class="t"` por el
 
 ## Consecuencias
 
-- Nuevo directorio `scripts/iconografia/` (script + `.venv` gitignored) y `assets/icons/*.svg` (sí versionado — es el artefacto final, no el entorno de generación).
+- Nuevo directorio `tools/iconografia/` (script + `.venv` gitignored) y `assets/icons/*.svg` (sí versionado — es el artefacto final, no el entorno de generación).
 - `flutter_svg` agregado a `pubspec.yaml`; `assets/icons/` registrado en la sección `assets:`.
 - `PreferenciasNotifier` pasa de manejar un solo valor (`OrdenProducto`) a un objeto `Preferencias` con `ordenProducto` + `acento` — ver `docs/arquitectura/gestion-estado.md`.
 - Set inicial (7 íconos): `venta_rapida`, `panel_venta`, `producto`, `reportes`, `configuracion` (nav del Dashboard) + `rol_gerente`, `rol_registradora` (Login). El resto de íconos de acción (buscar, editar, purgar, línea libre, etc.) se generan bajo el mismo sistema conforme se implementen esas pantallas — no se hicieron todos de una vez.

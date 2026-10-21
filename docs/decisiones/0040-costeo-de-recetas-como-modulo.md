@@ -5,7 +5,7 @@
 
 ## Contexto
 
-Existe una hoja de cálculo de costos y precios (`AppCreator/Tablas/`, con su
+Existe una hoja de cálculo de costos y precios (fuera de este repositorio, con su
 propia documentación en `docs/CalculoCostoRecetas/`): insumos con merma,
 recetas por lote, mano de obra, costos fijos repartidos, precio sugerido con
 margen y comisión, margen real, punto de equilibrio. La [idea 4](../ideas-abiertas.md)

@@ -1,0 +1,23 @@
+VulpTiketing
+Copyright (C) 2026 NoctiVulp
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation,
+either version 3 of the License, or (at your option) any later version.
+SPDX-License-Identifier: GPL-3.0-or-later
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+El nombre «NoctiVulp», el de este programa y sus logotipos no se licencian: ver TRADEMARKS.md.
+
+Componentes de terceros
+-----------------------
+
+- Flutter SDK — BSD-3-Clause
+- flutter_riverpod, uuid, flutter_svg, bonsoir, file_picker, cupertino_icons — MIT
+- sqflite, sqflite_common_ffi — BSD-2-Clause
+- path, path_provider, flutter_secure_storage, shared_preferences, intl, shelf — BSD-3-Clause
+- cryptography, cryptography_flutter, pdf, image_picker — Apache-2.0
+- Herramientas de tools/: Pillow (MIT-CMU), NumPy (BSD-3-Clause), svgwrite (MIT), fonttools (MIT) — no se distribuyen con la app
+- Noto Sans (assets/fonts/) — SIL Open Font License 1.1, texto en assets/fonts/OFL.txt

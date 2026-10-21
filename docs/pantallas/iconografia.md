@@ -14,10 +14,10 @@ Reemplaza los emojis placeholder de los bocetos (Fase 2) por íconos vectoriales
 
 ## Herramienta
 
-`scripts/iconografia/generar_iconos.py` (Python + `svgwrite`, `.venv` propio — gitignored). Para regenerar o iterar un ícono:
+`tools/iconografia/generar_iconos.py` (Python + `svgwrite`, `.venv` propio — gitignored). Para regenerar o iterar un ícono:
 
 ```bash
-scripts/iconografia/.venv/bin/python scripts/iconografia/generar_iconos.py
+tools/iconografia/.venv/bin/python tools/iconografia/generar_iconos.py
 ```
 
 Cada ícono es una función `icono_*()` — ajustar coordenadas ahí y volver a correr. El script no se importa desde la app ni corre en CI, solo se ejecuta a mano cuando se agrega o cambia un ícono (misma convención que el resto de `scripts/` del workspace).
