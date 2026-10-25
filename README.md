@@ -20,6 +20,16 @@ registro de cada venta y los reportes por período. Está pensada para el mostra
 grandes y claras, cobro en pocos toques y funcionamiento sin conexión a internet. Varios
 dispositivos del mismo local se sincronizan entre sí por la red local, sin servidor externo.
 
+<p align="center">
+  <img src="docs/capturas/venta-oscuro-oro.png" width="260" alt="Venta rápida en tema oscuro con acento oro">
+  &nbsp;
+  <img src="docs/capturas/venta-claro-peltre.png" width="260" alt="Venta rápida en tema claro con acento peltre">
+  &nbsp;
+  <img src="docs/capturas/reportes-claro-oscuro.png" width="260" alt="Reporte del día, mitad en tema claro y mitad en oscuro">
+</p>
+
+<p align="center"><sub>Datos de demostración. Las capturas se regeneran con <code>tools/capturas/capturas.sh</code>.</sub></p>
+
 ## Funciones principales
 
 - **Ventas**: venta rápida y compuesta, líneas libres, cobro en efectivo o SINPE, reversión.
